@@ -48,48 +48,39 @@ export async function getUserMembership(userId) {
  * Obtiene o crea una membresía por defecto para usuarios sin una
  */
 export async function getOrCreateDefaultMembership(userId) {
-    // STANDALONE VERSION: Return unlimited Enterprise plan
-
-    // Buscar o crear plan Enterprise (Ilimitado)
-    let enterprisePlan = await prisma.plan.findFirst({
-        where: { slug: 'enterprise-standalone' },
-    });
-
-    if (!enterprisePlan) {
-        enterprisePlan = await prisma.plan.create({
-            data: {
-                name: 'Enterprise (Standalone)',
-                slug: 'enterprise-standalone',
-                price: 0,
-                maxProjects: 999999,
-                maxLeads: 999999,
-                maxAIAnalysis: 999999,
-                features: JSON.stringify(['*']), // Acceso total
-                status: 'active',
-            },
-        });
-    }
-
     // Buscar membresía existente
     let membership = await getUserMembership(userId);
 
     if (membership) {
-        // Asegurar que tenga el plan enterprise
-        if (membership.planId !== enterprisePlan.id) {
-            membership = await prisma.membership.update({
-                where: { id: membership.id },
-                data: { planId: enterprisePlan.id },
-                include: { plan: true }
-            });
-        }
         return membership;
+    }
+
+    // Buscar plan starter
+    let starterPlan = await prisma.plan.findFirst({
+        where: { slug: 'starter' },
+    });
+
+    // Si no existe plan starter, crear uno
+    if (!starterPlan) {
+        starterPlan = await prisma.plan.create({
+            data: {
+                name: 'Starter',
+                slug: 'starter',
+                price: 0,
+                maxProjects: 3,
+                maxLeads: 500,
+                maxAIAnalysis: 3,
+                features: JSON.stringify(['projects', 'basic_analytics']),
+                status: 'active',
+            },
+        });
     }
 
     // Crear membresía por defecto
     membership = await prisma.membership.create({
         data: {
             userId,
-            planId: enterprisePlan.id,
+            planId: starterPlan.id,
             status: 'active',
         },
         include: {
@@ -253,4 +244,19 @@ export async function incrementAIUsage(planId) {
         await prisma.plan.update({
             where: { id: planId },
             data: { aiAnalysisUsed: { increment: 1 } },
-       
+        });
+    } catch (error) {
+        console.error('[Permissions] Error incrementing AI usage:', error);
+    }
+}
+
+/**
+ * Middleware combinado para crear proyecto (verifica ambos)
+ */
+export function checkCreateProject() {
+    return async (request, reply) => {
+        // Primero verificar límite de proyectos
+        const projectCheck = await checkProjectLimit();
+        return projectCheck(request, reply);
+    };
+}
