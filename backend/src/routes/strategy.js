@@ -196,15 +196,33 @@ Responde SOLO con el JSON válido, sin texto adicional. TODO en español.`;
         await incrementAIUsage(request.plan.id);
       }
 
+      // === SAVE HISTORY ===
+      const meta = {
+        competitorsScraped: scrapedData.filter((d) => d.content).length,
+        totalCompetitors: competitorUrls.length,
+        hasMarketResearch: marketResearch !== 'Investigación de mercado no disponible en este momento.',
+        generatedAt: new Date().toISOString(),
+      };
+
+      try {
+        await request.server.prisma.strategyHistory.create({
+          data: {
+            userId: request.user.id,
+            briefData: JSON.stringify(request.body),
+            strategy: JSON.stringify(strategyData),
+            meta: JSON.stringify(meta),
+          },
+        });
+        console.log('[Strategy] Historial guardado correctamente');
+      } catch (historyError) {
+        console.error('[Strategy] Error guardando historial:', historyError);
+        // No fallamos la request si falla el guardado
+      }
+
       return {
         success: true,
         strategy: strategyData,
-        meta: {
-          competitorsScraped: scrapedData.filter((d) => d.content).length,
-          totalCompetitors: competitorUrls.length,
-          hasMarketResearch: marketResearch !== 'Investigación de mercado no disponible en este momento.',
-          generatedAt: new Date().toISOString(),
-        },
+        meta,
       };
     } catch (error) {
       console.error('[Strategy] Error en pipeline:', error);

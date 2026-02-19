@@ -26,6 +26,10 @@ export const useStrategyStore = create((set, get) => ({
     // Tactical overlay
     tacticalOverlay: null, // { type: 'objections' | 'content', salesAngle, data }
 
+    // History
+    history: [],
+    loadingHistory: false,
+
     // --- Actions ---
     setBriefField: (field, value) =>
         set((state) => ({
@@ -38,6 +42,41 @@ export const useStrategyStore = create((set, get) => ({
         })),
 
     setStep: (step) => set({ step }),
+
+    loadHistory: async () => {
+        set({ loadingHistory: true });
+        try {
+            const { history } = await api.getStrategyHistory();
+            set({ history, loadingHistory: false });
+        } catch (error) {
+            console.error('Error loading history:', error);
+            set({ loadingHistory: false });
+        }
+    },
+
+    loadStrategyFromHistory: async (id) => {
+        set({ loading: true, error: null, step: 'processing', processingStatus: 'RECUPERANDO DATOS...' });
+        try {
+            const data = await api.getStrategyById(id);
+            set({
+                briefData: data.briefData,
+                strategy: data.strategy,
+                meta: data.meta,
+                step: 'dashboard',
+                loading: false,
+                processingStatus: 'ANÁLISIS RESTAURADO',
+            });
+            return data;
+        } catch (error) {
+            set({
+                error: error.message || 'Error al cargar estrategia',
+                loading: false,
+                step: 'brief',
+                processingStatus: '',
+            });
+            throw error;
+        }
+    },
 
     fillDemoData: () =>
         set({
@@ -55,7 +94,7 @@ export const useStrategyStore = create((set, get) => ({
         }),
 
     runAnalysis: async () => {
-        const { briefData } = get();
+        const { briefData, loadHistory } = get();
         set({ loading: true, error: null, step: 'processing', processingStatus: 'INICIALIZANDO PROTOCOLO ZENTRIX...' });
 
         try {
@@ -71,6 +110,9 @@ export const useStrategyStore = create((set, get) => ({
                 loading: false,
                 processingStatus: 'ANÁLISIS COMPLETO',
             });
+
+            // Refresh history after new analysis
+            loadHistory();
 
             return result;
         } catch (error) {
