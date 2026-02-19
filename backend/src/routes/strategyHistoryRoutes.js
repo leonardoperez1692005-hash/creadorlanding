@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { authenticate } from '../middleware/auth.js';
 
 const prisma = new PrismaClient();
 
@@ -9,7 +10,7 @@ export default async function strategyHistoryRoutes(fastify, options) {
 
     // GET /api/strategy-history
     fastify.get('/', {
-        preValidation: [fastify.authenticate]
+        onRequest: [authenticate]
     }, async (request, reply) => {
         try {
             const userId = request.user.id;
@@ -50,7 +51,7 @@ export default async function strategyHistoryRoutes(fastify, options) {
 
     // GET /api/strategy-history/:id
     fastify.get('/:id', {
-        preValidation: [fastify.authenticate]
+        onRequest: [authenticate]
     }, async (request, reply) => {
         try {
             const userId = request.user.id;
