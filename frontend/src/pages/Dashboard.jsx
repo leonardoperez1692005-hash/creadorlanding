@@ -77,6 +77,7 @@ export default function Dashboard() {
             {/* Content */}
             <main className="max-w-6xl mx-auto px-4 py-8">
                 {/* Plan Badge */}
+                {/* STANDALONE: Plan Badge removed
                 {plan && (
                     <div className="mb-4 flex items-center gap-2 text-sm">
                         <span className="text-white/40">Plan:</span>
@@ -88,6 +89,7 @@ export default function Dashboard() {
                         </span>
                     </div>
                 )}
+                */}
 
                 <div className="flex items-center justify-between mb-8">
                     <h1 className="text-2xl font-heading font-bold">Mis Landing Pages</h1>
@@ -100,14 +102,17 @@ export default function Dashboard() {
                             >
                                 <Brain className="w-5 h-5" /> ZentrixOs
                             </button>
-                        ) : (
+                        ) : null
+                        /* STANDALONE: Upgrade button removed
+                        (
                             <button
                                 onClick={() => navigate('/pricing')}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500/20 to-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg font-heading font-semibold tracking-wider hover:from-amber-500/30 hover:to-amber-500/20 transition-all text-sm"
                             >
                                 <Crown className="w-5 h-5" /> Upgrade
                             </button>
-                        )}
+                        )
+                        */}
                         <button onClick={handleNewProject} className="btn-primary flex items-center gap-2">
                             <Plus className="w-5 h-5" /> Nueva Landing
                         </button>

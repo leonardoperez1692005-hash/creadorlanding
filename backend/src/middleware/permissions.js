@@ -253,4 +253,19 @@ export async function incrementAIUsage(planId) {
         await prisma.plan.update({
             where: { id: planId },
             data: { aiAnalysisUsed: { increment: 1 } },
-       
+        });
+    } catch (error) {
+        console.error('[Permissions] Error incrementing AI usage:', error);
+    }
+}
+
+/**
+ * Middleware combinado para crear proyecto (verifica ambos)
+ */
+export function checkCreateProject() {
+    return async (request, reply) => {
+        // Primero verificar límite de proyectos
+        const projectCheck = await checkProjectLimit();
+        return projectCheck(request, reply);
+    };
+}
