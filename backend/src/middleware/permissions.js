@@ -48,7 +48,12 @@ export async function getUserMembership(userId) {
  * Obtiene o crea una membresía por defecto para usuarios sin una
  */
 export async function getOrCreateDefaultMembership(userId) {
-    // STANDALONE VERSION: Return unlimited Enterprise plan
+    // Buscar membresía existente
+    let membership = await getUserMembership(userId);
+
+    if (membership) {
+        return membership;
+    }
 
     // Buscar o crear plan Enterprise (Ilimitado)
     let enterprisePlan = await prisma.plan.findFirst({
@@ -64,25 +69,10 @@ export async function getOrCreateDefaultMembership(userId) {
                 maxProjects: 999999,
                 maxLeads: 999999,
                 maxAIAnalysis: 999999,
-                features: JSON.stringify(['*']), // Acceso total
+                features: JSON.stringify(['*']),
                 status: 'active',
             },
         });
-    }
-
-    // Buscar membresía existente
-    let membership = await getUserMembership(userId);
-
-    if (membership) {
-        // Asegurar que tenga el plan enterprise
-        if (membership.planId !== enterprisePlan.id) {
-            membership = await prisma.membership.update({
-                where: { id: membership.id },
-                data: { planId: enterprisePlan.id },
-                include: { plan: true }
-            });
-        }
-        return membership;
     }
 
     // Crear membresía por defecto

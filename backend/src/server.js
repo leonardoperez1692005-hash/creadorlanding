@@ -63,6 +63,9 @@ await app.register(aiRoutes, { prefix: '/api/ai' });
 import strategyRoutes from './routes/strategy.js';
 await app.register(strategyRoutes, { prefix: '/api/strategy' });
 
+import strategyHistoryRoutes from './routes/strategyHistoryRoutes.js';
+await app.register(strategyHistoryRoutes, { prefix: '/api/strategy-history' });
+
 // --- Health Check ---
 app.get('/api/health', async () => ({ status: 'ok', service: 'StaticLaunch Backend' }));
 

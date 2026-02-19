@@ -20,6 +20,17 @@ model User {
   brandIdentity BrandIdentity?
   licenses  License[]
   memberships Membership[]
+  strategies  StrategyHistory[]
+}
+
+model StrategyHistory {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  briefData String   // JSON stringified
+  strategy  String   // JSON stringified
+  meta      String   // JSON stringified
+  createdAt DateTime @default(now())
 }
 
 model Plan {
