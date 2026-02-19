@@ -100,4 +100,7 @@ export default function App() {
                 }
             />
             */}
-            <Route path=
+            <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+    );
+}
