@@ -1,0 +1,23 @@
+<%# partials/offer.ejs %>
+    <section class="offer">
+        <div class="container">
+            <h2>
+                <%= section.content.title || 'Tu Inversión' %>
+            </h2>
+            <div class="pricing-card">
+                <div class="price">$<%= section.content.price_current || '97' %> <span>USD</span></div>
+                <% if (section.content.features) { %>
+                    <ul>
+                        <% section.content.features.forEach(f=> { %>
+                            <li>
+                                <%= f %>
+                            </li>
+                            <% }) %>
+                    </ul>
+                    <% } %>
+                        <a href="<%= section.content.cta_url || '#' %>" class="cta-button">
+                            <%= section.content.cta_text || 'COMPRAR AHORA' %>
+                        </a>
+            </div>
+        </div>
+    </section>

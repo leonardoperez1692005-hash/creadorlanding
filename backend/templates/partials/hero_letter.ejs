@@ -1,0 +1,17 @@
+<% if (section) { %>
+    <section class="hero-letter">
+        <div class="container">
+            <% if (section.content.eyebrow) { %>
+                <div class="eyebrow">
+                    <%= section.content.eyebrow %>
+                </div>
+                <% } %>
+                    <h1>
+                        <%= section.content.headline || 'Tu Historia Comienza Aquí' %>
+                    </h1>
+                    <p class="lead">
+                        <%= section.content.lead || section.content.subheadline || '' %>
+                    </p>
+        </div>
+    </section>
+    <% } %>

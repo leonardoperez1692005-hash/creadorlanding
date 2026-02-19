@@ -1,0 +1,20 @@
+<% if (section) { %>
+    <section class="section">
+        <div class="container">
+            <h2>Tu Speaker</h2>
+            <div class="speaker-bio">
+                <% if (section.content.photo) { %>
+                    <img src="<%= section.content.photo %>" alt="Speaker">
+                    <% } %>
+                        <div class="info">
+                            <h3>
+                                <%= section.content.name %>
+                            </h3>
+                            <p>
+                                <%= section.content.bio %>
+                            </p>
+                        </div>
+            </div>
+        </div>
+    </section>
+    <% } %>

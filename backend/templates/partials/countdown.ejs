@@ -1,0 +1,78 @@
+<% const countdown=(typeof section !=='undefined' ) ? section : sections.find(s=> s.type === 'countdown' || s.id ===
+    'countdown'); %>
+    <% if (countdown && (countdown.content.date || countdown.content.end_date)) { %>
+        <section class="countdown-section"
+            style="padding: 40px 20px; text-align: center; background: var(--color-bg); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border);">
+            <div class="container">
+                <% if (countdown.content.headline) { %>
+                    <h3
+                        style="font-family: var(--font-heading); color: var(--color-primary); margin-bottom: 20px; font-size: 1.5rem;">
+                        <%= countdown.content.headline %>
+                    </h3>
+                    <% } %>
+
+                        <div id="countdown-timer"
+                            style="display: flex; justify-content: center; gap: 20px; font-family: var(--font-heading);">
+                            <div class="time-unit">
+                                <span id="days"
+                                    style="font-size: 2.5rem; font-weight: 700; color: var(--color-text);">00</span>
+                                <span
+                                    style="display: block; font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Días</span>
+                            </div>
+                            <div class="time-unit">
+                                <span id="hours"
+                                    style="font-size: 2.5rem; font-weight: 700; color: var(--color-text);">00</span>
+                                <span
+                                    style="display: block; font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Hs</span>
+                            </div>
+                            <div class="time-unit">
+                                <span id="minutes"
+                                    style="font-size: 2.5rem; font-weight: 700; color: var(--color-text);">00</span>
+                                <span
+                                    style="display: block; font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Min</span>
+                            </div>
+                            <div class="time-unit">
+                                <span id="seconds"
+                                    style="font-size: 2.5rem; font-weight: 700; color: var(--color-secondary);">00</span>
+                                <span
+                                    style="display: block; font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Seg</span>
+                            </div>
+                        </div>
+
+                        <% if (countdown.content.cta_text) { %>
+                            <div style="margin-top: 30px;">
+                                <a href="<%= countdown.content.cta_url || '#' %>" class="cta-button">
+                                    <%= countdown.content.cta_text %>
+                                </a>
+                            </div>
+                            <% } %>
+            </div>
+        </section>
+
+        <script>
+            (function () {
+                const targetDate = new Date("<%= countdown.content.date || countdown.content.end_date %>").getTime();
+
+                const timer = setInterval(function () {
+                    const now = new Date().getTime();
+                    const distance = targetDate - now;
+
+                    if (distance < 0) {
+                        clearInterval(timer);
+                        document.getElementById('countdown-timer').innerHTML = "<div style='font-size: 1.5rem; color: var(--color-text)'>¡Tiempo finalizado!</div>";
+                        return;
+                    }
+
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    document.getElementById('days').innerText = days < 10 ? '0' + days : days;
+                    document.getElementById('hours').innerText = hours < 10 ? '0' + hours : hours;
+                    document.getElementById('minutes').innerText = minutes < 10 ? '0' + minutes : minutes;
+                    document.getElementById('seconds').innerText = seconds < 10 ? '0' + seconds : seconds;
+                }, 1000);
+            })();
+        </script>
+        <% } %>

@@ -1,0 +1,14 @@
+<% if (section && section.content.items) { %>
+    <section class="section" style="background: var(--color-bg-alt);">
+        <div class="container">
+            <h2>Testimonios</h2>
+            <% section.content.items.forEach(t=> { %>
+                <div class="testimonial">
+                    <p>"<%= t.text %>"</p>
+                    <div class="author">— <%= t.author %>
+                    </div>
+                </div>
+                <% }) %>
+        </div>
+    </section>
+    <% } %>

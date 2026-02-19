@@ -1,0 +1,20 @@
+<% if (section) { %>
+    <section class="hero-webinar">
+        <div class="container">
+            <h1>
+                <%= section.content.headline || 'Masterclass Gratuita' %>
+            </h1>
+            <% if (section.content.date) { %>
+                <div class="date-badge">
+                    <%= section.content.date %>
+                </div>
+                <% } %>
+                    <p>
+                        <%= section.content.subheadline || '' %>
+                    </p>
+                    <a href="#registro" class="cta-button">
+                        <%= section.content.cta_text || 'RESERVAR MI LUGAR' %>
+                    </a>
+        </div>
+    </section>
+    <% } %>
