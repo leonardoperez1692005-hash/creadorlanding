@@ -1,0 +1,21 @@
+services:
+  # Backend API (Node.js) -> Deploy to Render Web Service
+  - type: web
+    name: creador-landing-backend
+    env: node
+    plan: free
+    buildCommand: npm install && node_modules/.bin/prisma generate
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Must be set in Render Dashboard
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: creador-landing-frontend # If deployed on Render too, otherwise set manually

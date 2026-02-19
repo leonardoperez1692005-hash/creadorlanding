@@ -6,9 +6,10 @@
     "scripts": {
         "dev": "node --watch src/server.js",
         "start": "node src/server.js",
-        "db:generate": "npx prisma generate",
-        "db:push": "npx prisma db push",
-        "db:studio": "npx prisma studio"
+        "build": "prisma generate",
+        "db:generate": "prisma generate",
+        "db:push": "prisma db push",
+        "db:studio": "prisma studio"
     },
     "dependencies": {
         "@fastify/cors": "^10.0.2",
