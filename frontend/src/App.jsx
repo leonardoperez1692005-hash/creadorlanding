@@ -90,7 +90,6 @@ export default function App() {
                     </ProtectedRoute>
                 }
             />
-            {/* STANDALONE: Pricing route removed
             <Route
                 path="/pricing"
                 element={
@@ -99,5 +98,7 @@ export default function App() {
                     </ProtectedRoute>
                 }
             />
-            */}
-            <Route path=
+            <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+    );
+}
