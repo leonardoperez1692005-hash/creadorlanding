@@ -1,0 +1,18 @@
+<% if (section) { %>
+    <section class="pricing-simple">
+        <div class="container">
+            <h2>
+                <%= section.content.title || 'Tu Inversión' %>
+            </h2>
+            <div class="price">$
+                <%= section.content.price_current || '97' %>
+                    <span>USD</span>
+            </div>
+            <div style="margin-top: 30px;">
+                <a href="<%= section.content.cta_url || '#' %>" class="cta-button">
+                    <%= section.content.cta_text || 'QUIERO ACCEDER' %>
+                </a>
+            </div>
+        </div>
+    </section>
+    <% } %>

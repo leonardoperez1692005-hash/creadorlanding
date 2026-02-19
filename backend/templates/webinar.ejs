@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= meta.seo_title || project.name %>
+    </title>
+    <% if (meta.favicon) { %>
+        <link rel="icon" href="<%= meta.favicon %>">
+        <% } %>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link
+                href="https://fonts.googleapis.com/css2?family=<%= brand.typography?.headings?.family || 'Rajdhani' %>:wght@400;600;700&family=<%= brand.typography?.body?.family || 'Montserrat' %>:wght@300;400;500;600&display=swap"
+                rel="stylesheet">
+            <%- include('partials/tracking', { meta }) %>
+                <style>
+                    :root {
+                        --color-bg: <%=pageColors.bg %>;
+                        --color-bg-alt: <%=pageColors.bgAlt %>;
+                        --color-text: <%=pageColors.text %>;
+                        --color-text-muted: <%=pageColors.textMuted %>;
+                        --color-primary: <%=pageColors.primary %>;
+                        --color-secondary: <%=pageColors.secondary %>;
+                        --color-accent: <%=pageColors.accent %>;
+                        --color-border: <%=pageColors.border %>;
+                        --font-heading: '<%= brand.typography?.headings?.family || ' Rajdhani' %>', sans-serif;
+                        --font-body: '<%= brand.typography?.body?.family || ' Montserrat' %>', sans-serif;
+                        --radius: <%=brand.border_radius || '8px' %>;
+
+                        /* Spacing System (4px Grid) */
+                        --space-xs: 4px;
+                        --space-sm: 8px;
+                        --space-md: 16px;
+                        --space-lg: 24px;
+                        --space-xl: 32px;
+                        --space-2xl: 48px;
+                        --space-3xl: 64px;
+                        --space-4xl: 96px;
+
+                        /* Semantic Spacing */
+                        --section-padding-y: var(--space-4xl);
+                        --element-gap: var(--space-xl);
+                        --container-padding: var(--space-lg);
+                    }
+
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+
+                    body {
+                        background: var(--color-bg);
+                        color: var(--color-text);
+                        font-family: var(--font-body);
+                        line-height: 1.6;
+                    }
+
+                    .container {
+                        max-width: 900px;
+                        margin: 0 auto;
+                        padding: 0 var(--container-padding);
+                    }
+
+                    .hero-webinar {
+                        padding: var(--section-padding-y) var(--container-padding);
+                        text-align: center;
+                        background: radial-gradient(ellipse at top, var(--color-bg-alt), var(--color-bg));
+                    }
+
+                    .hero-webinar h1 {
+                        font-family: var(--font-heading);
+                        font-size: clamp(2rem, 5vw, 3rem);
+                        font-weight: 700;
+                        margin-bottom: var(--element-gap);
+                        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        background-clip: text;
+                    }
+
+                    .hero-webinar .date-badge {
+                        display: inline-block;
+                        background: var(--color-primary);
+                        color: #fff;
+                        padding: 8px 24px;
+                        border-radius: 50px;
+                        font-weight: 700;
+                        margin: var(--space-lg) 0;
+                        font-size: 1.1rem;
+                    }
+
+                    .hero-webinar p {
+                        color: var(--color-text-muted);
+                        font-size: 1.1rem;
+                        max-width: 600px;
+                        margin: 0 auto var(--element-gap);
+                    }
+
+                    .cta-button {
+                        display: inline-block;
+                        padding: var(--space-md) var(--space-2xl);
+                        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+                        color: #fff;
+                        text-decoration: none;
+                        border-radius: var(--radius);
+                        font-weight: 700;
+                        font-size: 1.1rem;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        transition: transform 0.3s, box-shadow 0.3s;
+                        border: none;
+                        cursor: pointer;
+                    }
+
+                    .cta-button:hover {
+                        transform: scale(1.05);
+                        box-shadow: 0 0 30px rgba(255, 0, 127, 0.4);
+                    }
+
+                    .section {
+                        padding: var(--section-padding-y) var(--container-padding);
+                    }
+
+                    .section h2 {
+                        font-family: var(--font-heading);
+                        font-size: 2rem;
+                        text-align: center;
+                        margin-bottom: 30px;
+                        color: var(--color-primary);
+                    }
+
+                    .speaker-bio {
+                        display: flex;
+                        gap: var(--space-xl);
+                        align-items: center;
+                        flex-wrap: wrap;
+                        justify-content: center;
+                        background: var(--color-bg-alt);
+                        border-radius: var(--radius);
+                        padding: var(--space-2xl);
+                        border: 1px solid var(--color-border);
+                    }
+
+                    .speaker-bio img {
+                        width: 150px;
+                        height: 150px;
+                        border-radius: 50%;
+                        object-fit: cover;
+                        border: 3px solid var(--color-primary);
+                    }
+
+                    .speaker-bio .info {
+                        flex: 1;
+                        min-width: 250px;
+                    }
+
+                    .speaker-bio .info h3 {
+                        font-family: var(--font-heading);
+                        color: var(--color-secondary);
+                        font-size: 1.5rem;
+                    }
+
+                    .speaker-bio .info p {
+                        color: var(--color-text-muted);
+                    }
+
+                    .learn-list {
+                        list-style: none;
+                        max-width: 600px;
+                        margin: 0 auto;
+                    }
+
+                    .learn-list li {
+                        padding: 14px 0;
+                        border-bottom: 1px solid var(--color-border);
+                        color: var(--color-text-muted);
+                        font-size: 1.05rem;
+                    }
+
+                    .learn-list li::before {
+                        content: '🎯 ';
+                    }
+
+                    .target-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                        gap: var(--space-md);
+                    }
+
+                    .target-card {
+                        background: var(--color-bg-alt);
+                        border: 1px solid var(--color-border);
+                        border-radius: var(--radius);
+                        padding: var(--space-xl);
+                        text-align: center;
+                    }
+
+                    .target-card h3 {
+                        font-family: var(--font-heading);
+                        color: var(--color-secondary);
+                        margin-bottom: var(--space-sm);
+                    }
+
+                    .target-card p {
+                        color: var(--color-text-muted);
+                        font-size: 0.9rem;
+                    }
+
+                    .urgency-banner {
+                        background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                        padding: var(--space-2xl) var(--container-padding);
+                        text-align: center;
+                        color: #fff;
+                        font-family: var(--font-heading);
+                        font-size: 1.3rem;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                    }
+
+                    .faq {
+                        padding: var(--section-padding-y) var(--container-padding);
+                        max-width: 700px;
+                        margin: 0 auto;
+                    }
+
+                    .faq h2 {
+                        font-family: var(--font-heading);
+                        font-size: 2rem;
+                        text-align: center;
+                        margin-bottom: 30px;
+                        color: var(--color-primary);
+                    }
+
+                    .faq-item {
+                        background: var(--color-bg-alt);
+                        border: 1px solid var(--color-border);
+                        border-radius: var(--radius);
+                        margin-bottom: var(--space-md);
+                    }
+
+                    .faq-item summary {
+                        padding: var(--space-md) var(--space-lg);
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-family: var(--font-heading);
+                    }
+
+                    .faq-item p {
+                        padding: 0 var(--space-lg) var(--space-md);
+                        color: var(--color-text-muted);
+                    }
+
+                    .brand-logo-container {
+                        text-align: center;
+                        padding: var(--space-sm) var(--container-padding);
+                        width: 100%;
+                    }
+
+                    .brand-logo-img {
+                        max-height: 240px;
+                        max-width: min(90%, 500px);
+                        width: auto;
+                        height: auto;
+                        object-fit: contain;
+                        display: inline-block;
+                    }
+                </style>
+</head>
+
+<body>
+    <% if (brand.logoPath) { %>
+        <div class="brand-logo-container">
+            <img src="<%= brand.logoPath %>" alt="Logo" class="brand-logo-img">
+        </div>
+        <% } %>
+
+            <% sections.filter(s=> s.isVisible !== false && s.visible !== false).forEach(section => { %>
+                <% if (section.id==='hero' || section.type==='hero_webinar' ) { %>
+                    <%- include('partials/hero_webinar', { section }) %>
+                        <% } else if (section.id==='speaker' || section.type==='speaker' ) { %>
+                            <%- include('partials/speaker', { section }) %>
+                                <% } else if (section.id==='learning' || section.id==='learning_points' ||
+                                    section.type==='learning_points' ) { %>
+                                    <%- include('partials/learning_points', { section }) %>
+                                        <% } else if (section.id==='target' || section.id==='target_audience' ||
+                                            section.type==='target_audience' ) { %>
+                                            <%- include('partials/target_audience', { section }) %>
+                                                <% } else if (section.id==='urgency' || section.type==='urgency' ) { %>
+                                                    <%- include('partials/urgency', { section }) %>
+                                                        <% } else if (section.id==='offer' || section.type==='offer' ) {
+                                                            %>
+                                                            <%- include('partials/offer', { section }) %>
+                                                                <% } else if (section.id==='faq' || section.type==='faq'
+                                                                    ) { %>
+                                                                    <%- include('partials/faq', { section }) %>
+                                                                        <% } else if (section.type==='optin_form' ||
+                                                                            section.id==='optin' ||
+                                                                            section.id==='lead_capture' ) { %>
+                                                                            <%- include('partials/optin_form', {
+                                                                                section, sections, pageColors, project:
+                                                                                (typeof project !=='undefined' ? project
+                                                                                : {id: 0}) }) %>
+                                                                                <% } else if (section.type==='countdown'
+                                                                                    || section.id==='countdown' ) { %>
+                                                                                    <%- include('partials/countdown', {
+                                                                                        section, sections, pageColors })
+                                                                                        %>
+                                                                                        <% } else if
+                                                                                            (section.type==='html_embed'
+                                                                                            ) { %>
+                                                                                            <%- include('partials/html_embed',
+                                                                                                { section }) %>
+                                                                                                <% } else if
+                                                                                                    (section.id==='whatsapp'
+                                                                                                    ) { %>
+                                                                                                    <%- include('partials/whatsapp',
+                                                                                                        { section }) %>
+                                                                                                        <% } %>
+                                                                                                            <% }); %>
+</body>
+
+</html>

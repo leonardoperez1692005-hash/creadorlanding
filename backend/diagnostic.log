@@ -1,0 +1,10 @@
+Starting diagnostic...
+Checking Environment...
+PORT: 3001
+DATABASE_URL: file:./prisma/dev.db
+JWT_SECRET: Set
+Checking DB Connection...
+DB Connection: Success
+User Count: 1
+Users: [{"email":"leonardo.haring@gmail.com","role":"user"}]
+Diagnostic complete.

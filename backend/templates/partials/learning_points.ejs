@@ -1,0 +1,16 @@
+<% if (section && section.content.items) { %>
+    <section class="section">
+        <div class="container">
+            <h2>
+                <%= section.content.title || 'Lo que aprenderás' %>
+            </h2>
+            <ul class="learn-list">
+                <% section.content.items.forEach(item=> { %>
+                    <li>
+                        <%= item %>
+                    </li>
+                    <% }) %>
+            </ul>
+        </div>
+    </section>
+    <% } %>

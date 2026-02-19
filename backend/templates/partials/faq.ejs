@@ -1,0 +1,16 @@
+<%# partials/faq.ejs %>
+    <% if (section.content.items) { %>
+        <section class="faq">
+            <h2>Preguntas Frecuentes</h2>
+            <% section.content.items.forEach(item=> { %>
+                <details class="faq-item">
+                    <summary>
+                        <%= item.question %>
+                    </summary>
+                    <p>
+                        <%= item.answer %>
+                    </p>
+                </details>
+                <% }) %>
+        </section>
+        <% } %>

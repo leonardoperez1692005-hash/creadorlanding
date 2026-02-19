@@ -1,0 +1,22 @@
+<%# partials/benefits.ejs %>
+    <% if (section.content.items) { %>
+        <section class="benefits">
+            <div class="container">
+                <h2>
+                    <%= section.content.title || 'Beneficios' %>
+                </h2>
+                <div class="benefits-grid">
+                    <% section.content.items.forEach(item=> { %>
+                        <div class="benefit-card">
+                            <h3>
+                                <%= item.title %>
+                            </h3>
+                            <p>
+                                <%= item.description %>
+                            </p>
+                        </div>
+                        <% }) %>
+                </div>
+            </div>
+        </section>
+        <% } %>

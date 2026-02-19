@@ -1,0 +1,70 @@
+<%# partials/optin_form.ejs - Lead capture form %>
+    <% const formSection=(typeof section !=='undefined' ) ? section : sections.find(s=> s.type === 'optin_form' || s.id
+        === 'optin' || s.id === 'lead_capture'); %>
+        <% if (formSection) { %>
+            <section id="optin" style="padding: 60px 20px; text-align: center; background: var(--color-bg-alt);">
+                <div style="max-width: 500px; margin: 0 auto;">
+                    <h2
+                        style="color: var(--color-primary); font-family: var(--font-heading); font-size: 2rem; margin-bottom: 10px;">
+                        <%= formSection.content?.headline || '¡No te lo pierdas!' %>
+                    </h2>
+                    <p style="color: var(--color-text-muted); margin-bottom: 30px;">
+                        <%= formSection.content?.subheadline || 'Déjanos tus datos y te contactamos.' %>
+                    </p>
+                    <form id="leadForm" method="POST" style="display: flex; flex-direction: column; gap: 12px;">
+                        <input type="text" name="name" placeholder="Tu nombre" required
+                            style="padding: 14px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-size: 1rem;" />
+                        <input type="email" name="email" placeholder="Tu email" required
+                            style="padding: 14px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-size: 1rem;" />
+                        <input type="tel" name="phone" placeholder="Tu teléfono (opcional)"
+                            style="padding: 14px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-size: 1rem;" />
+                        <% if (formSection.content?.message_placeholder) { %>
+                            <textarea name="message" placeholder="<%= formSection.content.message_placeholder %>"
+                                style="padding: 14px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font-size: 1rem; min-height: 100px; resize: vertical; font-family: inherit;"></textarea>
+                            <% } %>
+                                <button type="submit"
+                                    style="padding: 16px; border: none; border-radius: 8px; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;">
+                                    <%= formSection.content?.cta_text || 'QUIERO ACCEDER' %>
+                                </button>
+                    </form>
+                    <p id="formMessage" style="margin-top: 15px; color: var(--color-secondary); display: none;">
+                        ¡Gracias! Te contactaremos pronto.</p>
+                </div>
+            </section>
+            <script>
+                // Get project ID from data attribute
+                var projectId = <%= (project && project.id) ? project.id : 0 %>;
+
+                // Determine API URL - use relative path, CORS headers handle cross-origin
+                var API_URL = '/api/leads/submit';
+
+                document.getElementById('leadForm').addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    var fd = new FormData(this);
+                    try {
+                        var response = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                projectId: projectId,
+                                name: fd.get('name'),
+                                email: fd.get('email'),
+                                phone: fd.get('phone'),
+                                message: fd.get('message'),
+                                source: window.location.href
+                            })
+                        });
+                        var data = await response.json();
+                        if (response.ok) {
+                            document.getElementById('formMessage').style.display = 'block';
+                            this.reset();
+                        } else {
+                            alert('Error: ' + (data.error || 'No se pudo guardar'));
+                        }
+                    } catch (err) {
+                        console.error('Error:', err);
+                        alert('Error de conexión');
+                    }
+                });
+            </script>
+            <% } %>

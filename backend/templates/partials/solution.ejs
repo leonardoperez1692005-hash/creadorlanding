@@ -1,0 +1,11 @@
+<% if (section) { %>
+    <section class="story-block" style="background: var(--color-bg-alt);">
+        <div class="container">
+            <h2
+                style="font-family: var(--font-heading); color: var(--color-primary); font-size: 2rem; margin-bottom: 20px;">
+                <%= section.content.title || 'La Solución' %>
+            </h2>
+            <%- section.content.text || '' %>
+        </div>
+    </section>
+    <% } %>

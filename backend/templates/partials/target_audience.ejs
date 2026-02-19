@@ -1,0 +1,21 @@
+<% if (section && section.content.items) { %>
+    <section class="section">
+        <div class="container">
+            <h2>
+                <%= section.content.title || '¿Para quién es?' %>
+            </h2>
+            <div class="target-grid">
+                <% section.content.items.forEach(item=> { %>
+                    <div class="target-card">
+                        <h3>
+                            <%= item.title %>
+                        </h3>
+                        <p>
+                            <%= item.description || '' %>
+                        </p>
+                    </div>
+                    <% }) %>
+            </div>
+        </div>
+    </section>
+    <% } %>

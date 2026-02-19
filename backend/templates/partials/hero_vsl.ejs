@@ -1,0 +1,25 @@
+<%# partials/hero_vsl.ejs %>
+    <section class="hero">
+        <div class="container">
+            <h1>
+                <%= section.content.headline || 'Tu Título Principal' %>
+            </h1>
+            <p>
+                <%= section.content.subheadline || '' %>
+            </p>
+            <% if (section.content.video_url) { %>
+                <div class="video-wrapper">
+                    <% let videoId='' ; if (section.content.video_url) { const
+                        match=section.content.video_url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+                        videoId=match ? match[1] : '' ; } %>
+                        <% if (videoId) { %>
+                            <iframe src="https://www.youtube.com/embed/<%= videoId %>" allowfullscreen></iframe>
+                            <% } else { %>
+                                <!-- URL de video inválida o no soportada -->
+                                <div style="background: #000; color: #fff; padding: 20px; text-align: center;">Video no
+                                    disponible</div>
+                                <% } %>
+                </div>
+                <% } %>
+        </div>
+    </section>
