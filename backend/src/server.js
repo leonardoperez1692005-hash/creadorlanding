@@ -23,25 +23,8 @@ const prisma = new PrismaClient();
 const app = Fastify({ logger: true });
 
 // --- Plugins ---
-const allowedOrigins = [
-    'http://localhost:3005',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://localhost:3003',
-    'http://localhost:3004',
-    'http://localhost:3006',
-    process.env.FRONTEND_URL?.trim(),
-].filter(Boolean);
-
 await app.register(cors, {
-    origin: (origin, cb) => {
-        // Allow requests with no origin (curl, Postman, server-to-server)
-        if (!origin) return cb(null, true);
-        if (allowedOrigins.some(o => origin === o)) return cb(null, true);
-        // Use cb(null, false) — NOT cb(new Error(...)) which causes 500 in Fastify
-        cb(null, false);
-    },
+    origin: true, // Reflect request origin — security handled by JWT tokens
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
