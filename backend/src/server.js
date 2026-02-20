@@ -31,17 +31,20 @@ const allowedOrigins = [
     'http://localhost:3003',
     'http://localhost:3004',
     'http://localhost:3006',
-    process.env.FRONTEND_URL,
+    process.env.FRONTEND_URL?.trim(),
 ].filter(Boolean);
 
 await app.register(cors, {
     origin: (origin, cb) => {
         // Allow requests with no origin (curl, Postman, server-to-server)
         if (!origin) return cb(null, true);
-        if (allowedOrigins.includes(origin)) return cb(null, true);
-        cb(new Error(`CORS blocked: ${origin}`), false);
+        if (allowedOrigins.some(o => origin === o)) return cb(null, true);
+        // Use cb(null, false) — NOT cb(new Error(...)) which causes 500 in Fastify
+        cb(null, false);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 });
 
 await app.register(multipart, {
