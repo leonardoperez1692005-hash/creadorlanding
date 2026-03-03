@@ -26,6 +26,9 @@ export const useStrategyStore = create((set, get) => ({
     // Tactical overlay
     tacticalOverlay: null, // { type: 'objections' | 'content', salesAngle, data }
 
+    // Landing content generation
+    generatingContent: false,
+
     // History
     history: [],
     loadingHistory: false,
@@ -147,6 +150,26 @@ export const useStrategyStore = create((set, get) => ({
 
     closeTacticalOverlay: () => set({ tacticalOverlay: null }),
 
+    generateLandingContent: async (templateType) => {
+        const { strategy, briefData } = get();
+        if (!strategy) throw new Error('No hay estrategia disponible');
+
+        set({ generatingContent: true });
+        try {
+            const result = await api.generateLandingContent({
+                strategyData: strategy,
+                templateType,
+                briefData,
+            });
+            set({ generatingContent: false });
+            return result.content;
+        } catch (error) {
+            set({ generatingContent: false });
+            console.error('[Strategy] Error generando contenido landing:', error);
+            throw error;
+        }
+    },
+
     resetStrategy: () =>
         set({
             step: 'brief',
@@ -156,5 +179,6 @@ export const useStrategyStore = create((set, get) => ({
             strategy: null,
             meta: null,
             tacticalOverlay: null,
+            generatingContent: false,
         }),
 }));

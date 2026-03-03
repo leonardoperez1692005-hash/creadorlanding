@@ -71,6 +71,8 @@ export default function Wizard() {
     const { user, logout } = useAuthStore();
     const location = useLocation();
     const strategyData = location.state?.strategyData;
+    const aiContent = location.state?.aiContent;
+    const aiGenerated = location.state?.aiGenerated;
 
     // State
     const [step, setStep] = useState(0);
@@ -94,19 +96,44 @@ export default function Wizard() {
         }).catch(() => { }); // Silently ignore if no brand yet
     }, []);
 
+    // Auto-set template type when coming from strategy dashboard
+    useEffect(() => {
+        if (location.state?.templateType) {
+            setStructureType(location.state.templateType);
+        }
+        if (location.state?.fromStrategy && strategyData?.brandName) {
+            setProjectName(`Landing - ${strategyData.brandName}`);
+        }
+    }, [location.state?.templateType, location.state?.fromStrategy, strategyData?.brandName]);
+
     // Apply Strategy Data if available (from navigation)
     // TIMING FIX: sections.length as dependency ensures we run AFTER sections are initialized
     useEffect(() => {
-        if (!strategyData || sections.length === 0) return;
+        if (sections.length === 0) return;
 
-        console.log('[Wizard] Aplicando datos de estrategia a', sections.length, 'secciones');
+        // PATH 1: AI-generated content (from strategy dashboard with content generation)
+        if (aiContent && aiGenerated) {
+            console.log('[Wizard] Aplicando contenido generado por IA a', sections.length, 'secciones');
+            setSections(prev => prev.map(s => {
+                const aiSectionContent = aiContent[s.id];
+                if (aiSectionContent) {
+                    return { ...s, content: { ...s.content, ...aiSectionContent } };
+                }
+                return s;
+            }));
+            return; // AI content is authoritative, don't fall through to heuristic
+        }
+
+        // PATH 2: Fallback heuristic (for backward compatibility - strategy without AI gen)
+        if (!strategyData || !strategyData.salesAngles) return;
+
+        console.log('[Wizard] Fallback: aplicando heuristica de estrategia a', sections.length, 'secciones');
 
         const angles = strategyData.salesAngles || [];
         const blueprint = strategyData.landingBlueprint;
         const primaryAngle = angles[0];
         const blueprintSections = blueprint?.sections || [];
 
-        // Heuristic mapper: find suggestedContent from blueprint by keyword matching
         const findContent = (keywords) => {
             const kw = keywords.map(k => k.toLowerCase());
             const sec = blueprintSections.find(s => {
@@ -140,7 +167,7 @@ export default function Wizard() {
                 }
                 case 'urgency': {
                     const urgencyContent = findContent(['urgencia', 'llamado', 'acci', 'limitado', 'cta']);
-                    return { ...s, content: { ...s.content, text: urgencyContent || `⚡ ${primaryAngle?.hook || 'OFERTA POR TIEMPO LIMITADO'} ⚡` } };
+                    return { ...s, content: { ...s.content, text: urgencyContent || `${primaryAngle?.hook || 'OFERTA POR TIEMPO LIMITADO'}` } };
                 }
                 case 'offer': {
                     const offerContent = findContent(['oferta', 'precio', 'plan', 'inversi']);
@@ -148,7 +175,7 @@ export default function Wizard() {
                 }
                 case 'lead_capture': {
                     const ctaContent = findContent(['registro', 'captura', 'lead', 'formulario']);
-                    return { ...s, content: { ...s.content, headline: ctaContent || `Únete a ${strategyData.brandName || 'nosotros'}` } };
+                    return { ...s, content: { ...s.content, headline: ctaContent || `Unete a ${strategyData.brandName || 'nosotros'}` } };
                 }
                 case 'testimonials': {
                     const socialContent = findContent(['social', 'prueba', 'testimonio', 'cliente']);
@@ -159,7 +186,7 @@ export default function Wizard() {
             }
         }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [strategyData, sections.length]);
+    }, [aiContent, aiGenerated, strategyData, sections.length]);
 
 
     // UI State
@@ -424,7 +451,12 @@ export default function Wizard() {
             ) : (
                 /* --- WIZARD EDITOR STEPS --- */
                 <>
-                    <AIAssistant context={{ step: currentStep, structureType }} />
+                    <AIAssistant context={{
+                        step: currentStep,
+                        structureType,
+                        strategyData: strategyData?.fullStrategy || null,
+                        currentSection: getSection(currentStep),
+                    }} />
                     <Header
                         projectName={projectName}
                         setProjectName={setProjectName}

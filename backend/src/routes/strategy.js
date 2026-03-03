@@ -7,7 +7,7 @@
 import { authenticate } from '../middleware/auth.js';
 import { scrapeCompetitors } from '../services/firecrawlService.js';
 import { researchMarket } from '../services/perplexityService.js';
-import { generateWithGemini } from '../services/geminiService.js';
+import { generateWithGemini, buildLandingContentPrompt } from '../services/geminiService.js';
 import { checkAILimit, incrementAIUsage, FEATURES } from '../middleware/permissions.js';
 
 /**
@@ -290,14 +290,104 @@ Responde SOLO con JSON válido. Todo en español.`;
         return reply.status(400).send({ error: 'type debe ser "objections" o "content"' });
       }
 
-      const result = await generateWithGemini(prompt);
-      const data = typeof result === 'string' ? JSON.parse(result) : result;
+      let result;
+      try {
+        result = await generateWithGemini(prompt);
+      } catch (geminiError) {
+        console.error('[Strategy] Error en Gemini (Táctico):', geminiError);
+        throw geminiError;
+      }
+
+      let data;
+      if (typeof result === 'string') {
+        let cleanResult = result
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim();
+
+        // Extract JSON if wrapped in text
+        const jsonMatch = cleanResult.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanResult = jsonMatch[0];
+        }
+
+        try {
+          data = JSON.parse(cleanResult);
+        } catch (parseError) {
+          console.error('[Strategy] Error parseando JSON (Táctico):', parseError.message);
+          console.error('[Strategy] Contenido problemático:', cleanResult);
+          throw new Error('La IA generó una respuesta con formato inválido. Por favor intenta de nuevo.');
+        }
+      } else {
+        data = result;
+      }
 
       return { success: true, data };
     } catch (error) {
       console.error('[Strategy] Error táctico:', error);
       return reply.status(500).send({
-        error: 'Error en operación táctica',
+        error: error.message || 'Error en operación táctica',
+        details: error.message,
+      });
+    }
+  });
+
+  /**
+   * POST /generate-landing-content
+   * Genera copywriting completo para landing page basado en estrategia ZentrixOs
+   */
+  app.post('/generate-landing-content', { preHandler: [authenticate, checkAILimit()] }, async (request, reply) => {
+    const { strategyData, templateType, briefData } = request.body;
+
+    if (!strategyData) {
+      return reply.status(400).send({ error: 'strategyData es obligatorio' });
+    }
+
+    const validTypes = ['vsl', 'webinar', 'long_letter'];
+    const type = validTypes.includes(templateType) ? templateType : 'vsl';
+
+    try {
+      console.log(`[Strategy] Generando contenido landing tipo "${type}" para: ${briefData?.brandName || 'N/A'}`);
+
+      const prompt = buildLandingContentPrompt(strategyData, type);
+      console.log(`[Strategy] Prompt de landing content: ${prompt.length} chars`);
+
+      const result = await generateWithGemini(prompt);
+
+      let contentData;
+      if (typeof result === 'string') {
+        let clean = result
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .trim();
+
+        const jsonMatch = clean.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          clean = jsonMatch[0];
+        }
+
+        try {
+          contentData = JSON.parse(clean);
+        } catch (parseError) {
+          console.error('[Strategy] Error parseando JSON de landing content:', parseError.message);
+          throw new Error('La IA generó una respuesta con formato inválido. Por favor intenta de nuevo.');
+        }
+      } else {
+        contentData = result;
+      }
+
+      // Incrementar contador de análisis AI
+      if (request.plan) {
+        await incrementAIUsage(request.plan.id);
+      }
+
+      console.log(`[Strategy] Landing content generado. Secciones: ${Object.keys(contentData).join(', ')}`);
+
+      return { success: true, content: contentData };
+    } catch (error) {
+      console.error('[Strategy] Error generando landing content:', error);
+      return reply.status(500).send({
+        error: error.message || 'Error generando contenido de landing',
         details: error.message,
       });
     }

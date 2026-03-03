@@ -41,10 +41,11 @@ function CollapsibleCard({ title, icon: Icon, iconColor = 'text-sl-cyan', childr
 }
 
 export default function StrategyDashboard() {
-    const { strategy, meta, briefData, runTacticalOp, tacticalOverlay, closeTacticalOverlay, resetStrategy } =
+    const { strategy, meta, briefData, runTacticalOp, tacticalOverlay, closeTacticalOverlay, resetStrategy, generateLandingContent } =
         useStrategyStore();
     const navigate = useNavigate();
     const [loadingTactical, setLoadingTactical] = useState(null);
+    const [generatingLanding, setGeneratingLanding] = useState(false);
 
     if (!strategy) return null;
 
@@ -112,20 +113,45 @@ export default function StrategyDashboard() {
         URL.revokeObjectURL(url);
     };
 
-    const handleCreateLanding = () => {
-        // Navegar al wizard con datos pre-populados
-        navigate('/wizard', {
-            state: {
-                fromStrategy: true,
-                strategyData: {
-                    brandName: briefData.brandName,
-                    sector: briefData.sector,
-                    salesAngles: strategy.salesAngles,
-                    landingBlueprint: strategy.landingBlueprint,
-                    headline: strategy.salesAngles?.[0]?.hook || '',
+    const handleCreateLanding = async () => {
+        const typeMap = { 'VSL': 'vsl', 'Webinar': 'webinar', 'CartaLarga': 'long_letter' };
+        const recommended = typeMap[strategy.landingBlueprint?.recommendedType] || 'vsl';
+
+        const baseStrategyData = {
+            brandName: briefData.brandName,
+            sector: briefData.sector,
+            salesAngles: strategy.salesAngles,
+            landingBlueprint: strategy.landingBlueprint,
+            headline: strategy.salesAngles?.[0]?.hook || '',
+            fullStrategy: strategy,
+            briefData,
+        };
+
+        setGeneratingLanding(true);
+        try {
+            const content = await generateLandingContent(recommended);
+            navigate('/wizard', {
+                state: {
+                    fromStrategy: true,
+                    aiGenerated: true,
+                    templateType: recommended,
+                    strategyData: baseStrategyData,
+                    aiContent: content,
                 },
-            },
-        });
+            });
+        } catch (error) {
+            console.error('Error generando contenido:', error);
+            // Fallback: navegar sin AI content
+            navigate('/wizard', {
+                state: {
+                    fromStrategy: true,
+                    aiGenerated: false,
+                    strategyData: baseStrategyData,
+                },
+            });
+        } finally {
+            setGeneratingLanding(false);
+        }
     };
 
     return (
@@ -161,11 +187,21 @@ export default function StrategyDashboard() {
                     </button>
                     <button
                         onClick={handleCreateLanding}
-                        className="px-6 py-2 bg-gradient-to-r from-sl-magenta to-sl-magenta/80 text-white rounded-lg font-heading font-bold text-sm tracking-wider hover:shadow-neon-magenta transition-all flex items-center gap-2"
+                        disabled={generatingLanding}
+                        className="px-6 py-2 bg-gradient-to-r from-sl-magenta to-sl-magenta/80 text-white rounded-lg font-heading font-bold text-sm tracking-wider hover:shadow-neon-magenta transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait"
                     >
-                        <Layout className="w-4 h-4" />
-                        CREAR LANDING
-                        <ArrowRight className="w-4 h-4" />
+                        {generatingLanding ? (
+                            <>
+                                <Sparkles className="w-4 h-4 animate-spin" />
+                                GENERANDO COPY...
+                            </>
+                        ) : (
+                            <>
+                                <Layout className="w-4 h-4" />
+                                CREAR LANDING
+                                <ArrowRight className="w-4 h-4" />
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
@@ -263,22 +299,35 @@ export default function StrategyDashboard() {
                                             <h4 className="font-heading font-bold text-white text-sm">{angle.name}</h4>
                                         </div>
                                         <div className="flex gap-1.5">
-                                            <button
-                                                onClick={() => handleTacticalOp('objections', angle.hook || angle.name)}
-                                                disabled={loadingTactical === `objections-${angle.hook || angle.name}`}
-                                                className="px-2.5 py-1 text-[10px] font-code border border-amber-500/30 text-amber-400 rounded hover:bg-amber-500/10 transition-all disabled:opacity-50"
-                                            >
-                                                <Swords className="w-3 h-3 inline mr-1" />
-                                                SIMULAR
-                                            </button>
-                                            <button
-                                                onClick={() => handleTacticalOp('content', angle.hook || angle.name)}
-                                                disabled={loadingTactical === `content-${angle.hook || angle.name}`}
-                                                className="px-2.5 py-1 text-[10px] font-code border border-purple-500/30 text-purple-400 rounded hover:bg-purple-500/10 transition-all disabled:opacity-50"
-                                            >
-                                                <Sparkles className="w-3 h-3 inline mr-1" />
-                                                CONTENIDO
-                                            </button>
+                                            <div className="relative group">
+                                                <button
+                                                    onClick={() => handleTacticalOp('objections', angle.hook || angle.name)}
+                                                    disabled={loadingTactical === `objections-${angle.hook || angle.name}`}
+                                                    className="px-2.5 py-1 text-[10px] font-code border border-amber-500/30 text-amber-400 rounded hover:bg-amber-500/10 transition-all disabled:opacity-50 flex items-center gap-1"
+                                                >
+                                                    <Swords className="w-3 h-3" />
+                                                    SIMULAR
+                                                </button>
+                                                {/* Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded text-[10px] text-white/70 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                                    Simula objeciones de clientes y recibe argumentos de "Judo Verbal" para rebatirlas.
+                                                </div>
+                                            </div>
+
+                                            <div className="relative group">
+                                                <button
+                                                    onClick={() => handleTacticalOp('content', angle.hook || angle.name)}
+                                                    disabled={loadingTactical === `content-${angle.hook || angle.name}`}
+                                                    className="px-2.5 py-1 text-[10px] font-code border border-purple-500/30 text-purple-400 rounded hover:bg-purple-500/10 transition-all disabled:opacity-50 flex items-center gap-1"
+                                                >
+                                                    <Sparkles className="w-3 h-3" />
+                                                    CONTENIDO REDES SOCIALES
+                                                </button>
+                                                {/* Tooltip */}
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded text-[10px] text-white/70 text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                                    Genera guiones virales para TikTok y posts de autoridad para LinkedIn.
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <p className="text-sl-cyan text-sm font-semibold mb-1">"{angle.hook}"</p>
@@ -388,14 +437,26 @@ export default function StrategyDashboard() {
             <div className="mt-8 text-center">
                 <button
                     onClick={handleCreateLanding}
-                    className="px-8 py-3 bg-gradient-to-r from-sl-magenta to-sl-cyan text-white rounded-xl font-heading font-bold tracking-wider hover:shadow-neon-cyan transition-all text-lg flex items-center gap-3 mx-auto"
+                    disabled={generatingLanding}
+                    className="px-8 py-3 bg-gradient-to-r from-sl-magenta to-sl-cyan text-white rounded-xl font-heading font-bold tracking-wider hover:shadow-neon-cyan transition-all text-lg flex items-center gap-3 mx-auto disabled:opacity-50 disabled:cursor-wait"
                 >
-                    <Layout className="w-5 h-5" />
-                    CREAR LANDING DESDE ESTA ESTRATEGIA
-                    <ArrowRight className="w-5 h-5" />
+                    {generatingLanding ? (
+                        <>
+                            <Sparkles className="w-5 h-5 animate-spin" />
+                            GENERANDO COPYWRITING CON IA...
+                        </>
+                    ) : (
+                        <>
+                            <Layout className="w-5 h-5" />
+                            CREAR LANDING DESDE ESTA ESTRATEGIA
+                            <ArrowRight className="w-5 h-5" />
+                        </>
+                    )}
                 </button>
                 <p className="text-xs text-white/30 mt-2 font-code">
-                    Los ángulos de venta y el blueprint se pre-cargarán en el constructor
+                    {generatingLanding
+                        ? 'ZentrixOs esta escribiendo el copy de cada seccion basado en tu estrategia...'
+                        : 'ZentrixOs generara copywriting profesional para cada seccion de la landing'}
                 </p>
             </div>
 

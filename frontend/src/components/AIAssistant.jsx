@@ -4,8 +4,14 @@ import { api } from '../lib/api';
 
 export default function AIAssistant({ context }) { // context could be current step or section data
     const [isOpen, setIsOpen] = useState(false);
+    const hasStrategy = !!context?.strategyData;
     const [messages, setMessages] = useState([
-        { role: 'ai', text: '¡Hola! Soy tu asistente creativo. ¿Necesitas ayuda con los textos de tu landing?' }
+        {
+            role: 'ai',
+            text: hasStrategy
+                ? 'Soy tu asistente de copywriting. Tengo acceso a tu estrategia competitiva. Preguntame como mejorar cualquier seccion de tu landing.'
+                : 'Soy tu asistente creativo. Necesitas ayuda con los textos de tu landing?',
+        }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +34,17 @@ export default function AIAssistant({ context }) { // context could be current s
         setIsLoading(true);
 
         try {
-            const res = await api.askAI({ prompt: input, context });
+            const res = await api.askAI({
+                prompt: input,
+                context: {
+                    step: context?.step,
+                    structureType: context?.structureType,
+                    strategyData: context?.strategyData || null,
+                    currentSection: context?.currentSection
+                        ? { id: context.currentSection.id, content: context.currentSection.content }
+                        : null,
+                },
+            });
             const aiMsg = { role: 'ai', text: res.suggestion || 'Lo siento, no pude generar una sugerencia.' };
             setMessages(prev => [...prev, aiMsg]);
         } catch (error) {

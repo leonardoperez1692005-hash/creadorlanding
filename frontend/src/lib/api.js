@@ -65,6 +65,7 @@ export const api = {
     // Strategy (ZentrixOs)
     analyzeStrategy: (body) => request('/strategy/analyze', { method: 'POST', body }),
     tacticalOp: (body) => request('/strategy/tactical', { method: 'POST', body }),
+    generateLandingContent: (body) => request('/strategy/generate-landing-content', { method: 'POST', body }),
     getStrategyHistory: () => request('/strategy-history'),
     getStrategyById: (id) => request(`/strategy-history/${id}`),
 
