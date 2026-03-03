@@ -1,9 +1,12 @@
 import { authenticate } from '../middleware/auth.js';
+import path from 'path';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 import sharp from 'sharp';
-import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 export default async function uploadRoutes(app) {
     const prisma = app.prisma;
@@ -14,42 +17,21 @@ export default async function uploadRoutes(app) {
             const data = await request.file();
             if (!data) return reply.status(400).send({ error: 'No se envió archivo' });
 
-            // Create user-scoped Supabase client
-            const authHeader = request.headers.authorization;
-            const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-                global: { headers: { Authorization: authHeader } }
-            });
+            // Ensure upload dir exists
+            const userDir = path.join(UPLOAD_DIR, `user-${request.user.id}`);
+            await fs.mkdir(userDir, { recursive: true });
 
-            // Process with sharp (resize/optimize)
+            // Process with sharp
+            const filename = `logo-${Date.now()}.webp`;
+            const filepath = path.join(userDir, filename);
+
             const buffer = await data.toBuffer();
-            const optimizedBuffer = await sharp(buffer)
+            await sharp(buffer)
                 .resize(400, 400, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
                 .webp({ quality: 90 })
-                .toBuffer();
+                .toFile(filepath);
 
-            const filename = `user-${request.user.id}/logo-${Date.now()}.webp`;
-
-            // Upload to Supabase Storage
-            const { data: uploadData, error: uploadError } = await supabase
-                .storage
-                .from('logos') // Asegúrate de crear este bucket en Supabase
-                .upload(filename, optimizedBuffer, {
-                    contentType: 'image/webp',
-                    upsert: true
-                });
-
-            if (uploadError) {
-                console.error('Supabase Upload Error:', uploadError);
-                throw new Error('Error subiendo archivo a Supabase');
-            }
-
-            // Get Public URL
-            const { data: { publicUrl } } = supabase
-                .storage
-                .from('logos')
-                .getPublicUrl(filename);
-
-            const logoPath = publicUrl;
+            const logoPath = `/uploads/user-${request.user.id}/${filename}`;
 
             // Extract palette with node-vibrant
             // Pastel Modern defaults (override via Vibrant extraction below)
@@ -79,6 +61,8 @@ export default async function uploadRoutes(app) {
                     };
 
                     // Heurástica de tipografía basada en la "vibra" del color
+                    // Si hay mucha saturación (Vibrant), ir por algo Tech/Cyber
+                    // Si es apagado (Muted), ir por algo Elegante/Ems
                     const vibrantPop = palette.Vibrant?.population || 0;
                     const mutedPop = palette.Muted?.population || 0;
 
@@ -126,7 +110,6 @@ export default async function uploadRoutes(app) {
 
             return reply.send({ logoPath, suggestedPalette, suggestedTypography });
         } catch (err) {
-            console.error('Upload Route Error:', err);
             return reply.status(500).send({ error: 'Error al subir logo', details: err.message });
         }
     });
