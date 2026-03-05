@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/shared/components/layout/Sidebar'
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,9 @@ export default async function MainLayout({
         <div className="flex min-h-screen" style={{ background: 'var(--bg-primary)' }}>
             <Sidebar user={user} profile={profile} />
             <main className="flex-1 overflow-auto">
-                {children}
+                <ErrorBoundary>
+                    {children}
+                </ErrorBoundary>
             </main>
         </div>
     )

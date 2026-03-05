@@ -12,11 +12,16 @@ export interface GeminiOptions {
     model?: string
     maxTokens?: number
     temperature?: number
+    retries?: number
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(r => setTimeout(r, ms))
 }
 
 /**
  * Call Gemini API with a prompt and return the raw text response.
- * Uses JSON response mode by default.
+ * Uses JSON response mode by default. Retries on failure with exponential backoff.
  */
 export async function callGemini(
     prompt: string,
@@ -24,30 +29,44 @@ export async function callGemini(
 ): Promise<string> {
     const model = options?.model ?? DEFAULT_MODEL
     const apiKey = env.geminiApiKey
+    const maxRetries = options?.retries ?? 2
 
-    const res = await fetch(
-        `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: options?.temperature ?? 0.7,
-                    maxOutputTokens: options?.maxTokens ?? 4096,
-                    responseMimeType: 'application/json',
-                },
-            }),
+    let lastError: Error | null = null
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const res = await fetch(
+                `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: options?.temperature ?? 0.7,
+                            maxOutputTokens: options?.maxTokens ?? 4096,
+                            responseMimeType: 'application/json',
+                        },
+                    }),
+                }
+            )
+
+            if (!res.ok) {
+                const errText = await res.text()
+                throw new Error(`Gemini API error ${res.status}: ${errText.substring(0, 200)}`)
+            }
+
+            const json = await res.json()
+            return json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+        } catch (err) {
+            lastError = err as Error
+            if (attempt < maxRetries) {
+                await sleep(1000 * Math.pow(2, attempt)) // 1s, 2s, 4s
+            }
         }
-    )
-
-    if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(`Gemini API error ${res.status}: ${errText.substring(0, 200)}`)
     }
 
-    const json = await res.json()
-    return json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    throw lastError!
 }
 
 /**
