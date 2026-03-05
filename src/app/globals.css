@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
+/* Tailwind v4 Sources */
+@source "../../features/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* StaticLaunch V2 Design System */
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #0c1024;
+  --bg-card: #0f1425;
+  --border: #1e2540;
+
+  --cyan: #00C8FF;
+  --pink: #FF007F;
+  --purple: #7C3AED;
+
+  --text-primary: #e2e8f0;
+  --text-secondary: #8b9ec7;
+  --text-muted: #5d7099;
+
+  /* Input system */
+  --input-bg: #0d1124;
+  --input-border: #2a3050;
+  --input-border-focus: #00c8ff;
+
+  --gradient-primary: linear-gradient(135deg, #FF007F 0%, #0099ff 100%);
+  --gradient-glow: linear-gradient(135deg, rgba(0, 200, 255, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* Number input: remove arrows */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Tactical Animations */
+@keyframes shine {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes pulse-subtle {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
