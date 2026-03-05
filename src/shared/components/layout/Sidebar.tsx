@@ -15,7 +15,6 @@ import {
     ChevronRight,
     Users,
     Palette,
-    Radar,
     LayoutGrid,
     Crosshair,
     TrendingUp,
@@ -30,13 +29,12 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/brand', label: 'Marca y Estrategia', icon: Palette },
+    { href: '/brand', label: 'Identidad de Marca', icon: Palette },
     { href: '/templates', label: 'Plantillas', icon: LayoutGrid },
     { href: '/wizard', label: 'Nueva Landing', icon: MonitorPlay },
     { href: '/strategy', label: 'ZentrixOS IA', icon: Brain },
     { href: '/market-intel', label: 'Market Intel', icon: TrendingUp },
     { href: '/attack-plan', label: 'Attack Plan', icon: Crosshair },
-    { href: '/intelligence', label: 'Intelligence', icon: Radar },
     { href: '/leads', label: 'Leads Globales', icon: Users },
 ]
 
@@ -67,7 +65,7 @@ export default function Sidebar({ user, profile }: SidebarProps) {
                 </div>
                 <div>
                     <p style={{ fontWeight: 800, color: '#e2e8f0', lineHeight: 1, margin: 0 }}>StaticLaunch</p>
-                    <p style={{ fontSize: '11px', marginTop: '2px', color: '#5d7099' }}>V2 · Factory</p>
+                    <p style={{ fontSize: '11px', marginTop: '2px', color: '#5d7099' }}>V3 · ZMOT</p>
                 </div>
             </div>
 
