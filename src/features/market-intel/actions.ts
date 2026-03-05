@@ -5,6 +5,8 @@ import { BD_COST_PER_REQUEST } from '@/lib/brightdata'
 import type { CompetitorTarget, IntelReport, IntelReportMeta, IntelReportHistoryItem } from './types'
 import { scrapeCompetitors, researchMarket } from './scraper'
 import { analyzeCompetitorsWithGemini } from './analyzer'
+import { intelReportSchema, intelReportMetaSchema, competitorTargetSchema } from './schemas'
+import { z } from 'zod'
 
 export type IntelActionResult<T = null> =
     | { success: true; data?: T }
@@ -102,9 +104,9 @@ export async function loadIntelReportAction(
         return {
             success: true,
             data: {
-                report: data.analysis as IntelReport,
-                meta: data.meta as IntelReportMeta,
-                targets: data.targets as CompetitorTarget[],
+                report: intelReportSchema.parse(data.analysis),
+                meta: intelReportMetaSchema.parse(data.meta),
+                targets: z.array(competitorTargetSchema).parse(data.targets),
             },
         }
     } catch (e: unknown) {
@@ -132,8 +134,8 @@ export async function listIntelReportsAction(): Promise<IntelActionResult<IntelR
 
         const items: IntelReportHistoryItem[] = (data ?? []).map(row => ({
             id: row.id,
-            targets: row.targets as CompetitorTarget[],
-            meta: row.meta as IntelReportMeta,
+            targets: z.array(competitorTargetSchema).parse(row.targets),
+            meta: intelReportMetaSchema.parse(row.meta),
             createdAt: row.created_at,
         }))
 

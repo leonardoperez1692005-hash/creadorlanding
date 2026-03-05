@@ -3,11 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { scrapeUrl, serpSearch } from '@/lib/brightdata'
-import { callGemini, parseJsonFromAI } from '@/lib/gemini'
+import { callGemini, parseAndValidate, parseJsonFromAI } from '@/lib/gemini'
 import type {
     StrategyBriefData, StrategyData, StrategyMeta, StrategyHistoryItem,
     TacticalResult, ObjectionsData, ContentData,
 } from './types'
+import { strategyDataSchema, strategyBriefDataSchema, strategyMetaSchema, objectionsDataSchema, contentDataSchema } from './schemas'
 
 // ================================
 // UTILS
@@ -163,7 +164,7 @@ Genera mínimo 5 ángulos de venta, 3 competidores analizados, 4 pilares de cont
 Responde SOLO con el JSON válido. TODO en español.`
 
         const rawStrategy = await callGemini(strategyPrompt)
-        const strategy = parseJsonFromAI(rawStrategy) as StrategyData
+        const strategy = parseAndValidate(rawStrategy, strategyDataSchema)
 
         const meta: StrategyMeta = {
             competitorsScraped: scraped,
@@ -250,7 +251,9 @@ Responde SOLO con JSON válido. Todo en español.`
         }
 
         const raw = await callGemini(prompt)
-        const data = parseJsonFromAI(raw) as ObjectionsData | ContentData
+        const data = type === 'objections'
+            ? parseAndValidate(raw, objectionsDataSchema)
+            : parseAndValidate(raw, contentDataSchema)
 
         return { success: true, data }
     } catch (e: unknown) {
@@ -445,8 +448,8 @@ export async function fetchStrategyHistoryAction(): Promise<StrategyActionResult
 
         const items: StrategyHistoryItem[] = (data ?? []).map((row) => ({
             id: row.id,
-            briefData: row.brief_data as StrategyBriefData,
-            meta: row.meta_data as StrategyMeta,
+            briefData: strategyBriefDataSchema.parse(row.brief_data),
+            meta: strategyMetaSchema.parse(row.meta_data),
             createdAt: row.created_at,
         }))
 
@@ -479,9 +482,9 @@ export async function loadStrategyHistoryItemAction(
         return {
             success: true,
             data: {
-                strategy: data.strategy_data as StrategyData,
-                meta: data.meta_data as StrategyMeta,
-                briefData: data.brief_data as StrategyBriefData,
+                strategy: strategyDataSchema.parse(data.strategy_data),
+                meta: strategyMetaSchema.parse(data.meta_data),
+                briefData: strategyBriefDataSchema.parse(data.brief_data),
             },
         }
     } catch (e: unknown) {

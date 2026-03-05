@@ -2,8 +2,9 @@
 // Market Intelligence — Gemini Analyzer
 // =============================================
 
-import { callGemini, parseJsonFromAI } from '@/lib/gemini'
+import { callGemini, parseAndValidate } from '@/lib/gemini'
 import type { CompetitorSnapshot, IntelReport } from './types'
+import { intelReportSchema } from './schemas'
 
 /**
  * Analyze competitor snapshots + SERP context via Gemini.
@@ -93,5 +94,5 @@ IMPORTANTE:
 - Responde SOLO con JSON valido`
 
     const raw = await callGemini(prompt, { maxTokens: 8192 })
-    return parseJsonFromAI(raw) as IntelReport
+    return parseAndValidate(raw, intelReportSchema)
 }

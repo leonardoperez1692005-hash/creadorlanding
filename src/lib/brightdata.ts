@@ -2,18 +2,12 @@
 // Shared Bright Data Client
 // =============================================
 
+import { env } from './env'
+
 const BD_ENDPOINT = 'https://api.brightdata.com/request'
 const BD_TIMEOUT_MS = 30_000
 const BD_SERP_TIMEOUT_MS = 20_000
 export const BD_COST_PER_REQUEST = 0.0015
-
-function getBdApiKey(): string {
-    return process.env.BRIGHTDATA_API_KEY ?? ''
-}
-
-function getBdZone(): string {
-    return process.env.BRIGHTDATA_ZONE ?? 'static_launch_scraper'
-}
 
 /**
  * Scrape a URL via Bright Data Web Unlocker.
@@ -27,10 +21,10 @@ export async function scrapeUrl(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${getBdApiKey()}`,
+            Authorization: `Bearer ${env.brightdataApiKey}`,
         },
         body: JSON.stringify({
-            zone: getBdZone(),
+            zone: env.brightdataZone,
             url,
             format: options?.format ?? 'raw',
             ...(options?.dataFormat && { data_format: options.dataFormat }),
@@ -62,10 +56,10 @@ export async function serpSearch(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${getBdApiKey()}`,
+            Authorization: `Bearer ${env.brightdataApiKey}`,
         },
         body: JSON.stringify({
-            zone: getBdZone(),
+            zone: env.brightdataZone,
             url: searchUrl,
             format: 'raw',
             data_format: 'markdown',

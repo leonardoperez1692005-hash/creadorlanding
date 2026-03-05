@@ -3,7 +3,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { generateAttackPlan } from './generator'
 import type { AttackPlan, AttackPlanMeta, BrandProfile } from './types'
-import type { IntelReport } from '@/features/market-intel/types'
+import { intelReportSchema } from '@/features/market-intel/schemas'
+import { attackPlanSchema } from './schemas'
+import { z } from 'zod'
 
 export type AttackActionResult<T = null> =
     | { success: true; data?: T }
@@ -54,8 +56,9 @@ export async function generateAttackPlanAction(
         }
 
         // Generate attack plan
+        const intelReport = intelReportSchema.parse(intelRow.analysis)
         const plan = await generateAttackPlan(
-            intelRow.analysis as IntelReport,
+            intelReport,
             brandProfile
         )
 
@@ -110,12 +113,13 @@ export async function loadAttackPlanAction(
 
         if (error || !data) return { success: false, error: 'Plan no encontrado' }
 
-        const outputs = data.generated_outputs as Record<string, unknown>
+        const outputs = (data.generated_outputs ?? {}) as Record<string, unknown>
+        const attackMatrix = attackPlanSchema.shape.attackMatrix.parse(data.attack_matrix)
         const plan: AttackPlan = {
-            executiveSummary: (outputs.executiveSummary as string) ?? '',
-            attackMatrix: data.attack_matrix as AttackPlan['attackMatrix'],
-            overallStrategy: (outputs.overallStrategy as string) ?? '',
-            recommendedLandingType: (outputs.recommendedLandingType as AttackPlan['recommendedLandingType']) ?? 'vsl',
+            executiveSummary: String(outputs.executiveSummary ?? ''),
+            attackMatrix,
+            overallStrategy: String(outputs.overallStrategy ?? ''),
+            recommendedLandingType: z.enum(['vsl', 'webinar', 'long_letter']).catch('vsl').parse(outputs.recommendedLandingType),
             landingContent: (outputs.landingContent as Record<string, Record<string, unknown>>) ?? {},
         }
 
@@ -152,13 +156,13 @@ export async function getAttackPlanLandingDataAction(
 
         if (error || !plan) return { success: false, error: 'Plan no encontrado' }
 
-        const outputs = plan.generated_outputs as Record<string, unknown>
+        const outputs = (plan.generated_outputs ?? {}) as Record<string, unknown>
 
         return {
             success: true,
             data: {
                 content: (outputs.landingContent as Record<string, Record<string, unknown>>) ?? {},
-                templateType: (outputs.recommendedLandingType as string) ?? 'vsl',
+                templateType: z.enum(['vsl', 'webinar', 'long_letter']).catch('vsl').parse(outputs.recommendedLandingType),
                 projectName: `ZMOT Attack - ${new Date().toLocaleDateString('es-AR')}`,
             },
         }

@@ -2,14 +2,11 @@
 // Shared Gemini Client
 // =============================================
 
+import type { ZodSchema } from 'zod'
+import { env } from './env'
+
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
 const DEFAULT_MODEL = 'gemini-2.0-flash'
-
-function getApiKey(): string {
-    const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY
-    if (!key) throw new Error('GEMINI_API_KEY no configurada')
-    return key
-}
 
 export interface GeminiOptions {
     model?: string
@@ -26,7 +23,7 @@ export async function callGemini(
     options?: GeminiOptions
 ): Promise<string> {
     const model = options?.model ?? DEFAULT_MODEL
-    const apiKey = getApiKey()
+    const apiKey = env.geminiApiKey
 
     const res = await fetch(
         `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`,
@@ -62,4 +59,13 @@ export function parseJsonFromAI(raw: string): unknown {
     const match = clean.match(/\{[\s\S]*\}/)
     if (match) clean = match[0]
     return JSON.parse(clean)
+}
+
+/**
+ * Parse AI response and validate against a Zod schema.
+ * Throws ZodError with exact path if validation fails.
+ */
+export function parseAndValidate<T>(raw: string, schema: ZodSchema<T>): T {
+    const parsed = parseJsonFromAI(raw)
+    return schema.parse(parsed)
 }

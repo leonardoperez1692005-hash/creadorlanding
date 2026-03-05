@@ -3,9 +3,10 @@
 // Crosses rival weaknesses × brand strengths
 // =============================================
 
-import { callGemini, parseJsonFromAI } from '@/lib/gemini'
+import { callGemini, parseAndValidate } from '@/lib/gemini'
 import type { IntelReport } from '@/features/market-intel/types'
 import type { AttackPlan, BrandProfile } from './types'
+import { attackPlanSchema } from './schemas'
 
 /**
  * Generate a ZMOT Attack Plan by crossing rival vulnerabilities
@@ -136,5 +137,5 @@ IMPORTANTE:
 - Responde SOLO con JSON valido`
 
     const raw = await callGemini(prompt, { maxTokens: 8192, temperature: 0.7 })
-    return parseJsonFromAI(raw) as AttackPlan
+    return parseAndValidate(raw, attackPlanSchema)
 }
