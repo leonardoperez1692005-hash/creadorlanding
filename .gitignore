@@ -68,3 +68,6 @@ Thumbs.db
 # Supabase
 supabase/.branches
 supabase/.temp
+
+# User uploaded files
+backend/uploads/
