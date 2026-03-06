@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
+import { api, getUploadUrl } from '../lib/api';
 import { Upload, Palette, Type, ArrowRight, Check } from 'lucide-react';
 import Header from '../components/layout/Header';
 
@@ -139,7 +139,7 @@ export default function Onboarding() {
 
                                 {logoPreview && (
                                     <div className="text-center mb-6">
-                                        <img src={logoPreview} alt="Logo" className="min-w-[200px] max-h-32 object-contain mx-auto rounded mb-3" />
+                                        <img src={getUploadUrl(logoPreview)} alt="Logo" className="min-w-[200px] max-h-32 object-contain mx-auto rounded mb-3" />
                                         <label className="cursor-pointer inline-flex items-center gap-1.5 text-xs text-sl-cyan hover:text-white transition-colors border border-sl-cyan/40 hover:border-sl-cyan rounded-full px-3 py-1">
                                             <Upload className="w-3 h-3" />
                                             Cambiar logo

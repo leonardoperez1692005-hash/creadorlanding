@@ -1,5 +1,16 @@
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '/api' : 'https://creadorlanding.onrender.com/api');
 
+// Base URL del backend (sin /api) para servir archivos estáticos como uploads
+const BACKEND_URL = import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace(/\/api$/, '')
+    : (import.meta.env.DEV ? '' : 'https://creadorlanding.onrender.com');
+
+export const getUploadUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    return `${BACKEND_URL}${path}`;
+};
+
 async function request(endpoint, options = {}) {
     const token = localStorage.getItem('sl_token');
     const headers = { ...options.headers };
