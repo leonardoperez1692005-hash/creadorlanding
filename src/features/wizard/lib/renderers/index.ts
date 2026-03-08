@@ -39,56 +39,58 @@ import { agendaRenderer } from './agenda'
 import { newsletterRenderer } from './newsletter'
 import { featuredPostRenderer } from './featuredPost'
 import { integrationsRenderer } from './integrations'
+import { tabbedFeaturesRenderer } from './tabbedFeatures'
 
 const registry: Record<string, SectionRenderer> = {
-  // ── Core VSL blocks ──
-  hero: heroRenderer,
-  benefits: benefitsRenderer,
-  urgency: urgencyRenderer,
-  countdown: countdownRenderer,
-  offer: offerRenderer,
-  lead_capture: leadCaptureRenderer,
-  faq: faqRenderer,
-  speaker: speakerRenderer,
-  story: storyRenderer,
-  solution: solutionRenderer,
-  learning: learningRenderer,
-  target: targetRenderer,
-  testimonials: testimonialsRenderer,
+    // ── Core VSL blocks ──
+    hero: heroRenderer,
+    benefits: benefitsRenderer,
+    urgency: urgencyRenderer,
+    countdown: countdownRenderer,
+    offer: offerRenderer,
+    lead_capture: leadCaptureRenderer,
+    faq: faqRenderer,
+    speaker: speakerRenderer,
+    story: storyRenderer,
+    solution: solutionRenderer,
+    learning: learningRenderer,
+    target: targetRenderer,
+    testimonials: testimonialsRenderer,
 
-  // ── Shared blocks ──
-  html_embed: htmlEmbedRenderer,
-  image_gallery: imageGalleryRenderer,
-  pricing: pricingRenderer,
-  team: teamRenderer,
-  logo_wall: logoWallRenderer,
-  contact: contactRenderer,
+    // ── Shared blocks ──
+    html_embed: htmlEmbedRenderer,
+    image_gallery: imageGalleryRenderer,
+    pricing: pricingRenderer,
+    team: teamRenderer,
+    logo_wall: logoWallRenderer,
+    contact: contactRenderer,
 
-  // ── Sector blocks ──
-  services: servicesRenderer,
-  process: processStepsRenderer,
-  process_steps: processStepsRenderer,
-  how_it_works: processStepsRenderer,
-  features: benefitsRenderer,          // alias → benefits layout
-  skills: skillsRenderer,
-  experience: experienceRenderer,
-  education: educationRenderer,
-  about: aboutRenderer,
-  guarantee: guaranteeRenderer,
-  comparison: comparisonRenderer,
-  bonus_stack: bonusStackRenderer,
-  portfolio_showcase: portfolioRenderer,
-  stats: statsRenderer,
-  speakers: speakersGridRenderer,
-  agenda: agendaRenderer,
-  sponsors: logoWallRenderer,          // alias → logo_wall layout
+    // ── Sector blocks ──
+    services: servicesRenderer,
+    process: processStepsRenderer,
+    process_steps: processStepsRenderer,
+    how_it_works: processStepsRenderer,
+    features: benefitsRenderer, // alias → benefits layout
+    skills: skillsRenderer,
+    experience: experienceRenderer,
+    education: educationRenderer,
+    about: aboutRenderer,
+    guarantee: guaranteeRenderer,
+    comparison: comparisonRenderer,
+    bonus_stack: bonusStackRenderer,
+    portfolio_showcase: portfolioRenderer,
+    stats: statsRenderer,
+    speakers: speakersGridRenderer,
+    agenda: agendaRenderer,
+    sponsors: logoWallRenderer, // alias → logo_wall layout
 
-  // ── Previously missing (generated <!-- unknown section -->) ──
-  newsletter: newsletterRenderer,
-  featured_post: featuredPostRenderer,
-  integrations: integrationsRenderer,
+    // ── Previously missing (generated <!-- unknown section -->) ──
+    newsletter: newsletterRenderer,
+    featured_post: featuredPostRenderer,
+    integrations: integrationsRenderer,
+    tabbed_features: tabbedFeaturesRenderer,
 }
 
 export function getRenderer(sectionType: string): SectionRenderer | undefined {
-  return registry[sectionType]
+    return registry[sectionType]
 }

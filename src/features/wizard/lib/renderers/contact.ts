@@ -1,17 +1,19 @@
 import type { SectionRenderer } from './types'
 import { esc } from './utils'
+import { sanitizeHtml } from '@/shared/lib/sanitize'
 
 export const contactRenderer: SectionRenderer = (c, _t, ctx) => {
-  const infoItems: string[] = []
-  if (c.email) infoItems.push(`<p style="opacity:.7;margin-bottom:12px">📧 ${esc(c.email)}</p>`)
-  if (c.phone) infoItems.push(`<p style="opacity:.7;margin-bottom:12px">📱 ${esc(c.phone)}</p>`)
-  if (c.address) infoItems.push(`<p style="opacity:.7;margin-bottom:12px">📍 ${esc(c.address)}</p>`)
-  return `<section class="sl-lead" id="contact"><div class="container">
+    const infoItems: string[] = []
+    if (c.email) infoItems.push(`<p style="opacity:.7;margin-bottom:12px">📧 ${esc(c.email)}</p>`)
+    if (c.phone) infoItems.push(`<p style="opacity:.7;margin-bottom:12px">📱 ${esc(c.phone)}</p>`)
+    if (c.address)
+        infoItems.push(`<p style="opacity:.7;margin-bottom:12px">📍 ${esc(c.address)}</p>`)
+    return `<section class="sl-lead" id="contact"><div class="container">
   <h2 class="sl-section-title reveal">${esc(c.title || 'Contacto')}</h2>
   <div style="display:flex;gap:48px;flex-wrap:wrap;justify-content:center" class="reveal">
     <div style="flex:1;min-width:280px">
       ${infoItems.join('\n      ')}
-      ${c.map_embed ? `<div style="margin-top:24px;border-radius:16px;overflow:hidden">${c.map_embed}</div>` : ''}
+      ${c.map_embed ? `<div style="margin-top:24px;border-radius:16px;overflow:hidden">${sanitizeHtml(c.map_embed, true)}</div>` : ''}
     </div>
     <div class="lead-box" style="flex:1;min-width:320px">
       <form class="lead-form" data-project="${esc(ctx.projectId)}" data-api="${esc(ctx.baseUrl)}/api/leads/capture"

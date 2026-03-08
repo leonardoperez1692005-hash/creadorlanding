@@ -1,5 +1,5 @@
 /**
- * StaticLaunch V2 — Standalone HTML Compiler
+ * ZentrixOS — Standalone HTML Compiler
  *
  * Compiles a project's section data into a fully self-contained, production-ready
  * HTML landing page. Zero external JS dependencies. Includes:
@@ -19,68 +19,87 @@ import type { WizardSection, DesignColors, TrackingMeta } from '../types'
 import type { Theme, Content } from './renderers/types'
 import { esc } from './renderers/utils'
 import { getRenderer } from './renderers'
+import { validateTrackingId, validateCSSColor } from '@/shared/lib/sanitize'
 
 // ─── Public API ────────────────────────────────────────────────
 
 export interface CompileInput {
-  projectId: string
-  projectName: string
-  visualModel: 'dark' | 'light'
-  sections: WizardSection[]
-  colors: DesignColors
-  meta: TrackingMeta
-  baseUrl: string          // e.g. https://app.staticlaunch.com
+    projectId: string
+    projectName: string
+    visualModel: 'dark' | 'light'
+    sections: WizardSection[]
+    colors: DesignColors
+    meta: TrackingMeta
+    baseUrl: string // e.g. https://app.zentrixos.com
 }
 
 export function compileLandingHtml(input: CompileInput): string {
-  const { projectId, projectName, visualModel, sections, colors, meta, baseUrl } = input
+    const { projectId, projectName, visualModel, sections, colors, meta, baseUrl } = input
 
-  const visible = sections
-    .filter(s => s.isVisible)
-    .sort((a, b) => a.order - b.order)
+    const visible = sections.filter((s) => s.isVisible).sort((a, b) => a.order - b.order)
 
-  const primary = colors.primary || '#00F0FF'
-  const secondary = colors.secondary || '#7C3AED'
-  const accent = colors.accent || '#FF007F'
+    const primary = validateCSSColor(colors.primary, '#00F0FF')
+    const secondary = validateCSSColor(colors.secondary, '#7C3AED')
+    const accent = validateCSSColor(colors.accent, '#FF007F')
 
-  const theme: Theme = {
-    primary,
-    secondary,
-    accent,
-    bg: visualModel === 'dark' ? '#0A0E1A' : '#F9FAFB',
-    bgCard: visualModel === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.8)',
-    text: visualModel === 'dark' ? '#FFFFFF' : '#111827',
-    muted: visualModel === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)',
-    textMuted: visualModel === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
-    isDark: visualModel === 'dark',
-  }
+    const theme: Theme = {
+        primary,
+        secondary,
+        accent,
+        bg: visualModel === 'dark' ? '#0A0E1A' : '#F9FAFB',
+        bgCard: visualModel === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.8)',
+        text: visualModel === 'dark' ? '#FFFFFF' : '#111827',
+        muted: visualModel === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)',
+        textMuted: visualModel === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
+        isDark: visualModel === 'dark',
+    }
 
-  const seoTitle = meta.seo_title || projectName
-  const sectionsHtml = visible.map((s) => renderSection(s, theme, projectId, baseUrl)).join('\n')
+    const seoTitle = meta.seo_title || projectName
+    const seoDesc = meta.seo_description || `${projectName} — Tu solución ideal`
+    const ogImage = meta.og_image || ''
+    const canonicalUrl = meta.canonical_url || `${baseUrl}/p/${projectId}`
+    // Extract header section (rendered outside <main>)
+    const headerSection = visible.find((s) => s.type === 'header')
+    const contentSections = visible.filter((s) => s.type !== 'header')
 
-  return `<!DOCTYPE html>
+    const sectionsHtml = contentSections
+        .map((s) => renderSection(s, theme, projectId, baseUrl))
+        .join('\n')
+
+    return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(seoTitle)}</title>
+<meta name="description" content="${esc(seoDesc)}">
 <meta name="robots" content="index,follow">
+<link rel="canonical" href="${esc(canonicalUrl)}">
 <meta property="og:title" content="${esc(seoTitle)}">
+<meta property="og:description" content="${esc(seoDesc)}">
 <meta property="og:type" content="website">
+<meta property="og:url" content="${esc(canonicalUrl)}">
+${ogImage ? `<meta property="og:image" content="${esc(ogImage)}">` : ''}
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(seoTitle)}">
+<meta name="twitter:description" content="${esc(seoDesc)}">
+${ogImage ? `<meta name="twitter:image" content="${esc(ogImage)}">` : ''}
+<meta name="theme-color" content="${esc(primary)}">
+<link rel="icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 ${buildTrackingHead(meta)}
-<style>${buildCSS(theme)}</style>
+<style>${minifyCSS(buildCSS(theme))}</style>
+${buildJsonLd(seoTitle, seoDesc, canonicalUrl, ogImage, contentSections)}
 </head>
 <body>
-${buildHeader(projectName)}
+${buildHeader(projectName, headerSection?.content as Record<string, unknown> | undefined, theme)}
 <main>
 ${sectionsHtml}
 </main>
 ${buildFooter(projectName)}
-${buildScripts(visible, baseUrl, projectId)}
+${buildScripts(contentSections, baseUrl, projectId)}
 ${buildTrackingBody(meta)}
 </body>
 </html>`
@@ -88,16 +107,23 @@ ${buildTrackingBody(meta)}
 
 // ─── Section Router ───────────────────────────────────────────
 
-function renderSection(section: WizardSection, t: Theme, projectId: string, baseUrl: string): string {
-  const renderer = getRenderer(section.type)
-  if (!renderer) return `<!-- unknown section: ${esc(section.type)} -->`
-  return renderer(section.content as Content, t, { projectId, baseUrl })
+function renderSection(
+    section: WizardSection,
+    t: Theme,
+    projectId: string,
+    baseUrl: string,
+): string {
+    const renderer = getRenderer(section.type)
+    if (!renderer) return `<!-- unknown section: ${esc(section.type)} -->`
+    const html = renderer(section.content as Content, t, { projectId, baseUrl })
+    // Inject id attribute into the first <section> tag for anchor link support (#hero, #benefits, etc.)
+    return html.replace(/^(<section\b)/, `$1 id="${esc(section.id)}"`)
 }
 
 // ─── CSS ───────────────────────────────────────────────────────
 
 function buildCSS(t: Theme): string {
-  return `
+    return `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --primary:${t.primary};--secondary:${t.secondary};--accent:${t.accent};
@@ -109,6 +135,8 @@ body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--
   line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 img{max-width:100%;height:auto;display:block}
 a{color:inherit;text-decoration:none}
+h1,h2{line-height:1.1em}
+section[id]{scroll-margin-top:150px}
 
 /* Layout */
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
@@ -122,16 +150,23 @@ a{color:inherit;text-decoration:none}
 .reveal.visible{opacity:1;transform:translateY(0)}
 
 /* ---- Header ---- */
-.sl-header{padding:20px 0;border-bottom:1px solid var(--muted)}
+.sl-header{padding:16px 0;border-bottom:1px solid var(--muted);position:sticky;top:0;z-index:1000;background:var(--bg)}
 .sl-header .container{display:flex;align-items:center;justify-content:space-between}
-.sl-logo{font-weight:800;font-size:1.25rem;letter-spacing:-0.03em;color:var(--primary)}
+.sl-logo{font-weight:800;font-size:1.25rem;letter-spacing:-0.03em;color:var(--primary);text-decoration:none}
+.sl-logo img{height:clamp(56px,5.7vw,110px);width:auto}
+.sl-nav{display:flex;gap:clamp(16px,2.5vw,28px);align-items:center}
+.sl-nav-link{font-size:.9rem;font-weight:600;color:var(--text);opacity:.6;text-decoration:none;transition:opacity .2s}
+.sl-nav-link:hover{opacity:1}
+.sl-header-cta:hover{transform:translateY(-2px)}
+.sl-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:6px;z-index:1001}
+.sl-hamburger span{display:block;width:24px;height:2px;background:var(--text);border-radius:2px;transition:transform .3s,opacity .3s;pointer-events:none}
 
 /* ---- Hero ---- */
 .sl-hero{padding:100px 0 80px;text-align:center}
 .sl-hero .badge{display:inline-block;padding:6px 18px;border-radius:999px;font-size:.7rem;
   font-weight:800;letter-spacing:.2em;text-transform:uppercase;border:1px solid var(--primary);
   color:var(--primary);margin-bottom:32px}
-.sl-hero h1{font-size:clamp(2.5rem,6vw,5rem);font-weight:900;line-height:1.08;
+.sl-hero h1{font-size:clamp(2.5rem,6vw,5rem);font-weight:900;
   letter-spacing:-0.03em;margin-bottom:28px;max-width:900px;margin-left:auto;margin-right:auto}
 .sl-hero .sub{font-size:clamp(1.1rem,2.5vw,1.6rem);font-weight:300;opacity:.7;
   max-width:700px;margin:0 auto 40px;line-height:1.5}
@@ -150,6 +185,11 @@ a{color:inherit;text-decoration:none}
 .cta:hover{transform:translateY(-3px);box-shadow:0 18px 50px rgba(0,0,0,.35)}
 .cta:active{transform:scale(.97)}
 .cta svg{flex-shrink:0}
+.sl-cta-ghost{display:inline-flex;align-items:center;gap:8px;padding:18px 36px;border-radius:16px;
+  font-weight:700;font-size:1.15rem;color:rgba(255,255,255,.8);text-decoration:none;
+  border:2px solid rgba(255,255,255,.25);cursor:pointer;backdrop-filter:blur(10px);
+  transition:all .25s}
+.sl-cta-ghost:hover{color:#fff;border-color:rgba(255,255,255,.55);background:rgba(255,255,255,.07)}
 
 /* ---- Benefits ---- */
 .sl-benefits{padding:80px 0}
@@ -246,10 +286,19 @@ a{color:inherit;text-decoration:none}
   line-height:1.7;max-width:500px}
 
 /* ---- Story ---- */
-.sl-story{padding:80px 0}
 .sl-story .prose{max-width:720px;margin:0 auto;font-size:1.1rem;line-height:1.9;opacity:.88}
 .sl-story .prose p{margin-bottom:1.2em}
 .sl-story .prose strong{color:var(--primary);font-weight:700}
+.story-inner{max-width:720px;margin:0 auto}
+.story-headline{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-0.02em;margin-bottom:16px}
+.story-desc{font-size:1.15rem;opacity:.7;line-height:1.75;margin-bottom:32px}
+.story-items{list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:12px}
+.story-item{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;border-radius:14px;
+  background:var(--bg-card);border:1px solid var(--muted);font-size:1rem;line-height:1.65;opacity:.9}
+.story-item-icon{font-size:1.25rem;flex-shrink:0;line-height:1;margin-top:2px}
+.story-item-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:9px}
+.story-conclusion{padding:22px 26px;border-radius:14px;border-left:4px solid;margin-top:8px}
+.story-conclusion p{font-size:1.1rem;font-weight:700;line-height:1.6;margin:0}
 
 /* ---- Solution ---- */
 .sl-solution{padding:80px 0;text-align:center;border-top:1px solid var(--muted);border-bottom:1px solid var(--muted)}
@@ -291,6 +340,38 @@ a{color:inherit;text-decoration:none}
 .sl-footer .logo{font-weight:800;font-size:1.3rem;color:var(--primary);margin-bottom:12px}
 .sl-footer .copy{opacity:.4;font-size:.85rem}
 
+/* ---- Services ---- */
+.sl-services{padding:80px 0}
+.svc-eyebrow{text-align:center;font-size:.7rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--primary);margin-bottom:16px}
+.svc-sub{text-align:center;font-size:clamp(1rem,1.5vw,1.3rem);opacity:.65;max-width:700px;margin:0 auto 48px;line-height:1.7;font-weight:300}
+.svc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px;margin-bottom:48px}
+.svc-card{border-radius:24px;border:1px solid var(--muted);background:var(--bg-card);overflow:hidden;transition:transform .3s,box-shadow .3s}
+.svc-card:hover{transform:translateY(-6px);box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.svc-featured{border-color:var(--primary);border-width:2px;box-shadow:0 0 40px ${t.isDark ? 'rgba(0,240,255,.12)' : 'rgba(0,200,255,.15)'};position:relative}
+.svc-featured::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--primary),var(--accent))}
+.svc-img-wrap{position:relative;overflow:hidden;aspect-ratio:16/10}
+.svc-img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.svc-card:hover .svc-img{transform:scale(1.05)}
+.svc-tag{position:absolute;top:14px;left:14px;padding:5px 14px;border-radius:8px;font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:var(--primary);color:${t.isDark ? '#000' : '#fff'}}
+.svc-tag-inline{position:static;display:inline-block;margin-bottom:14px}
+.svc-body{padding:28px 28px 32px}
+.svc-title{font-size:1.3rem;font-weight:800;margin-bottom:8px;color:var(--secondary)}
+.svc-subtitle{font-size:.95rem;font-weight:600;opacity:.6;margin-bottom:12px}
+.svc-desc{font-size:.95rem;opacity:.7;line-height:1.75}
+.svc-desc p{margin-bottom:.8em}
+.svc-desc ul,.svc-desc ol{padding-left:1.2em;margin-bottom:.8em}
+.svc-desc li{margin-bottom:.3em}
+.svc-cta-wrap{text-align:center;margin-top:16px}
+
+/* ---- Urgency Grid ---- */
+.urg-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+
+/* ---- Tabbed Features ---- */
+.tf-pane{display:none;opacity:0;gap:40px;align-items:center;padding:40px;border-radius:16px;
+  background:var(--bg-card);border:1px solid var(--muted);transition:opacity .4s ease}
+.tf-pane.has-image{grid-template-columns:1fr 1fr}
+.tf-tabs{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:4px 0}
+
 /* ---- Responsive ---- */
 @media(max-width:768px){
   .sl-hero{padding:64px 0 48px}
@@ -301,20 +382,148 @@ a{color:inherit;text-decoration:none}
   .offer-card{padding:32px}
   .cta{padding:16px 32px;font-size:1rem}
   .faq-q{padding:18px 20px;font-size:.95rem}
+  .tf-pane{padding:24px;gap:24px}
+  .tf-pane.has-image{grid-template-columns:1fr}
+  .tf-tabs{gap:6px}
+  .tf-tabs button{padding:10px 16px;font-size:.8rem}
+  .cmp-row{grid-template-columns:1fr!important}
+  .urg-grid{grid-template-columns:1fr}
+  .svc-grid{grid-template-columns:1fr}
+  .svc-body{padding:20px 20px 24px}
+  section[id]{scroll-margin-top:80px}
+  .sl-header{padding:5px 0}
+  .sl-logo img{height:54px}
+  .sl-hamburger{display:flex!important}
+  .sl-nav{display:none!important;position:absolute;top:100%;left:0;right:0;flex-direction:column;
+    background:var(--bg);border-bottom:1px solid var(--muted);padding:16px 24px;gap:0;
+    box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:999}
+  #sl-menu-toggle:checked~.container .sl-nav{display:flex!important;flex-direction:column}
+  #sl-menu-toggle:checked~.container .sl-hamburger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  #sl-menu-toggle:checked~.container .sl-hamburger span:nth-child(2){opacity:0}
+  #sl-menu-toggle:checked~.container .sl-hamburger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  .sl-nav-link{padding:12px 0;border-bottom:1px solid var(--muted);font-size:1rem;opacity:.8}
+  .sl-nav-link:last-child{border-bottom:none}
+  .sl-header-cta{padding:8px 18px!important;font-size:.8rem!important}
+}
+
+/* ---- Accessibility: Reduced Motion ---- */
+@media(prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .benefit-card,.cta,.sl-hero .video-wrap .play-btn,.speaker-photo,.lead-submit,.svc-card,.svc-img{transition:none}
+  .faq-a{transition:none}
 }
 `
 }
 
+// ─── JSON-LD Structured Data ─────────────────────────────────
+
+function buildJsonLd(
+    seoTitle: string,
+    seoDesc: string,
+    canonicalUrl: string,
+    ogImage: string,
+    sections: WizardSection[],
+): string {
+    const webPage: Record<string, unknown> = {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: seoTitle,
+        description: seoDesc,
+        url: canonicalUrl,
+    }
+    if (ogImage) webPage.image = ogImage
+
+    let out = `<script type="application/ld+json">${JSON.stringify(webPage)}</script>`
+
+    // FAQPage schema when FAQ sections exist
+    const faqSections = sections.filter((s) => s.type === 'faq' && s.isVisible)
+    const faqItems: {
+        '@type': string
+        name: string
+        acceptedAnswer: { '@type': string; text: string }
+    }[] = []
+    for (const section of faqSections) {
+        const content = section.content as Content
+        const items = Array.isArray(content.items) ? content.items : []
+        for (const item of items) {
+            if (item.question && item.answer) {
+                faqItems.push({
+                    '@type': 'Question',
+                    name: item.question,
+                    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+                })
+            }
+        }
+    }
+    if (faqItems.length > 0) {
+        const faqSchema = {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: faqItems,
+        }
+        out += `\n<script type="application/ld+json">${JSON.stringify(faqSchema)}</script>`
+    }
+
+    return out
+}
+
+// ─── CSS Minification ────────────────────────────────────────
+
+function minifyCSS(css: string): string {
+    return css
+        .replace(/\/\*[\s\S]*?\*\//g, '') // strip comments
+        .replace(/\n\s*/g, '') // strip newlines + leading whitespace
+        .replace(/\s*([{}:;,])\s*/g, '$1') // strip spaces around delimiters
+        .replace(/;}/g, '}') // remove trailing semicolons
+        .replace(/\s{2,}/g, ' ') // collapse remaining whitespace
+        .trim()
+}
+
 // ─── Header / Footer ──────────────────────────────────────────
 
-function buildHeader(name: string): string {
-  return `<header class="sl-header"><div class="container">
-  <div class="sl-logo">${esc(name)}</div>
+interface NavItem {
+    label?: string
+    url?: string
+}
+
+function buildHeader(name: string, content?: Record<string, unknown>, t?: Theme): string {
+    const logoText = (content?.logo_text as string) || name
+    const logoImage = content?.logo_image as string | undefined
+    const items: NavItem[] = Array.isArray(content?.items) ? (content.items as NavItem[]) : []
+    const ctaText = content?.cta_text as string | undefined
+    const ctaUrl = content?.cta_url as string | undefined
+
+    const logoHtml = logoImage
+        ? `<a href="#" class="sl-logo"><img src="${esc(logoImage)}" alt="${esc(logoText)}"></a>`
+        : `<a href="#" class="sl-logo">${esc(logoText)}</a>`
+
+    const navHtml =
+        items.length > 0
+            ? `<nav class="sl-nav">${items
+                  .map(
+                      (item) =>
+                          `<a href="${esc(item.url || '#')}" class="sl-nav-link">${esc(item.label || '')}</a>`,
+                  )
+                  .join('')}</nav>`
+            : ''
+
+    const ctaHtml = ctaText
+        ? `<a href="${esc(ctaUrl || '#')}" class="sl-header-cta" style="padding:10px 24px;border-radius:10px;font-weight:700;font-size:.85rem;background:${t?.primary || 'var(--primary)'};color:${t?.isDark ? '#000' : '#fff'};text-decoration:none;transition:transform .2s">${esc(ctaText)}</a>`
+        : ''
+
+    const hamburgerHtml = `<label for="sl-menu-toggle" class="sl-hamburger" aria-label="Menú"><span></span><span></span><span></span></label>`
+
+    return `<header class="sl-header">
+<input type="checkbox" id="sl-menu-toggle" hidden>
+<div class="container">
+  ${logoHtml}
+  ${navHtml}
+  <div style="display:flex;align-items:center;gap:16px">${ctaHtml}${hamburgerHtml}</div>
 </div></header>`
 }
 
 function buildFooter(name: string): string {
-  return `<footer class="sl-footer"><div class="container">
+    return `<footer class="sl-footer"><div class="container">
   <div class="logo">${esc(name)}</div>
   <p class="copy">&copy; ${new Date().getFullYear()} ${esc(name)}. Todos los derechos reservados.</p>
 </div></footer>`
@@ -323,12 +532,16 @@ function buildFooter(name: string): string {
 // ─── Scripts ──────────────────────────────────────────────────
 
 function buildScripts(sections: WizardSection[], _baseUrl: string, _projectId: string): string {
-  const hasCountdown = sections.some(s => s.type === 'countdown' && s.isVisible)
-  const hasFaq = sections.some(s => s.type === 'faq' && s.isVisible)
-  const hasForm = sections.some(s => (s.type === 'lead_capture' || s.type === 'contact') && s.isVisible)
-  const hasVideo = sections.some(s => s.type === 'hero' && s.isVisible && (s.content as Content).video_url)
+    const hasCountdown = sections.some((s) => s.type === 'countdown' && s.isVisible)
+    const hasFaq = sections.some((s) => s.type === 'faq' && s.isVisible)
+    const hasForm = sections.some(
+        (s) => (s.type === 'lead_capture' || s.type === 'contact') && s.isVisible,
+    )
+    const hasVideo = sections.some(
+        (s) => s.type === 'hero' && s.isVisible && (s.content as Content).video_url,
+    )
 
-  return `<script>
+    return `<script>
 (function(){
   /* ── Reveal on Scroll ── */
   var els=document.querySelectorAll('.reveal');
@@ -339,7 +552,9 @@ function buildScripts(sections: WizardSection[], _baseUrl: string, _projectId: s
     els.forEach(function(el){obs.observe(el)});
   } else { els.forEach(function(el){el.classList.add('visible')}) }
 
-${hasVideo ? `
+${
+    hasVideo
+        ? `
   /* ── YouTube Click-to-Play ── */
   document.querySelectorAll('.video-wrap[data-yt]').forEach(function(wrap){
     wrap.addEventListener('click',function(){
@@ -348,9 +563,13 @@ ${hasVideo ? `
       wrap.style.cursor='default';
     });
   });
-` : ''}
+`
+        : ''
+}
 
-${hasCountdown ? `
+${
+    hasCountdown
+        ? `
   /* ── Countdown Timer ── */
   var cs=document.querySelector('.sl-countdown');
   if(cs){
@@ -371,8 +590,12 @@ ${hasCountdown ? `
       tick();
     }
   }
-` : ''}
-${hasFaq ? `
+`
+        : ''
+}
+${
+    hasFaq
+        ? `
   /* ── FAQ Accordion ── */
   document.querySelectorAll('.faq-q').forEach(function(q){
     q.addEventListener('click',function(){
@@ -382,8 +605,12 @@ ${hasFaq ? `
       if(!wasOpen)item.classList.add('open');
     });
   });
-` : ''}
-${hasForm ? `
+`
+        : ''
+}
+${
+    hasForm
+        ? `
   /* ── Lead Form ── */
   var form=document.querySelector('.lead-form');
   if(form){
@@ -408,7 +635,9 @@ ${hasForm ? `
       }).finally(function(){btn.disabled=false;btn.textContent=btn.getAttribute('data-text')||'Enviar'});
     });
   }
-` : ''}
+`
+        : ''
+}
 })();
 </script>`
 }
@@ -416,21 +645,24 @@ ${hasForm ? `
 // ─── Tracking ─────────────────────────────────────────────────
 
 function buildTrackingHead(meta: TrackingMeta): string {
-  let out = ''
-  if (meta.facebook_pixel_id) {
-    out += `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${esc(meta.facebook_pixel_id)}');fbq('track','PageView');</script>\n`
-  }
-  if (meta.google_analytics_id) {
-    out += `<script async src="https://www.googletagmanager.com/gtag/js?id=${esc(meta.google_analytics_id)}"></script>\n`
-    out += `<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${esc(meta.google_analytics_id)}');</script>\n`
-  }
-  return out
+    let out = ''
+    const fbId = validateTrackingId(meta.facebook_pixel_id, 'facebook_pixel_id')
+    const gaId = validateTrackingId(meta.google_analytics_id, 'google_analytics_id')
+    if (fbId) {
+        out += `<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${fbId}');fbq('track','PageView');</script>\n`
+    }
+    if (gaId) {
+        out += `<script async src="https://www.googletagmanager.com/gtag/js?id=${gaId}"></script>\n`
+        out += `<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${gaId}');</script>\n`
+    }
+    return out
 }
 
 function buildTrackingBody(meta: TrackingMeta): string {
-  let out = ''
-  if (meta.facebook_pixel_id) {
-    out += `<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${esc(meta.facebook_pixel_id)}&ev=PageView&noscript=1"/></noscript>\n`
-  }
-  return out
+    let out = ''
+    const fbId = validateTrackingId(meta.facebook_pixel_id, 'facebook_pixel_id')
+    if (fbId) {
+        out += `<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${fbId}&ev=PageView&noscript=1"/></noscript>\n`
+    }
+    return out
 }
