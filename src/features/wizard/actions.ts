@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { logger } from '@/shared/lib/logger'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { normalizeAndMergeSections } from './config/constants'
@@ -10,24 +10,20 @@ import type { WizardSection, DesignColors, TrackingMeta } from './types'
 import { headers } from 'next/headers'
 
 // === Schemas ===
-const createProjectSchema = z.object({
-    name: z.string().min(1, 'El nombre es requerido').max(100),
-    structureType: z.string().min(1),
-    visualModel: z.enum(['dark', 'light']).default('dark'),
-})
-
 const saveProjectSchema = z.object({
     projectId: z.string().uuid().optional(),
     name: z.string().min(1).max(100),
     structureType: z.string().min(1),
     visualModel: z.enum(['dark', 'light']),
-    sections: z.array(z.object({
-        id: z.string(),
-        type: z.string(),
-        content: z.record(z.string(), z.unknown()),
-        isVisible: z.boolean(),
-        order: z.number(),
-    })),
+    sections: z.array(
+        z.object({
+            id: z.string(),
+            type: z.string(),
+            content: z.record(z.string(), z.unknown()),
+            isVisible: z.boolean(),
+            order: z.number(),
+        }),
+    ),
     colors: z.record(z.string(), z.string()).optional(),
     meta: z.record(z.string(), z.string().optional()).optional(),
 })
@@ -35,17 +31,51 @@ const saveProjectSchema = z.object({
 export type SaveProjectInput = z.infer<typeof saveProjectSchema>
 export type ActionResult<T = null> = { success: true; data?: T } | { success: false; error: string }
 
+/** Generate a clean slug from the project name, appending a short suffix only on collision. */
+async function generateUniqueSlug(
+    name: string,
+    supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<string> {
+    const base =
+        name
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // strip accents
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+            .replace(/-{2,}/g, '-') // collapse multiple dashes
+            .replace(/^-|-$/g, '') // trim dashes
+            .slice(0, 60) || // limit length
+        'landing'
+
+    // Check if slug exists
+    const { count } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('slug', base)
+
+    if (!count) return base
+
+    // Collision: append short random suffix
+    const suffix = Math.random().toString(36).slice(2, 6)
+    return `${base}-${suffix}`
+}
+
 // === Fetch Project ===
-export async function fetchProjectAction(id: string): Promise<ActionResult<{
-    name: string
-    structureType: string
-    visualModel: string
-    sections: unknown[]
-    colors: Record<string, string>
-    meta: Record<string, string>
-}>> {
+export async function fetchProjectAction(id: string): Promise<
+    ActionResult<{
+        name: string
+        structureType: string
+        visualModel: string
+        sections: unknown[]
+        colors: Record<string, string>
+        meta: Record<string, string>
+    }>
+> {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'No autenticado' }
 
     const { data, error } = await supabase
@@ -57,9 +87,10 @@ export async function fetchProjectAction(id: string): Promise<ActionResult<{
 
     if (error || !data) return { success: false, error: 'Proyecto no encontrado' }
 
-    const contentData = typeof data.content_data === 'string'
-        ? JSON.parse(data.content_data)
-        : (data.content_data as Record<string, unknown>) ?? {}
+    const contentData =
+        typeof data.content_data === 'string'
+            ? JSON.parse(data.content_data)
+            : ((data.content_data as Record<string, unknown>) ?? {})
 
     const rawSections = (contentData['sections'] as unknown[]) ?? []
     const sections = normalizeAndMergeSections(rawSections, data.structure_type)
@@ -78,44 +109,58 @@ export async function fetchProjectAction(id: string): Promise<ActionResult<{
 }
 
 // === Save Project (Create or Update) ===
-export async function saveProjectAction(input: SaveProjectInput): Promise<ActionResult<{ id: string; slug: string }>> {
+export async function saveProjectAction(
+    input: SaveProjectInput,
+): Promise<ActionResult<{ id: string; slug: string }>> {
     const parsed = saveProjectSchema.safeParse(input)
     if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'No autenticado' }
 
     const { projectId, name, structureType, visualModel, sections, colors, meta } = parsed.data
 
     const contentData = { sections, colors: colors ?? {}, meta: meta ?? {} }
-    const slug = `${name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}`
+    const slug = await generateUniqueSlug(name, supabase)
 
     if (projectId) {
         // UPDATE
-        const { data, error } = await supabase.from('projects').update({
-            name,
-            structure_type: structureType,
-            visual_model: visualModel,
-            content_data: contentData,
-        }).eq('id', projectId).eq('user_id', user.id).select('slug').single()
+        const { data, error } = await supabase
+            .from('projects')
+            .update({
+                name,
+                structure_type: structureType,
+                visual_model: visualModel,
+                content_data: contentData,
+            })
+            .eq('id', projectId)
+            .eq('user_id', user.id)
+            .select('slug')
+            .single()
 
         if (error || !data) return { success: false, error: 'Error al actualizar el proyecto' }
-        revalidatePath('/dashboard')
+        // NOTE: no revalidatePath here — it causes the wizard to re-render and kick the user out.
+        // Dashboard uses force-dynamic so it always fetches fresh data.
         return { success: true, data: { id: projectId, slug: data.slug } }
     } else {
         // CREATE
-        const { data, error } = await supabase.from('projects').insert({
-            slug,
-            name,
-            structure_type: structureType,
-            visual_model: visualModel,
-            content_data: contentData,
-            user_id: user.id,
-        }).select('id, slug').single()
+        const { data, error } = await supabase
+            .from('projects')
+            .insert({
+                slug,
+                name,
+                structure_type: structureType,
+                visual_model: visualModel,
+                content_data: contentData,
+                user_id: user.id,
+            })
+            .select('id, slug')
+            .single()
 
         if (error || !data) return { success: false, error: 'Error al crear el proyecto' }
-        revalidatePath('/dashboard')
         return { success: true, data: { id: data.id, slug: data.slug } }
     }
 }
@@ -123,7 +168,9 @@ export async function saveProjectAction(input: SaveProjectInput): Promise<Action
 // === Fetch Brand Identity (for default colors) ===
 export async function fetchBrandColorsAction(): Promise<Record<string, string>> {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return {}
 
     const { data } = await supabase
@@ -138,18 +185,22 @@ export async function fetchBrandColorsAction(): Promise<Record<string, string>> 
 }
 
 // === Publish Project (Save + Compile HTML) ===
-export async function publishProjectAction(input: SaveProjectInput): Promise<ActionResult<{ id: string; slug: string }>> {
+export async function publishProjectAction(
+    input: SaveProjectInput,
+): Promise<ActionResult<{ id: string; slug: string }>> {
     const parsed = saveProjectSchema.safeParse(input)
     if (!parsed.success) return { success: false, error: parsed.error.issues[0].message }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'No autenticado' }
 
     const { projectId, name, structureType, visualModel, sections, colors, meta } = parsed.data
 
     const contentData = { sections, colors: colors ?? {}, meta: meta ?? {} }
-    const slug = `${name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}-${Date.now()}`
+    const slug = await generateUniqueSlug(name, supabase)
 
     // Resolve base URL for API endpoints embedded in HTML
     const h = await headers()
@@ -169,13 +220,19 @@ export async function publishProjectAction(input: SaveProjectInput): Promise<Act
     })
 
     if (projectId) {
-        const { data, error } = await supabase.from('projects').update({
-            name,
-            structure_type: structureType,
-            visual_model: visualModel,
-            content_data: contentData,
-            html_output: htmlOutput,
-        }).eq('id', projectId).eq('user_id', user.id).select('slug').single()
+        const { data, error } = await supabase
+            .from('projects')
+            .update({
+                name,
+                structure_type: structureType,
+                visual_model: visualModel,
+                content_data: contentData,
+                html_output: htmlOutput,
+            })
+            .eq('id', projectId)
+            .eq('user_id', user.id)
+            .select('slug')
+            .single()
 
         if (error || !data) return { success: false, error: 'Error al publicar el proyecto' }
         revalidatePath('/dashboard')
@@ -183,17 +240,22 @@ export async function publishProjectAction(input: SaveProjectInput): Promise<Act
         return { success: true, data: { id: projectId, slug: data.slug } }
     } else {
         // For new projects, compile again with the real project ID
-        const { data, error } = await supabase.from('projects').insert({
-            slug,
-            name,
-            structure_type: structureType,
-            visual_model: visualModel,
-            content_data: contentData,
-            html_output: htmlOutput,
-            user_id: user.id,
-        }).select('id, slug').single()
+        const { data, error } = await supabase
+            .from('projects')
+            .insert({
+                slug,
+                name,
+                structure_type: structureType,
+                visual_model: visualModel,
+                content_data: contentData,
+                html_output: htmlOutput,
+                user_id: user.id,
+            })
+            .select('id, slug')
+            .single()
 
-        if (error || !data) return { success: false, error: 'Error al crear y publicar el proyecto' }
+        if (error || !data)
+            return { success: false, error: 'Error al crear y publicar el proyecto' }
 
         // Re-compile with real project ID for the lead capture form
         const finalHtml = compileLandingHtml({
@@ -205,41 +267,75 @@ export async function publishProjectAction(input: SaveProjectInput): Promise<Act
             meta: (meta ?? {}) as TrackingMeta,
             baseUrl,
         })
-        await supabase.from('projects').update({ html_output: finalHtml })
-            .eq('id', data.id).eq('user_id', user.id)
+        await supabase
+            .from('projects')
+            .update({ html_output: finalHtml })
+            .eq('id', data.id)
+            .eq('user_id', user.id)
 
         revalidatePath('/dashboard')
         return { success: true, data: { id: data.id, slug: data.slug } }
     }
 }
 
+// === Unpublish Project (set to draft) ===
+export async function unpublishProjectAction(projectId: string): Promise<ActionResult> {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'No autenticado' }
+
+    const { error } = await supabase
+        .from('projects')
+        .update({ html_output: null })
+        .eq('id', projectId)
+        .eq('user_id', user.id)
+
+    if (error) return { success: false, error: 'Error al despublicar el proyecto' }
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
+
 // === Delete Project ===
 export async function deleteProjectAction(projectId: string): Promise<ActionResult> {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'No autenticado' }
 
-    const { error } = await supabase.from('projects').delete()
-        .eq('id', projectId).eq('user_id', user.id)
+    const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId)
+        .eq('user_id', user.id)
 
     if (error) return { success: false, error: 'Error al eliminar el proyecto' }
 
     revalidatePath('/dashboard')
-    redirect('/dashboard')
+    return { success: true }
 }
 
 // === Upload Project Image ===
-export async function uploadProjectImageAction(formData: FormData): Promise<ActionResult<{ url: string }>> {
+export async function uploadProjectImageAction(
+    formData: FormData,
+): Promise<ActionResult<{ url: string }>> {
     try {
         const file = formData.get('file') as File | null
         if (!file) return { success: false, error: 'No se recibió archivo.' }
 
-        if (file.size > 5 * 1024 * 1024) return { success: false, error: 'La imagen no puede pesar más de 5MB.' }
-        if (!file.type.startsWith('image/')) return { success: false, error: 'El archivo debe ser una imagen válida.' }
+        if (file.size > 5 * 1024 * 1024)
+            return { success: false, error: 'La imagen no puede pesar más de 5MB.' }
+        if (!file.type.startsWith('image/'))
+            return { success: false, error: 'El archivo debe ser una imagen válida.' }
 
         // Auth check with user client
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         // Upload with service client (bypasses RLS — bucket policies may not be applied yet)
@@ -252,13 +348,11 @@ export async function uploadProjectImageAction(formData: FormData): Promise<Acti
             .upload(filename, file, { upsert: true })
 
         if (error) {
-            console.error('Storage upload error:', error)
+            logger.error('wizard', 'Storage upload error', error)
             return { success: false, error: 'Error subiendo la imagen.' }
         }
 
-        const { data: publicUrlData } = admin.storage
-            .from('project-images')
-            .getPublicUrl(filename)
+        const { data: publicUrlData } = admin.storage.from('project-images').getPublicUrl(filename)
 
         return { success: true, data: { url: publicUrlData.publicUrl } }
     } catch (e: unknown) {

@@ -2,6 +2,15 @@
 
 import type { FieldDefinition, WizardSection } from '../types'
 import { ImageUploadField } from './ImageUploadField'
+import { AnchorPicker, URL_FIELDS } from './AnchorPicker'
+import { useWizardStore } from '../store/wizardStore'
+import {
+    inputStyle,
+    labelStyleLg as labelStyle,
+    onFocusDeep as onFocus,
+    onBlurDeep as onBlur,
+} from '../lib/formStyles'
+import { WIZ } from '../lib/theme'
 
 interface StepGenericProps {
     title: string
@@ -10,51 +19,35 @@ interface StepGenericProps {
     fields: FieldDefinition[]
 }
 
-const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '11px 14px',
-    borderRadius: '8px',
-    background: '#0d1124',
-    border: '1px solid #2a3050',
-    color: '#f1f5f9',
-    fontSize: '14px',
-    outline: 'none',
-    transition: 'border-color 0.15s',
-    fontFamily: 'inherit',
-}
-
-const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '11px',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.08em',
-    color: '#8b9ec7',
-    marginBottom: '7px',
-}
-
 export function StepGeneric({ title, section, onUpdate, fields }: StepGenericProps) {
     const content = section.content ?? {}
     const update = (key: string, value: string) => onUpdate({ ...content, [key]: value })
 
-    const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        e.currentTarget.style.borderColor = '#00c8ff'
-        e.currentTarget.style.background = '#101728'
-    }
-    const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        e.currentTarget.style.borderColor = '#2a3050'
-        e.currentTarget.style.background = '#0d1124'
-    }
+    const allSections = useWizardStore((s) => s.sections)
+    const anchorSections = allSections
+        .filter((s) => s.isVisible && s.type !== 'header')
+        .sort((a, b) => a.order - b.order)
 
     return (
         <div>
             {/* Section Header */}
             <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.25em', color: '#f472b6', marginBottom: '6px' }}>
+                <p
+                    style={{
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.25em',
+                        color: WIZ.accentPink,
+                        marginBottom: '6px',
+                    }}
+                >
                     Configuración
                 </p>
-                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0 }}>{title}</h2>
-                <p style={{ fontSize: '13px', color: '#5d7099', marginTop: '4px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                    {title}
+                </h2>
+                <p style={{ fontSize: '13px', color: WIZ.textMuted, marginTop: '4px' }}>
                     Los cambios se reflejan en tiempo real en el preview.
                 </p>
             </div>
@@ -68,6 +61,43 @@ export function StepGeneric({ title, section, onUpdate, fields }: StepGenericPro
                                 label={f.label}
                                 value={(content[f.key] as string) ?? ''}
                                 onChange={(url) => update(f.key, url)}
+                            />
+                        ) : f.type === 'color' ? (
+                            <>
+                                <label style={labelStyle}>{f.label}</label>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="color"
+                                        value={(content[f.key] as string) || '#000000'}
+                                        onChange={(e) => update(f.key, e.target.value)}
+                                        style={{
+                                            width: '44px',
+                                            height: '40px',
+                                            border: `1px solid ${WIZ.borderInput}`,
+                                            borderRadius: '8px',
+                                            background: WIZ.bgPanel,
+                                            cursor: 'pointer',
+                                            padding: '2px 4px',
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={(content[f.key] as string) ?? ''}
+                                        onChange={(e) => update(f.key, e.target.value)}
+                                        placeholder={f.placeholder ?? '#000000'}
+                                        onFocus={onFocus}
+                                        onBlur={onBlur}
+                                        style={{ ...inputStyle, flex: 1 }}
+                                    />
+                                </div>
+                            </>
+                        ) : URL_FIELDS.has(f.key) ? (
+                            <AnchorPicker
+                                value={(content[f.key] as string) ?? ''}
+                                onChange={(v) => update(f.key, v)}
+                                label={f.label}
+                                anchorSections={anchorSections}
                             />
                         ) : (
                             <>
@@ -84,7 +114,9 @@ export function StepGeneric({ title, section, onUpdate, fields }: StepGenericPro
                                     />
                                 ) : (
                                     <input
-                                        type={f.type === 'datetime-local' ? 'datetime-local' : 'text'}
+                                        type={
+                                            f.type === 'datetime-local' ? 'datetime-local' : 'text'
+                                        }
                                         value={(content[f.key] as string) ?? ''}
                                         onChange={(e) => update(f.key, e.target.value)}
                                         placeholder={f.placeholder ?? ''}

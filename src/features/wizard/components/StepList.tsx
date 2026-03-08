@@ -3,105 +3,281 @@
 import { Plus, Trash2, GripVertical } from 'lucide-react'
 import type { WizardSection } from '../types'
 import { ImageUploadField } from './ImageUploadField'
+import { AnchorPicker, URL_FIELDS } from './AnchorPicker'
+import { useWizardStore } from '../store/wizardStore'
+import { fieldStyle, labelStyle, onFocus, onBlur } from '../lib/formStyles'
+import { WIZ } from '../lib/theme'
 
 interface StepListProps {
     title: string
     section: WizardSection
     onUpdate: (content: Record<string, unknown>) => void
     itemFields: string[]
+    headerFields?: string[]
 }
 
 type ListItem = Record<string, string>
 
 const FIELD_LABELS: Record<string, string> = {
-    title: 'Título', description: 'Descripción', question: 'Pregunta',
-    answer: 'Respuesta', text: 'Testimonio', author: 'Autor',
-    photo: 'Foto', logo: 'Logo', image: 'Imagen', url: 'Imagen',
-    name: 'Nombre', role: 'Rol', caption: 'Descripción',
-    period: 'Período', level: 'Nivel', value: 'Valor',
-    price: 'Precio', cta_text: 'Texto del Botón',
-    time: 'Hora', speaker: 'Speaker', bio: 'Biografía',
+    title: 'Título',
+    subtitle: 'Subtítulo',
+    description: 'Descripción',
+    eyebrow: 'Eyebrow (texto sobre el título)',
+    headline: 'Título Principal',
+    subheadline: 'Subtítulo',
+    question: 'Pregunta',
+    answer: 'Respuesta',
+    text: 'Testimonio',
+    author: 'Autor',
+    photo: 'Foto',
+    logo: 'Logo',
+    image: 'Imagen',
+    url: 'Destino del Link',
+    name: 'Nombre',
+    role: 'Rol',
+    caption: 'Descripción',
+    period: 'Período',
+    level: 'Nivel',
+    value: 'Valor',
+    price: 'Precio',
+    cta_text: 'Texto del Botón',
+    cta_url: 'Destino del Botón',
+    time: 'Hora',
+    speaker: 'Speaker',
+    bio: 'Biografía',
+    without: 'Sin Nosotros',
+    with: 'Con Nosotros',
+    without_title: 'Título Izquierda',
+    with_title: 'Título Derecha',
+    bg_image: 'Imagen de Fondo',
+    bg_color: 'Color de Fondo',
+    text_color: 'Color del Texto',
+    logo_text: 'Logo (Texto)',
+    logo_image: 'Logo (Imagen)',
+    label: 'Texto del Link',
+    tag: 'Etiqueta',
+    featured: 'Destacar Servicio',
 }
 
-const IMAGE_FIELDS = new Set(['photo', 'logo', 'image'])
+const IMAGE_FIELDS = new Set(['photo', 'logo', 'image', 'bg_image', 'logo_image'])
+const COLOR_FIELDS = new Set(['bg_color', 'text_color', 'overlay_color'])
+// URL_FIELDS imported from AnchorPicker
+const CHECKBOX_FIELDS = new Set(['featured'])
+const HTML_FIELDS = new Set(['description'])
 
-const fieldStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    background: '#0d1124',
-    border: '1px solid #2a3050',
-    color: '#e2e8f0',
-    fontSize: '13px',
-    outline: 'none',
-    resize: 'vertical' as const,
-    fontFamily: 'inherit',
-    transition: 'border-color 0.15s',
-}
+// Styles imported from ../lib/formStyles
 
-const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '10px',
-    fontWeight: 800,
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
-    color: '#5d7099',
-    marginBottom: '6px',
-}
-
-const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.currentTarget.style.borderColor = '#00c8ff'
-}
-const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.currentTarget.style.borderColor = '#2a3050'
-}
-
-export function StepList({ title, section, onUpdate, itemFields }: StepListProps) {
+export function StepList({ title, section, onUpdate, itemFields, headerFields }: StepListProps) {
     const content = section.content ?? {}
     const items: ListItem[] = (content['items'] as ListItem[]) ?? []
 
+    const allSections = useWizardStore((s) => s.sections)
+    const anchorSections = allSections
+        .filter((s) => s.isVisible && s.type !== 'header')
+        .sort((a, b) => a.order - b.order)
+
     const updateItems = (newItems: ListItem[]) => onUpdate({ ...content, items: newItems })
-    const addItem = () => updateItems([...items, Object.fromEntries(itemFields.map((f) => [f, '']))])
+    const addItem = () =>
+        updateItems([...items, Object.fromEntries(itemFields.map((f) => [f, '']))])
     const updateItem = (index: number, field: string, value: string) =>
-        updateItems(items.map((item, i) => i === index ? { ...item, [field]: value } : item))
+        updateItems(items.map((item, i) => (i === index ? { ...item, [field]: value } : item)))
     const removeItem = (index: number) => updateItems(items.filter((_, i) => i !== index))
+    const updateHeader = (field: string, value: string) => onUpdate({ ...content, [field]: value })
 
     return (
         <div>
             {/* Header */}
             <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.25em', color: '#f472b6', marginBottom: '6px' }}>
-                    Lista de Items
+                <p
+                    style={{
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.25em',
+                        color: WIZ.accentPink,
+                        marginBottom: '6px',
+                    }}
+                >
+                    {headerFields ? 'Configuración' : 'Lista de Items'}
                 </p>
-                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0 }}>{title}</h2>
-                <p style={{ fontSize: '13px', color: '#5d7099', marginTop: '4px' }}>
-                    Agrega y edita los elementos. Los cambios son en tiempo real.
+                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                    {title}
+                </h2>
+                <p style={{ fontSize: '13px', color: WIZ.textMuted, marginTop: '4px' }}>
+                    {headerFields
+                        ? 'Configura el bloque y sus elementos.'
+                        : 'Agrega y edita los elementos. Los cambios son en tiempo real.'}
                 </p>
             </div>
 
+            {/* Section-level header fields */}
+            {headerFields && headerFields.length > 0 && (
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        marginBottom: '20px',
+                        padding: '16px',
+                        borderRadius: '10px',
+                        background: WIZ.bgCard,
+                        border: `1px solid ${WIZ.border}`,
+                    }}
+                >
+                    {headerFields.map((field) => (
+                        <div key={field}>
+                            {IMAGE_FIELDS.has(field) ? (
+                                <ImageUploadField
+                                    label={FIELD_LABELS[field] ?? field}
+                                    value={(content[field] as string) ?? ''}
+                                    onChange={(url) => updateHeader(field, url)}
+                                />
+                            ) : COLOR_FIELDS.has(field) ? (
+                                <>
+                                    <label style={labelStyle}>{FIELD_LABELS[field] ?? field}</label>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            gap: '8px',
+                                            alignItems: 'center',
+                                        }}
+                                    >
+                                        <input
+                                            type="color"
+                                            value={
+                                                (content[field] as string) ||
+                                                (field === 'text_color' ? '#ffffff' : '#000000')
+                                            }
+                                            onChange={(e) => updateHeader(field, e.target.value)}
+                                            style={{
+                                                width: 40,
+                                                height: 36,
+                                                border: 'none',
+                                                borderRadius: 8,
+                                                cursor: 'pointer',
+                                                background: 'transparent',
+                                                padding: 0,
+                                            }}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={(content[field] as string) ?? ''}
+                                            onChange={(e) => updateHeader(field, e.target.value)}
+                                            placeholder="Vacío = automático"
+                                            onFocus={onFocus}
+                                            onBlur={onBlur}
+                                            style={{ ...fieldStyle, flex: 1 }}
+                                        />
+                                    </div>
+                                </>
+                            ) : URL_FIELDS.has(field) ? (
+                                <AnchorPicker
+                                    value={(content[field] as string) ?? ''}
+                                    onChange={(v) => updateHeader(field, v)}
+                                    label={FIELD_LABELS[field] ?? field}
+                                    anchorSections={anchorSections}
+                                />
+                            ) : (
+                                <>
+                                    <label style={labelStyle}>{FIELD_LABELS[field] ?? field}</label>
+                                    <input
+                                        type="text"
+                                        value={(content[field] as string) ?? ''}
+                                        onChange={(e) => updateHeader(field, e.target.value)}
+                                        placeholder={`Escribe ${(FIELD_LABELS[field] ?? field).toLowerCase()}...`}
+                                        onFocus={onFocus}
+                                        onBlur={onBlur}
+                                        style={fieldStyle}
+                                    />
+                                </>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Items */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    marginBottom: '16px',
+                }}
+            >
                 {items.map((item, i) => (
-                    <div key={i} style={{ borderRadius: '10px', background: '#0f1425', border: '1px solid #1e2847', overflow: 'hidden' }}>
+                    <div
+                        key={i}
+                        style={{
+                            borderRadius: '10px',
+                            background: WIZ.bgCard,
+                            border: `1px solid ${WIZ.border}`,
+                            overflow: 'hidden',
+                        }}
+                    >
                         {/* Item header */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #1e2847' }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '10px 14px',
+                                borderBottom: `1px solid ${WIZ.border}`,
+                            }}
+                        >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <GripVertical style={{ width: '14px', height: '14px', color: '#2a3050' }} />
-                                <span style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#38bdf8' }}>
+                                <GripVertical
+                                    style={{
+                                        width: '14px',
+                                        height: '14px',
+                                        color: WIZ.borderInput,
+                                    }}
+                                />
+                                <span
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 900,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.1em',
+                                        color: WIZ.accentBlue,
+                                    }}
+                                >
                                     #{i + 1}
                                 </span>
                             </div>
                             <button
                                 onClick={() => removeItem(i)}
-                                style={{ padding: '4px 8px', borderRadius: '6px', background: 'transparent', border: 'none', color: '#3d4f6e', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit' }}
-                                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)' }}
-                                onMouseLeave={(e) => { e.currentTarget.style.color = '#3d4f6e'; e.currentTarget.style.background = 'transparent' }}
+                                style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#3d4f6e',
+                                    cursor: 'pointer',
+                                    fontSize: '11px',
+                                    fontFamily: 'inherit',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = '#ef4444'
+                                    e.currentTarget.style.background = 'rgba(239,68,68,0.1)'
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = '#3d4f6e'
+                                    e.currentTarget.style.background = 'transparent'
+                                }}
                             >
                                 <Trash2 style={{ width: '13px', height: '13px' }} />
                             </button>
                         </div>
                         {/* Fields */}
-                        <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div
+                            style={{
+                                padding: '14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                            }}
+                        >
                             {itemFields.map((field) => (
                                 <div key={field}>
                                     {IMAGE_FIELDS.has(field) ? (
@@ -110,17 +286,97 @@ export function StepList({ title, section, onUpdate, itemFields }: StepListProps
                                             value={item[field] ?? ''}
                                             onChange={(url) => updateItem(i, field, url)}
                                         />
+                                    ) : URL_FIELDS.has(field) ? (
+                                        <AnchorPicker
+                                            value={item[field] ?? ''}
+                                            onChange={(v) => updateItem(i, field, v)}
+                                            label={FIELD_LABELS[field] ?? field}
+                                            anchorSections={anchorSections}
+                                        />
+                                    ) : CHECKBOX_FIELDS.has(field) ? (
+                                        <label
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                cursor: 'pointer',
+                                                padding: '8px 0',
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={item[field] === 'true'}
+                                                onChange={(e) =>
+                                                    updateItem(
+                                                        i,
+                                                        field,
+                                                        e.target.checked ? 'true' : '',
+                                                    )
+                                                }
+                                                style={{
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    accentColor: WIZ.accent,
+                                                    cursor: 'pointer',
+                                                }}
+                                            />
+                                            <span
+                                                style={{
+                                                    fontSize: '12px',
+                                                    fontWeight: 700,
+                                                    color: '#8899bb',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.08em',
+                                                }}
+                                            >
+                                                {FIELD_LABELS[field] ?? field}
+                                            </span>
+                                        </label>
                                     ) : (
                                         <>
-                                            <label style={labelStyle}>{FIELD_LABELS[field] ?? field}</label>
+                                            <label style={labelStyle}>
+                                                {FIELD_LABELS[field] ?? field}
+                                                {HTML_FIELDS.has(field) && (
+                                                    <span
+                                                        style={{
+                                                            marginLeft: '6px',
+                                                            fontSize: '9px',
+                                                            fontWeight: 600,
+                                                            color: WIZ.accentPurple,
+                                                            textTransform: 'none',
+                                                            letterSpacing: 0,
+                                                        }}
+                                                    >
+                                                        (acepta HTML)
+                                                    </span>
+                                                )}
+                                            </label>
                                             <textarea
                                                 value={item[field] ?? ''}
-                                                onChange={(e) => updateItem(i, field, e.target.value)}
-                                                rows={field === 'description' || field === 'answer' || field === 'text' || field === 'bio' ? 3 : 1}
+                                                onChange={(e) =>
+                                                    updateItem(i, field, e.target.value)
+                                                }
+                                                rows={
+                                                    field === 'description' ||
+                                                    field === 'answer' ||
+                                                    field === 'text' ||
+                                                    field === 'bio'
+                                                        ? 3
+                                                        : 1
+                                                }
                                                 placeholder={`Escribe ${FIELD_LABELS[field]?.toLowerCase() ?? field}...`}
                                                 onFocus={onFocus}
                                                 onBlur={onBlur}
-                                                style={{ ...fieldStyle, resize: field === 'description' || field === 'answer' || field === 'text' || field === 'bio' ? 'vertical' : 'none' }}
+                                                style={{
+                                                    ...fieldStyle,
+                                                    resize:
+                                                        field === 'description' ||
+                                                        field === 'answer' ||
+                                                        field === 'text' ||
+                                                        field === 'bio'
+                                                            ? 'vertical'
+                                                            : 'none',
+                                                }}
                                             />
                                         </>
                                     )}
@@ -134,9 +390,31 @@ export function StepList({ title, section, onUpdate, itemFields }: StepListProps
             {/* Add button */}
             <button
                 onClick={addItem}
-                style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'transparent', border: '1.5px dashed #2a3050', color: '#5d7099', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontFamily: 'inherit', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00c8ff'; e.currentTarget.style.color = '#00c8ff' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a3050'; e.currentTarget.style.color = '#5d7099' }}
+                style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: 'transparent',
+                    border: `1.5px dashed ${WIZ.borderInput}`,
+                    color: WIZ.textMuted,
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = WIZ.accent
+                    e.currentTarget.style.color = WIZ.accent
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = WIZ.borderInput
+                    e.currentTarget.style.color = WIZ.textMuted
+                }}
             >
                 <Plus style={{ width: '14px', height: '14px' }} />
                 {items.length === 0 ? `Agregar primer ${title.slice(0, -1)}` : 'Agregar otro'}
@@ -160,21 +438,56 @@ export function StepSimpleList({ title, section, onUpdate }: StepSimpleListProps
     return (
         <div>
             <div style={{ marginBottom: '24px' }}>
-                <p style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.25em', color: '#f472b6', marginBottom: '6px' }}>
+                <p
+                    style={{
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.25em',
+                        color: WIZ.accentPink,
+                        marginBottom: '6px',
+                    }}
+                >
                     Lista Simple
                 </p>
-                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0 }}>{title}</h2>
+                <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                    {title}
+                </h2>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    marginBottom: '16px',
+                }}
+            >
                 {points.map((pt, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '22px', height: '22px', flexShrink: 0, borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900, color: '#5d7099', background: '#0d1124', border: '1px solid #2a3050' }}>
+                        <span
+                            style={{
+                                width: '22px',
+                                height: '22px',
+                                flexShrink: 0,
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '10px',
+                                fontWeight: 900,
+                                color: WIZ.textMuted,
+                                background: WIZ.bgPanel,
+                                border: `1px solid ${WIZ.borderInput}`,
+                            }}
+                        >
                             {i + 1}
                         </span>
                         <input
                             value={pt}
-                            onChange={(e) => updatePoints(points.map((p, j) => j === i ? e.target.value : p))}
+                            onChange={(e) =>
+                                updatePoints(points.map((p, j) => (j === i ? e.target.value : p)))
+                            }
                             style={{ ...fieldStyle, flex: 1, resize: undefined }}
                             placeholder={`Punto ${i + 1}`}
                             onFocus={onFocus}
@@ -182,9 +495,20 @@ export function StepSimpleList({ title, section, onUpdate }: StepSimpleListProps
                         />
                         <button
                             onClick={() => updatePoints(points.filter((_, j) => j !== i))}
-                            style={{ padding: '8px', borderRadius: '6px', background: 'transparent', border: 'none', color: '#3d4f6e', cursor: 'pointer' }}
-                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444' }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = '#3d4f6e' }}
+                            style={{
+                                padding: '8px',
+                                borderRadius: '6px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#3d4f6e',
+                                cursor: 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.color = '#ef4444'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#3d4f6e'
+                            }}
                         >
                             <Trash2 style={{ width: '13px', height: '13px' }} />
                         </button>
@@ -193,9 +517,30 @@ export function StepSimpleList({ title, section, onUpdate }: StepSimpleListProps
             </div>
             <button
                 onClick={() => updatePoints([...points, ''])}
-                style={{ width: '100%', padding: '12px', borderRadius: '10px', background: 'transparent', border: '1.5px dashed #2a3050', color: '#5d7099', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontFamily: 'inherit' }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00c8ff'; e.currentTarget.style.color = '#00c8ff' }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a3050'; e.currentTarget.style.color = '#5d7099' }}
+                style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: 'transparent',
+                    border: `1.5px dashed ${WIZ.borderInput}`,
+                    color: WIZ.textMuted,
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = WIZ.accent
+                    e.currentTarget.style.color = WIZ.accent
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = WIZ.borderInput
+                    e.currentTarget.style.color = WIZ.textMuted
+                }}
             >
                 <Plus style={{ width: '14px', height: '14px' }} /> Agregar punto
             </button>
