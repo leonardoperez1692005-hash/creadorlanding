@@ -1,21 +1,21 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/server'
+import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = createServiceClient()
 
 async function resolveActiveLicenseUserId(licenseKey: string): Promise<string | null> {
     if (!licenseKey) return null
 
     const { data: license } = await supabaseAdmin
         .from('licenses')
-        .select(`
+        .select(
+            `
       id, status, expires_at, user_id,
       profiles:profiles!licenses_user_id_fkey ( status )
-    `)
+    `,
+        )
         .eq('key', licenseKey)
         .single()
 
@@ -30,6 +30,16 @@ async function resolveActiveLicenseUserId(licenseKey: string): Promise<string | 
 
 // GET /api/license/projects — lista all compiled projects for a license
 export async function GET(req: NextRequest) {
+    // Rate limit: 20 requests per IP per minute
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rl = await rateLimitAsync(`license-projects:${ip}`, { limit: 20, windowSec: 60 })
+    if (!rl.allowed) {
+        return NextResponse.json(
+            { error: 'Demasiados intentos. Intentá más tarde.' },
+            { status: 429 },
+        )
+    }
+
     const licenseKey = req.headers.get('x-license-key') ?? ''
 
     if (!licenseKey) {
@@ -38,7 +48,10 @@ export async function GET(req: NextRequest) {
 
     const userId = await resolveActiveLicenseUserId(licenseKey)
     if (!userId) {
-        return NextResponse.json({ error: 'Licencia inválida, inactiva o expirada' }, { status: 403 })
+        return NextResponse.json(
+            { error: 'Licencia inválida, inactiva o expirada' },
+            { status: 403 },
+        )
     }
 
     const { data: projects, error } = await supabaseAdmin
