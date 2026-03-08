@@ -3,17 +3,41 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { logAudit } from '@/shared/lib/audit'
+import { logger } from '@/shared/lib/logger'
+
+// Known safe error messages that can be shown to the client
+const SAFE_ERRORS = [
+    'No autenticado',
+    'Sin permisos de administrador',
+    'Solo superadmin puede',
+    'El plan tiene membresías activas',
+    'Usuario no encontrado',
+    'Este email ya tiene una cuenta',
+]
+
+function safeError(e: unknown): string {
+    const msg = (e as Error).message ?? ''
+    if (SAFE_ERRORS.some((s) => msg.includes(s))) return msg
+    logger.error('admin', 'Internal error', new Error(msg))
+    return 'Error interno. Contacta al administrador.'
+}
 
 // =============================================
 // GUARDS
 // =============================================
 async function requireAdmin() {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) throw new Error('No autenticado')
 
-    const { data: profile } = await supabase.from('profiles')
-        .select('role').eq('id', user.id).single()
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
     if (!profile || (profile.role !== 'admin' && profile.role !== 'superadmin')) {
         throw new Error('Sin permisos de administrador')
@@ -28,14 +52,16 @@ export type AdminActionResult<T = null> =
 // =============================================
 // METRICS
 // =============================================
-export async function fetchAdminMetricsAction(): Promise<AdminActionResult<{
-    totalUsers: number
-    activeUsers: number
-    totalProjects: number
-    activeMemberships: number
-    totalLeads: number
-    totalLicenses: number
-}>> {
+export async function fetchAdminMetricsAction(): Promise<
+    AdminActionResult<{
+        totalUsers: number
+        activeUsers: number
+        totalProjects: number
+        activeMemberships: number
+        totalLeads: number
+        totalLicenses: number
+    }>
+> {
     try {
         const { supabase } = await requireAdmin()
         const [
@@ -47,9 +73,15 @@ export async function fetchAdminMetricsAction(): Promise<AdminActionResult<{
             { count: totalLicenses },
         ] = await Promise.all([
             supabase.from('profiles').select('*', { count: 'exact', head: true }),
-            supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+            supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'active'),
             supabase.from('projects').select('*', { count: 'exact', head: true }),
-            supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+            supabase
+                .from('memberships')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'active'),
             supabase.from('leads').select('*', { count: 'exact', head: true }),
             supabase.from('licenses').select('*', { count: 'exact', head: true }),
         ])
@@ -65,7 +97,7 @@ export async function fetchAdminMetricsAction(): Promise<AdminActionResult<{
             },
         }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
@@ -75,14 +107,17 @@ export async function fetchAdminMetricsAction(): Promise<AdminActionResult<{
 export async function fetchAdminUsersAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
-        const { data, error } = await supabase.from('profiles')
-            .select(`
+        const { data, error } = await supabase
+            .from('profiles')
+            .select(
+                `
         id, name, role, status, created_at,
         memberships (
           id, status, plan:plans (id, name, slug),
           start_date, expires_at
         )
-      `)
+      `,
+            )
             .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -90,7 +125,9 @@ export async function fetchAdminUsersAction(): Promise<AdminActionResult<unknown
         // Fetch auth emails via service client (requires service_role key)
         const svc = createServiceClient()
         const { data: authUsers } = await svc.auth.admin.listUsers({ perPage: 1000 })
-        const emailMap = new Map(authUsers?.users?.map((u: { id: string; email?: string }) => [u.id, u.email]) ?? [])
+        const emailMap = new Map(
+            authUsers?.users?.map((u: { id: string; email?: string }) => [u.id, u.email]) ?? [],
+        )
 
         const enriched = (data ?? []).map((p) => ({
             ...p,
@@ -99,51 +136,83 @@ export async function fetchAdminUsersAction(): Promise<AdminActionResult<unknown
 
         return { success: true, data: enriched }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
-export async function updateUserRoleAction(userId: string, role: 'user' | 'admin' | 'superadmin'): Promise<AdminActionResult> {
+export async function updateUserRoleAction(
+    userId: string,
+    role: 'user' | 'admin' | 'superadmin',
+): Promise<AdminActionResult> {
     try {
-        const { supabase } = await requireAdmin()
+        const { supabase, role: callerRole, user } = await requireAdmin()
+        if (callerRole !== 'superadmin') throw new Error('Solo superadmin puede cambiar roles')
         const { error } = await supabase.from('profiles').update({ role }).eq('id', userId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'update_user_role',
+            entityType: 'user',
+            entityId: userId,
+            metadata: { newRole: role },
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
-export async function updateUserStatusAction(userId: string, status: 'active' | 'suspended' | 'cancelled'): Promise<AdminActionResult> {
+export async function updateUserStatusAction(
+    userId: string,
+    status: 'active' | 'suspended' | 'cancelled',
+): Promise<AdminActionResult> {
     try {
-        const { supabase } = await requireAdmin()
+        const { supabase, role: callerRole, user } = await requireAdmin()
+        if (callerRole !== 'superadmin')
+            throw new Error('Solo superadmin puede cambiar estados de usuario')
         const { error } = await supabase.from('profiles').update({ status }).eq('id', userId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'update_user_status',
+            entityType: 'user',
+            entityId: userId,
+            metadata: { newStatus: status },
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 export async function deleteUserAction(userId: string): Promise<AdminActionResult> {
     try {
-        const { role } = await requireAdmin()
+        const { role, user } = await requireAdmin()
         if (role !== 'superadmin') throw new Error('Solo superadmin puede eliminar usuarios')
         const svc = createServiceClient()
         const { error } = await svc.auth.admin.deleteUser(userId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'delete_user',
+            entityType: 'user',
+            entityId: userId,
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 // --- Create User (ALTA) ---
 export async function createUserAction(input: {
-    email: string; password: string; name: string; role: 'user' | 'admin' | 'superadmin'
+    email: string
+    password: string
+    name: string
+    role: 'user' | 'admin' | 'superadmin'
 }): Promise<AdminActionResult<{ id: string }>> {
     try {
         const { role: callerRole } = await requireAdmin()
@@ -155,7 +224,8 @@ export async function createUserAction(input: {
             password: input.password,
             email_confirm: true,
         })
-        if (authError || !authUser.user) throw new Error(authError?.message || 'Error al crear usuario auth')
+        if (authError || !authUser.user)
+            throw new Error(authError?.message || 'Error al crear usuario auth')
 
         const { error: profileError } = await svc.from('profiles').insert({
             id: authUser.user.id,
@@ -168,14 +238,20 @@ export async function createUserAction(input: {
         revalidatePath('/admin')
         return { success: true, data: { id: authUser.user.id } }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 // --- Update User (MODIFICACION) ---
-export async function updateUserAction(userId: string, input: {
-    name?: string; email?: string; role?: 'user' | 'admin' | 'superadmin'; status?: 'active' | 'suspended' | 'cancelled'
-}): Promise<AdminActionResult> {
+export async function updateUserAction(
+    userId: string,
+    input: {
+        name?: string
+        email?: string
+        role?: 'user' | 'admin' | 'superadmin'
+        status?: 'active' | 'suspended' | 'cancelled'
+    },
+): Promise<AdminActionResult> {
     try {
         const { supabase, role: callerRole } = await requireAdmin()
 
@@ -203,35 +279,70 @@ export async function updateUserAction(userId: string, input: {
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 // --- Fetch User Detail ---
-export async function fetchUserDetailAction(userId: string): Promise<AdminActionResult<{
-    profile: { id: string; name: string | null; role: string; status: string; created_at: string }
-    email: string
-    licenses: Array<{
-        id: string; key: string; domain: string | null
-        status: string; expires_at: string | null; created_at: string
+export async function fetchUserDetailAction(userId: string): Promise<
+    AdminActionResult<{
+        profile: {
+            id: string
+            name: string | null
+            role: string
+            status: string
+            created_at: string
+        }
+        email: string
+        licenses: Array<{
+            id: string
+            key: string
+            domain: string | null
+            status: string
+            expires_at: string | null
+            created_at: string
+        }>
+        projects: Array<{
+            id: string
+            name: string
+            slug: string
+            structure_type: string
+            visual_model: string
+            created_at: string
+        }>
+        memberships: Array<{
+            id: string
+            status: string
+            start_date: string
+            expires_at: string | null
+            plan: { id: string; name: string; slug: string } | null
+        }>
     }>
-    projects: Array<{
-        id: string; name: string; slug: string; structure_type: string
-        visual_model: string; created_at: string
-    }>
-    memberships: Array<{
-        id: string; status: string; start_date: string
-        expires_at: string | null; plan: { id: string; name: string; slug: string } | null
-    }>
-}>> {
+> {
     try {
         const { supabase } = await requireAdmin()
 
         const [profileRes, licensesRes, projectsRes, membershipsRes] = await Promise.all([
-            supabase.from('profiles').select('id, name, role, status, created_at').eq('id', userId).single(),
-            supabase.from('licenses').select('id, key, domain, status, expires_at, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-            supabase.from('projects').select('id, name, slug, structure_type, visual_model, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-            supabase.from('memberships').select('id, status, start_date, expires_at, plan:plans(id, name, slug)').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabase
+                .from('profiles')
+                .select('id, name, role, status, created_at')
+                .eq('id', userId)
+                .single(),
+            supabase
+                .from('licenses')
+                .select('id, key, domain, status, expires_at, created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('projects')
+                .select('id, name, slug, structure_type, visual_model, created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('memberships')
+                .select('id, status, start_date, expires_at, plan:plans(id, name, slug)')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false }),
         ])
 
         if (profileRes.error || !profileRes.data) throw new Error('Usuario no encontrado')
@@ -247,25 +358,40 @@ export async function fetchUserDetailAction(userId: string): Promise<AdminAction
                 profile: profileRes.data,
                 email,
                 licenses: (licensesRes.data ?? []) as Array<{
-                    id: string; key: string; domain: string | null
-                    status: string; expires_at: string | null; created_at: string
+                    id: string
+                    key: string
+                    domain: string | null
+                    status: string
+                    expires_at: string | null
+                    created_at: string
                 }>,
                 projects: (projectsRes.data ?? []) as Array<{
-                    id: string; name: string; slug: string; structure_type: string
-                    visual_model: string; created_at: string
+                    id: string
+                    name: string
+                    slug: string
+                    structure_type: string
+                    visual_model: string
+                    created_at: string
                 }>,
                 memberships: (membershipsRes.data ?? []).map((m) => {
                     const raw = m as Record<string, unknown>
-                    const planArr = raw.plan as Array<{ id: string; name: string; slug: string }> | null
+                    const planArr = raw.plan as Array<{
+                        id: string
+                        name: string
+                        slug: string
+                    }> | null
                     return { ...m, plan: planArr?.[0] ?? null }
                 }) as Array<{
-                    id: string; status: string; start_date: string
-                    expires_at: string | null; plan: { id: string; name: string; slug: string } | null
+                    id: string
+                    status: string
+                    start_date: string
+                    expires_at: string | null
+                    plan: { id: string; name: string; slug: string } | null
                 }>,
             },
         }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
@@ -287,58 +413,83 @@ export type PlanInput = z.infer<typeof planSchema>
 export async function fetchAdminPlansAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
-        const { data, error } = await supabase.from('plans')
+        const { data, error } = await supabase
+            .from('plans')
             .select('*, memberships(id, status)')
             .order('price')
         if (error) throw error
         return { success: true, data: data ?? [] }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
-export async function createPlanAction(input: PlanInput): Promise<AdminActionResult<{ id: string }>> {
+export async function createPlanAction(
+    input: PlanInput,
+): Promise<AdminActionResult<{ id: string }>> {
     try {
         const { supabase, role } = await requireAdmin()
         if (role !== 'superadmin') throw new Error('Solo superadmin puede crear planes')
         const parsed = planSchema.safeParse(input)
         if (!parsed.success) throw new Error(parsed.error.issues[0].message)
-        const slug = parsed.data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        const { data, error } = await supabase.from('plans').insert({ ...parsed.data, slug }).select('id').single()
+        const slug = parsed.data.name
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+        const { data, error } = await supabase
+            .from('plans')
+            .insert({ ...parsed.data, slug })
+            .select('id')
+            .single()
         if (error) throw error
         revalidatePath('/admin')
         return { success: true, data: { id: data.id } }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
-export async function updatePlanAction(planId: string, input: Partial<PlanInput>): Promise<AdminActionResult> {
+export async function updatePlanAction(
+    planId: string,
+    input: Partial<PlanInput>,
+): Promise<AdminActionResult> {
     try {
         const { supabase, role } = await requireAdmin()
         if (role !== 'superadmin') throw new Error('Solo superadmin puede editar planes')
-        const { error } = await supabase.from('plans').update(input).eq('id', planId)
+        const parsed = planSchema.partial().safeParse(input)
+        if (!parsed.success) throw new Error(parsed.error.issues[0].message)
+        const { error } = await supabase.from('plans').update(parsed.data).eq('id', planId)
         if (error) throw error
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 export async function deletePlanAction(planId: string): Promise<AdminActionResult> {
     try {
-        const { supabase, role } = await requireAdmin()
+        const { supabase, role, user } = await requireAdmin()
         if (role !== 'superadmin') throw new Error('Solo superadmin puede eliminar planes')
-        const { count } = await supabase.from('memberships')
-            .select('*', { count: 'exact', head: true }).eq('plan_id', planId).eq('status', 'active')
-        if ((count ?? 0) > 0) throw new Error('El plan tiene membresías activas, no se puede eliminar')
+        const { count } = await supabase
+            .from('memberships')
+            .select('*', { count: 'exact', head: true })
+            .eq('plan_id', planId)
+            .eq('status', 'active')
+        if ((count ?? 0) > 0)
+            throw new Error('El plan tiene membresías activas, no se puede eliminar')
         const { error } = await supabase.from('plans').delete().eq('id', planId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'delete_plan',
+            entityType: 'plan',
+            entityId: planId,
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
@@ -348,7 +499,8 @@ export async function deletePlanAction(planId: string): Promise<AdminActionResul
 export async function fetchAdminMembershipsAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
-        const { data, error } = await supabase.from('memberships')
+        const { data, error } = await supabase
+            .from('memberships')
             .select('*, plan:plans(id, name, slug, price), profile:profiles(id, name, status)')
             .order('created_at', { ascending: false })
         if (error) throw error
@@ -356,7 +508,9 @@ export async function fetchAdminMembershipsAction(): Promise<AdminActionResult<u
         // Enrich with emails via service client
         const svc = createServiceClient()
         const { data: authUsers } = await svc.auth.admin.listUsers({ perPage: 1000 })
-        const emailMap = new Map(authUsers?.users?.map((u: { id: string; email?: string }) => [u.id, u.email]) ?? [])
+        const emailMap = new Map(
+            authUsers?.users?.map((u: { id: string; email?: string }) => [u.id, u.email]) ?? [],
+        )
 
         const enriched = (data ?? []).map((m) => ({
             ...m,
@@ -365,12 +519,14 @@ export async function fetchAdminMembershipsAction(): Promise<AdminActionResult<u
 
         return { success: true, data: enriched }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 export async function createMembershipAction(input: {
-    user_id: string; plan_id: string; expires_at?: string
+    user_id: string
+    plan_id: string
+    expires_at?: string
 }): Promise<AdminActionResult> {
     try {
         const { supabase } = await requireAdmin()
@@ -385,21 +541,32 @@ export async function createMembershipAction(input: {
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
-export async function updateMembershipAction(membershipId: string, input: {
-    status?: 'active' | 'expired' | 'cancelled'; expires_at?: string
-}): Promise<AdminActionResult> {
+export async function updateMembershipAction(
+    membershipId: string,
+    input: {
+        status?: 'active' | 'expired' | 'cancelled'
+        expires_at?: string
+    },
+): Promise<AdminActionResult> {
     try {
-        const { supabase } = await requireAdmin()
+        const { supabase, user } = await requireAdmin()
         const { error } = await supabase.from('memberships').update(input).eq('id', membershipId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'update_membership',
+            entityType: 'membership',
+            entityId: membershipId,
+            metadata: input,
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
@@ -411,7 +578,7 @@ export async function deleteMembershipAction(membershipId: string): Promise<Admi
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
@@ -421,14 +588,17 @@ export async function deleteMembershipAction(membershipId: string): Promise<Admi
 export async function fetchAdminLicensesAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
-        const { data, error } = await supabase.from('licenses')
+        const { data, error } = await supabase
+            .from('licenses')
             .select('*, profile:profiles(id, name)')
             .order('created_at', { ascending: false })
         if (error) throw error
 
         const svc = createServiceClient()
         const { data: authUsers } = await svc.auth.admin.listUsers({ perPage: 1000 })
-        const emailMap = new Map(authUsers?.users?.map((u: { id: string; email?: string }) => [u.id, u.email]) ?? [])
+        const emailMap = new Map(
+            authUsers?.users?.map((u: { id: string; email?: string }) => [u.id, u.email]) ?? [],
+        )
 
         const enriched = (data ?? []).map((l) => ({
             ...l,
@@ -437,16 +607,18 @@ export async function fetchAdminLicensesAction(): Promise<AdminActionResult<unkn
 
         return { success: true, data: enriched }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 export async function createLicenseAction(input: {
-    user_id?: string; domain?: string; expires_at?: string
+    user_id?: string
+    domain?: string
+    expires_at?: string
 }): Promise<AdminActionResult> {
     try {
         const { supabase } = await requireAdmin()
-        const generatedKey = `SL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+        const generatedKey = `SL-${crypto.randomUUID().replace(/-/g, '').substring(0, 16).toUpperCase()}`
         const { error } = await supabase.from('licenses').insert({
             key: generatedKey,
             user_id: input.user_id ?? null,
@@ -458,13 +630,18 @@ export async function createLicenseAction(input: {
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
-export async function updateLicenseAction(licenseId: string, input: {
-    domain?: string | null; expires_at?: string | null; status?: 'active' | 'revoked'
-}): Promise<AdminActionResult> {
+export async function updateLicenseAction(
+    licenseId: string,
+    input: {
+        domain?: string | null
+        expires_at?: string | null
+        status?: 'active' | 'revoked'
+    },
+): Promise<AdminActionResult> {
     try {
         const { supabase } = await requireAdmin()
         const update: Record<string, unknown> = {}
@@ -477,30 +654,45 @@ export async function updateLicenseAction(licenseId: string, input: {
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 export async function revokeLicenseAction(licenseId: string): Promise<AdminActionResult> {
     try {
-        const { supabase } = await requireAdmin()
-        const { error } = await supabase.from('licenses').update({ status: 'revoked' }).eq('id', licenseId)
+        const { supabase, user } = await requireAdmin()
+        const { error } = await supabase
+            .from('licenses')
+            .update({ status: 'revoked' })
+            .eq('id', licenseId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'revoke_license',
+            entityType: 'license',
+            entityId: licenseId,
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }
 
 export async function deleteLicenseAction(licenseId: string): Promise<AdminActionResult> {
     try {
-        const { supabase } = await requireAdmin()
+        const { supabase, user } = await requireAdmin()
         const { error } = await supabase.from('licenses').delete().eq('id', licenseId)
         if (error) throw error
+        await logAudit({
+            actorId: user.id,
+            action: 'delete_license',
+            entityType: 'license',
+            entityId: licenseId,
+        })
         revalidatePath('/admin')
         return { success: true }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message }
+        return { success: false, error: safeError(e) }
     }
 }

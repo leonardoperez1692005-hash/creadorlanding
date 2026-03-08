@@ -1,8 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/shared/lib/logger'
 import { BD_COST_PER_REQUEST } from '@/lib/brightdata'
-import type { CompetitorTarget, IntelReport, IntelReportMeta, IntelReportHistoryItem } from './types'
+import type {
+    CompetitorTarget,
+    IntelReport,
+    IntelReportMeta,
+    IntelReportHistoryItem,
+} from './types'
 import { scrapeCompetitors, researchMarket } from './scraper'
 import { analyzeCompetitorsWithGemini } from './analyzer'
 import { intelReportSchema, intelReportMetaSchema, competitorTargetSchema } from './schemas'
@@ -18,18 +24,20 @@ export type IntelActionResult<T = null> =
 export async function generateIntelReportAction(
     targets: CompetitorTarget[],
     sector: string,
-    country: string
+    country: string,
 ): Promise<IntelActionResult<{ report: IntelReport; meta: IntelReportMeta; reportId: string }>> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         if (targets.length === 0) return { success: false, error: 'Agrega al menos un competidor' }
 
         // Phase 1: Scrape competitors
         const snapshots = await scrapeCompetitors(targets)
-        const successfulScrapes = snapshots.filter(s => s.success).length
+        const successfulScrapes = snapshots.filter((s) => s.success).length
 
         if (successfulScrapes === 0) {
             return { success: false, error: 'No se pudo scrapear ningun competidor' }
@@ -39,15 +47,15 @@ export async function generateIntelReportAction(
         const serpResults = await researchMarket(
             sector,
             country,
-            targets.map(t => t.name)
+            targets.map((t) => t.name),
         )
 
         // Phase 3: Gemini analysis
         const report = await analyzeCompetitorsWithGemini(snapshots, serpResults)
 
         // Calculate costs
-        const websiteRequests = targets.filter(t => t.url).length
-        const socialRequests = targets.filter(t => t.socialHandle).length
+        const websiteRequests = targets.filter((t) => t.url).length
+        const socialRequests = targets.filter((t) => t.socialHandle).length
         const serpRequests = 3
         const totalRequests = websiteRequests + socialRequests + serpRequests
 
@@ -61,17 +69,21 @@ export async function generateIntelReportAction(
         }
 
         // Phase 4: Save to Supabase
-        const { data: row, error } = await supabase.from('intel_reports').insert({
-            user_id: user.id,
-            report_type: 'market',
-            targets,
-            raw_data: { snapshots, serpResults },
-            analysis: report,
-            meta,
-        }).select('id').single()
+        const { data: row, error } = await supabase
+            .from('intel_reports')
+            .insert({
+                user_id: user.id,
+                report_type: 'market',
+                targets,
+                raw_data: { snapshots, serpResults },
+                analysis: report,
+                meta,
+            })
+            .select('id')
+            .single()
 
         if (error) {
-            console.error('[Market Intel] Save error:', error.message)
+            logger.error('market-intel', 'Save error', error)
             return { success: false, error: `Error guardando reporte: ${error.message}` }
         }
 
@@ -85,11 +97,15 @@ export async function generateIntelReportAction(
 // ACTION: LOAD INTEL REPORT
 // ================================
 export async function loadIntelReportAction(
-    reportId: string
-): Promise<IntelActionResult<{ report: IntelReport; meta: IntelReportMeta; targets: CompetitorTarget[] }>> {
+    reportId: string,
+): Promise<
+    IntelActionResult<{ report: IntelReport; meta: IntelReportMeta; targets: CompetitorTarget[] }>
+> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         const { data, error } = await supabase
@@ -117,10 +133,14 @@ export async function loadIntelReportAction(
 // ================================
 // ACTION: LIST INTEL REPORTS
 // ================================
-export async function listIntelReportsAction(): Promise<IntelActionResult<IntelReportHistoryItem[]>> {
+export async function listIntelReportsAction(): Promise<
+    IntelActionResult<IntelReportHistoryItem[]>
+> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         const { data, error } = await supabase
@@ -132,7 +152,7 @@ export async function listIntelReportsAction(): Promise<IntelActionResult<IntelR
 
         if (error) throw error
 
-        const items: IntelReportHistoryItem[] = (data ?? []).map(row => ({
+        const items: IntelReportHistoryItem[] = (data ?? []).map((row) => ({
             id: row.id,
             targets: z.array(competitorTargetSchema).parse(row.targets),
             meta: intelReportMetaSchema.parse(row.meta),

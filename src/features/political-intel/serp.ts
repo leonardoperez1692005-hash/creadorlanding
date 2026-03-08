@@ -2,11 +2,16 @@
 // ZentrixOS Political Intelligence — SERP Research
 // =============================================
 
+import { logger } from '@/shared/lib/logger'
 import type { SerpContextResult } from './types'
 import { BD_ENDPOINT, BD_TIMEOUT_MS, SERP_QUERIES } from './config'
 
-function getBdApiKey(): string { return process.env.BRIGHTDATA_API_KEY ?? '' }
-function getBdZone(): string { return process.env.BRIGHTDATA_ZONE ?? 'static_launch_scraper' }
+function getBdApiKey(): string {
+    return process.env.BRIGHTDATA_API_KEY ?? ''
+}
+function getBdZone(): string {
+    return process.env.BRIGHTDATA_ZONE ?? 'zentrixos_scraper'
+}
 
 export async function researchPoliticalContext(): Promise<SerpContextResult[]> {
     const results: SerpContextResult[] = []
@@ -37,7 +42,7 @@ export async function researchPoliticalContext(): Promise<SerpContextResult[]> {
                     success: true,
                     content: text.substring(0, 2000),
                 })
-                console.log(`    ✓ "${query.substring(0, 50)}..."`)
+                logger.info('political-intel', `SERP success: "${query.substring(0, 50)}..."`)
             } else {
                 results.push({
                     query,
@@ -45,7 +50,10 @@ export async function researchPoliticalContext(): Promise<SerpContextResult[]> {
                     content: '',
                     error: `HTTP ${res.status}`,
                 })
-                console.log(`    ✗ "${query.substring(0, 50)}..." — HTTP ${res.status}`)
+                logger.warn(
+                    'political-intel',
+                    `SERP failed: "${query.substring(0, 50)}..." — HTTP ${res.status}`,
+                )
             }
         } catch (err) {
             results.push({
@@ -54,7 +62,10 @@ export async function researchPoliticalContext(): Promise<SerpContextResult[]> {
                 content: '',
                 error: (err as Error).message,
             })
-            console.log(`    ✗ "${query.substring(0, 50)}..." — ${(err as Error).message}`)
+            logger.warn(
+                'political-intel',
+                `SERP error: "${query.substring(0, 50)}..." — ${(err as Error).message}`,
+            )
         }
     }
 

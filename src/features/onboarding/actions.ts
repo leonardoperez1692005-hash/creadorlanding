@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { logger } from '@/shared/lib/logger'
 
 const onboardingSchema = z.object({
     brand_name: z.string().min(2, 'El nombre de la marca es requerido'),
@@ -20,10 +21,12 @@ const onboardingSchema = z.object({
         headings: z.string(),
         body: z.string(),
     }),
-    geometry: z.object({
-        radius: z.string(),
-        neon_glow: z.boolean(),
-    }).optional(),
+    geometry: z
+        .object({
+            radius: z.string(),
+            neon_glow: z.boolean(),
+        })
+        .optional(),
 })
 
 export type OnboardingData = z.infer<typeof onboardingSchema>
@@ -31,7 +34,9 @@ export type OnboardingData = z.infer<typeof onboardingSchema>
 export async function submitOnboardingAction(data: OnboardingData) {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
 
         if (!user) {
             return { success: false, error: 'No autenticado' }
@@ -44,9 +49,8 @@ export async function submitOnboardingAction(data: OnboardingData) {
         }
 
         // Upsert en brand_identities
-        const { error } = await supabase
-            .from('brand_identities')
-            .upsert({
+        const { error } = await supabase.from('brand_identities').upsert(
+            {
                 user_id: user.id,
                 brand_name: parsed.data.brand_name,
                 sector: parsed.data.sector,
@@ -59,10 +63,12 @@ export async function submitOnboardingAction(data: OnboardingData) {
                 geometry: parsed.data.geometry,
                 is_completed: true,
                 updated_at: new Date().toISOString(),
-            }, { onConflict: 'user_id' })
+            },
+            { onConflict: 'user_id' },
+        )
 
         if (error) {
-            console.error('Error saving onboarding data:', error)
+            logger.error('onboarding', 'Error saving onboarding data', error)
             return { success: false, error: 'Error guardando perfil de marca' }
         }
 
@@ -75,7 +81,9 @@ export async function submitOnboardingAction(data: OnboardingData) {
 export async function getBrandIdentityAction() {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         const { data, error } = await supabase
@@ -84,8 +92,9 @@ export async function getBrandIdentityAction() {
             .eq('user_id', user.id)
             .single()
 
-        if (error && error.code !== 'PGRST116') { // not found is ok
-            console.error('Error fetching brand identity:', error)
+        if (error && error.code !== 'PGRST116') {
+            // not found is ok
+            logger.error('onboarding', 'Error fetching brand identity', error)
             return { success: false, error: 'Error obteniendo perfil de marca' }
         }
 
@@ -95,51 +104,172 @@ export async function getBrandIdentityAction() {
     }
 }
 
+// ================================
+// BUSINESS DATA (services, FAQ, testimonials, stats, team, differentiators)
+// ================================
+
+const businessItemSchema = z.object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    question: z.string().optional(),
+    answer: z.string().optional(),
+    text: z.string().optional(),
+    author: z.string().optional(),
+    value: z.string().optional(),
+    label: z.string().optional(),
+    name: z.string().optional(),
+    role: z.string().optional(),
+})
+
+const businessDataSchema = z.object({
+    services: z.array(businessItemSchema).default([]),
+    faqs: z.array(businessItemSchema).default([]),
+    testimonials: z.array(businessItemSchema).default([]),
+    stats: z.array(businessItemSchema).default([]),
+    team_members: z.array(businessItemSchema).default([]),
+    differentiators: z.string().default(''),
+})
+
+export type BusinessData = z.infer<typeof businessDataSchema>
+
+export async function saveBusinessDataAction(data: BusinessData) {
+    try {
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'No autenticado' }
+
+        const parsed = businessDataSchema.safeParse(data)
+        if (!parsed.success)
+            return { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' }
+
+        const { error } = await supabase
+            .from('brand_identities')
+            .update({
+                services: parsed.data.services,
+                faqs: parsed.data.faqs,
+                testimonials: parsed.data.testimonials,
+                stats: parsed.data.stats,
+                team_members: parsed.data.team_members,
+                differentiators: parsed.data.differentiators,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user.id)
+
+        if (error) {
+            logger.error('onboarding', 'Error saving business data', error)
+            return { success: false, error: 'Error guardando datos de negocio' }
+        }
+
+        return { success: true }
+    } catch (e: unknown) {
+        return { success: false, error: (e as Error).message }
+    }
+}
+
+export async function getBusinessDataAction() {
+    try {
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'No autenticado' }
+
+        const { data, error } = await supabase
+            .from('brand_identities')
+            .select('services, faqs, testimonials, stats, team_members, differentiators')
+            .eq('user_id', user.id)
+            .single()
+
+        if (error && error.code !== 'PGRST116') {
+            return { success: false, error: 'Error obteniendo datos de negocio' }
+        }
+
+        return {
+            success: true,
+            data: data
+                ? {
+                      services: (data.services ?? []) as BusinessData['services'],
+                      faqs: (data.faqs ?? []) as BusinessData['faqs'],
+                      testimonials: (data.testimonials ?? []) as BusinessData['testimonials'],
+                      stats: (data.stats ?? []) as BusinessData['stats'],
+                      team_members: (data.team_members ?? []) as BusinessData['team_members'],
+                      differentiators: (data.differentiators ?? '') as string,
+                  }
+                : null,
+        }
+    } catch (e: unknown) {
+        return { success: false, error: (e as Error).message }
+    }
+}
+
 export async function uploadLogoAction(formData: FormData) {
     try {
-        const file = formData.get('file') as File | null;
-        if (!file) return { success: false, error: 'No se subió archivo.' };
+        const file = formData.get('file') as File | null
+        if (!file) return { success: false, error: 'No se subió archivo.' }
 
-        // 1. Validate size and type
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (file.size > maxSize) return { success: false, error: 'El logo no puede pesar más de 5MB.' };
-        if (!file.type.startsWith('image/')) return { success: false, error: 'El archivo debe ser una imagen válida.' };
+        // 1. Validate size
+        const maxSize = 5 * 1024 * 1024 // 5MB
+        if (file.size > maxSize)
+            return { success: false, error: 'El logo no puede pesar más de 5MB.' }
 
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return { success: false, error: 'No autenticado' };
+        // 2. Validate file type via magic bytes (not MIME — MIME is spoofable)
+        const header = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+        const isPNG =
+            header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47
+        const isJPEG = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff
+        const isWebP =
+            header[0] === 0x52 &&
+            header[1] === 0x49 &&
+            header[2] === 0x46 &&
+            header[3] === 0x46 &&
+            header[8] === 0x57 &&
+            header[9] === 0x45 &&
+            header[10] === 0x42 &&
+            header[11] === 0x50
+        const isGIF = header[0] === 0x47 && header[1] === 0x49 && header[2] === 0x46
+        const isICO =
+            header[0] === 0x00 && header[1] === 0x00 && (header[2] === 0x01 || header[2] === 0x02)
+        if (!isPNG && !isJPEG && !isWebP && !isGIF && !isICO) {
+            return { success: false, error: 'Formato no soportado. Usá PNG, JPG, WebP o GIF.' }
+        }
+
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'No autenticado' }
 
         // Generate safe unique filename
-        const ext = file.name.split('.').pop();
-        const filename = `${user.id}-${Date.now()}.${ext}`;
+        const ext = file.name.split('.').pop()
+        const filename = `${user.id}-${Date.now()}.${ext}`
 
         const { data, error } = await supabase.storage
             .from('brand-logos')
-            .upload(filename, file, { upsert: true });
+            .upload(filename, file, { upsert: true })
 
         if (error) {
-            console.error('Storage upload error:', error);
-            return { success: false, error: 'Falló la subida del logo al storage.' };
+            logger.error('onboarding', 'Storage upload error', error)
+            return { success: false, error: 'Falló la subida del logo al storage.' }
         }
 
-        const { data: publicUrlData } = supabase.storage
-            .from('brand-logos')
-            .getPublicUrl(filename);
+        const { data: publicUrlData } = supabase.storage.from('brand-logos').getPublicUrl(filename)
 
-        return { success: true, url: publicUrlData.publicUrl };
+        return { success: true, url: publicUrlData.publicUrl }
     } catch (e: unknown) {
-        return { success: false, error: (e as Error).message };
+        return { success: false, error: (e as Error).message }
     }
 }
 
 export async function extractColorsFromLogoAction(logoUrl: string) {
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) return { success: false, error: 'No Gemini API key supplied' };
+        const apiKey = process.env.GEMINI_API_KEY
+        if (!apiKey) return { success: false, error: 'No Gemini API key supplied' }
 
         // Usamos la API de google/genai oficial
-        const { GoogleGenAI } = await import('@google/genai');
-        const ai = new GoogleGenAI({ apiKey });
+        const { GoogleGenAI } = await import('@google/genai')
+        const ai = new GoogleGenAI({ apiKey })
 
         const prompt = `Actúa como un diseñador experto en UI. Analiza este logo y devuelve un objeto JSON estricto con la mejor paleta de colores extraída.
 Debe tener exactamente esta estructura con códigos HEX:
@@ -153,38 +283,55 @@ Constraints:
 - "secondary": Un color complementario. Si el logo es muy monocromático, provee un tono que lo acompañe bien.
 - "accent": Un color brillante que contraste fuertemente, para usar en botones (CTAs).
 
-Devuelve SOLAMENTE el JSON válido en texto plano, sin formato Markdown (sin \`\`\`json) ni explicaciones extras.`;
+Devuelve SOLAMENTE el JSON válido en texto plano, sin formato Markdown (sin \`\`\`json) ni explicaciones extras.`
+
+        // Validate URL to prevent SSRF — only allow Supabase storage URLs
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+        const parsedUrl = new URL(logoUrl)
+        const isTrustedHost =
+            parsedUrl.hostname.endsWith('.supabase.co') || parsedUrl.origin === supabaseUrl
+        if (!isTrustedHost || !['https:', 'http:'].includes(parsedUrl.protocol)) {
+            return {
+                success: false,
+                error: 'URL de imagen no permitida. Solo se aceptan imágenes de Supabase Storage.',
+            }
+        }
 
         // Fetch image to pass as inline data
-        const imageResp = await fetch(logoUrl);
-        if (!imageResp.ok) throw new Error('No se pudo descargar la imagen para analizar');
-        const buffer = await imageResp.arrayBuffer();
-        const base64Image = Buffer.from(buffer).toString('base64');
-        const mimeType = imageResp.headers.get('content-type') || 'image/png';
+        const imageResp = await fetch(logoUrl)
+        if (!imageResp.ok) throw new Error('No se pudo descargar la imagen para analizar')
+        const buffer = await imageResp.arrayBuffer()
+        const base64Image = Buffer.from(buffer).toString('base64')
+        const mimeType = imageResp.headers.get('content-type') || 'image/png'
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.0-flash',
-            contents: [
-                prompt,
-                { inlineData: { data: base64Image, mimeType } }
-            ]
-        });
+            contents: [prompt, { inlineData: { data: base64Image, mimeType } }],
+        })
 
-        let text = response.text || '';
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        let text = response.text || ''
+        text = text
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim()
 
         try {
-            const colors = JSON.parse(text);
+            const colors = JSON.parse(text)
             if (!colors.primary || !colors.secondary || !colors.accent) {
-                throw new Error("Formato JSON incompleto desde Gemini");
+                throw new Error('Formato JSON incompleto desde Gemini')
             }
-            return { success: true, colors };
+            return { success: true, colors }
         } catch (jsonErr) {
-            console.error("Failed to parse Gemini JSON output:", text);
-            return { success: false, error: 'No se pudo leer la paleta de colores. El modelo no devolvió un JSON.' };
+            logger.error('onboarding', 'Failed to parse Gemini color extraction', jsonErr, {
+                rawOutput: text.slice(0, 200),
+            })
+            return {
+                success: false,
+                error: 'No se pudo leer la paleta de colores. El modelo no devolvió un JSON.',
+            }
         }
     } catch (e: unknown) {
-        console.error('Gemini extraction error:', e);
-        return { success: false, error: (e as Error).message };
+        logger.error('onboarding', 'Gemini extraction error', e)
+        return { success: false, error: (e as Error).message }
     }
 }

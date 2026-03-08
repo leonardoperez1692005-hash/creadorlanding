@@ -11,35 +11,40 @@ import { intelReportSchema } from './schemas'
  */
 export async function analyzeCompetitorsWithGemini(
     snapshots: CompetitorSnapshot[],
-    serpResults: string[]
+    serpResults: string[],
 ): Promise<IntelReport> {
-    const successfulSnapshots = snapshots.filter(s => s.success)
+    const successfulSnapshots = snapshots.filter((s) => s.success)
 
-    const competitorBlocks = successfulSnapshots.map(s => {
-        const parts: string[] = [`### ${s.target.name} (${s.target.type})`]
+    const competitorBlocks = successfulSnapshots
+        .map((s) => {
+            const parts: string[] = [`### ${s.target.name} (${s.target.type})`]
 
-        if (s.target.url) parts.push(`URL: ${s.target.url}`)
+            if (s.target.url) parts.push(`URL: ${s.target.url}`)
 
-        if (s.websiteContent) {
-            parts.push(`**Contenido web (extracto):**\n${s.websiteContent.substring(0, 1500)}`)
-        }
+            if (s.websiteContent) {
+                parts.push(`**Contenido web (extracto):**\n${s.websiteContent.substring(0, 1500)}`)
+            }
 
-        if (s.socialProfile) {
-            parts.push(`**Perfil social:**
+            if (s.socialProfile) {
+                parts.push(`**Perfil social:**
 - Display: ${s.socialProfile.displayName}
 - Bio: ${s.socialProfile.bio}
 - Seguidores: ${s.socialProfile.followers}
 - Posts: ${s.socialProfile.posts}`)
-        }
+            }
 
-        return parts.join('\n')
-    }).join('\n\n---\n\n')
+            return parts.join('\n')
+        })
+        .join('\n\n---\n\n')
 
-    const serpBlock = serpResults.length > 0
-        ? serpResults.join('\n\n---\n\n')
-        : 'No se pudo obtener contexto SERP.'
+    const serpBlock =
+        serpResults.length > 0
+            ? serpResults.join('\n\n---\n\n')
+            : 'No se pudo obtener contexto SERP.'
 
-    const prompt = `Eres un analista de inteligencia competitiva de elite.
+    const prompt = `IDIOMA: TODO el contenido que generes DEBE estar en ESPAÑOL (castellano). Sin excepciones. Ningun texto en ingles.
+
+Eres un analista de inteligencia competitiva de elite.
 Analiza los siguientes competidores y genera un reporte estrategico accionable.
 
 ## COMPETIDORES ANALIZADOS
@@ -91,6 +96,7 @@ IMPORTANTE:
 - Genera al menos 2 vulnerabilidades por competidor
 - Al menos 3 attack vectors recomendados
 - Todo el analisis enfocado en encontrar BRECHAS para superar al rival
+- OBLIGATORIO: TODO el contenido debe estar en ESPAÑOL (castellano). Cero textos en ingles.
 - Responde SOLO con JSON valido`
 
     const raw = await callGemini(prompt, { maxTokens: 8192 })

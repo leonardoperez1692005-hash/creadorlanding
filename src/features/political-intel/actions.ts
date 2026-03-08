@@ -1,7 +1,7 @@
 'use server'
 
-import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'fs'
-import { resolve } from 'path'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { logger } from '@/shared/lib/logger'
 import type { PoliticalSnapshot, PoliticalIntelligenceReport } from './types'
 import { POLITICIANS, BD_COST_PER_REQUEST, SERP_QUERIES } from './config'
 import { scrapeAllProfiles } from './scraper'
@@ -22,28 +22,38 @@ export async function generateIntelligenceReport(): Promise<
     IntelActionResult<{ report: PoliticalIntelligenceReport; snapshot: PoliticalSnapshot }>
 > {
     try {
+        // Auth check
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'No autenticado' }
+
         // === PHASE 1: Scrape all politician profiles ===
-        console.log('[Intelligence] Phase 1: Scraping profiles...')
+        logger.info('political-intel', 'Phase 1: Scraping profiles...')
         const scrapeResults = await scrapeAllProfiles(POLITICIANS)
 
         const successfulProfiles = scrapeResults
-            .filter(r => r.success && r.profile)
-            .map(r => r.profile!)
+            .filter((r) => r.success && r.profile)
+            .map((r) => r.profile!)
 
         const failedHandles = scrapeResults
-            .filter(r => !r.success)
-            .map(r => ({ handle: r.handle, error: r.error ?? 'Unknown error' }))
+            .filter((r) => !r.success)
+            .map((r) => ({ handle: r.handle, error: r.error ?? 'Unknown error' }))
 
         if (successfulProfiles.length === 0) {
-            return { success: false, error: 'No se pudo scrapear ningun perfil. Verifica BRIGHTDATA_API_KEY.' }
+            return {
+                success: false,
+                error: 'No se pudo scrapear ningun perfil. Verifica BRIGHTDATA_API_KEY.',
+            }
         }
 
         // === PHASE 2: SERP Research ===
-        console.log('[Intelligence] Phase 2: Researching political context...')
+        logger.info('political-intel', 'Phase 2: Researching political context...')
         const serpResults = await researchPoliticalContext()
 
         // === PHASE 3: Compute metrics + Gemini analysis ===
-        console.log('[Intelligence] Phase 3: Analyzing with Gemini...')
+        logger.info('political-intel', 'Phase 3: Analyzing with Gemini...')
         const metrics = computeMetrics(successfulProfiles)
         const report = await analyzeWithGemini(successfulProfiles, metrics, serpResults)
 
@@ -63,26 +73,34 @@ export async function generateIntelligenceReport(): Promise<
             },
         }
 
-        // === PHASE 4: Save to filesystem ===
-        console.log('[Intelligence] Phase 4: Saving results...')
-        const outputDir = resolve(process.cwd(), 'output/political-intel')
-        mkdirSync(outputDir, { recursive: true })
+        // === PHASE 4: Save to Supabase ===
+        logger.info('political-intel', 'Phase 4: Saving results...')
+        const svc = createServiceClient()
+        const reportDate = new Date().toISOString().split('T')[0]
 
-        const dateStr = new Date().toISOString().split('T')[0]
-        writeFileSync(
-            resolve(outputDir, `snapshot-${dateStr}.json`),
-            JSON.stringify(snapshot, null, 2),
-        )
-        writeFileSync(
-            resolve(outputDir, `report-${dateStr}.json`),
-            JSON.stringify(report, null, 2),
-        )
+        await Promise.all([
+            svc.from('political_intel_reports').insert({
+                report_type: 'snapshot',
+                report_date: reportDate,
+                content: snapshot,
+                created_by: user.id,
+            }),
+            svc.from('political_intel_reports').insert({
+                report_type: 'report',
+                report_date: reportDate,
+                content: report,
+                created_by: user.id,
+            }),
+        ])
 
-        console.log(`[Intelligence] Done! ${successfulProfiles.length}/${POLITICIANS.length} profiles, ${failedHandles.length} failed`)
+        logger.info(
+            'political-intel',
+            `Done! ${successfulProfiles.length}/${POLITICIANS.length} profiles, ${failedHandles.length} failed`,
+        )
 
         return { success: true, data: { report, snapshot } }
     } catch (e: unknown) {
-        console.error('[Intelligence] Error:', (e as Error).message)
+        logger.error('political-intel', 'Error generating report', e)
         return { success: false, error: (e as Error).message }
     }
 }
@@ -94,31 +112,40 @@ export async function loadLatestReport(): Promise<
     IntelActionResult<{ report: PoliticalIntelligenceReport; snapshot: PoliticalSnapshot }>
 > {
     try {
-        const outputDir = resolve(process.cwd(), 'output/political-intel')
+        // Auth check
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'No autenticado' }
 
-        const reportFiles = readdirSync(outputDir)
-            .filter(f => f.startsWith('report-') && f.endsWith('.json'))
-            .sort()
-        const snapshotFiles = readdirSync(outputDir)
-            .filter(f => f.startsWith('snapshot-') && f.endsWith('.json'))
-            .sort()
+        const { data: latestReport } = await supabase
+            .from('political_intel_reports')
+            .select('content')
+            .eq('report_type', 'report')
+            .order('report_date', { ascending: false })
+            .limit(1)
+            .single()
 
-        const latestReport = reportFiles.at(-1)
-        const latestSnapshot = snapshotFiles.at(-1)
+        const { data: latestSnapshot } = await supabase
+            .from('political_intel_reports')
+            .select('content')
+            .eq('report_type', 'snapshot')
+            .order('report_date', { ascending: false })
+            .limit(1)
+            .single()
 
         if (!latestReport || !latestSnapshot) {
             return { success: false, error: 'No hay reportes generados.' }
         }
 
-        const report = JSON.parse(
-            readFileSync(resolve(outputDir, latestReport), 'utf-8'),
-        ) as PoliticalIntelligenceReport
-
-        const snapshot = JSON.parse(
-            readFileSync(resolve(outputDir, latestSnapshot), 'utf-8'),
-        ) as PoliticalSnapshot
-
-        return { success: true, data: { report, snapshot } }
+        return {
+            success: true,
+            data: {
+                report: latestReport.content as PoliticalIntelligenceReport,
+                snapshot: latestSnapshot.content as PoliticalSnapshot,
+            },
+        }
     } catch {
         return { success: false, error: 'No se encontraron reportes previos.' }
     }

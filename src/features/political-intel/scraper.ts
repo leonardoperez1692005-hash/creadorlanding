@@ -2,13 +2,18 @@
 // ZentrixOS Political Intelligence — X/Twitter Scraper
 // =============================================
 
+import { logger } from '@/shared/lib/logger'
 import type { PoliticianTarget, TwitterProfileSnapshot, ScrapeResult } from './types'
 import { BD_ENDPOINT, BD_REQUEST_DELAY_MS, BD_TIMEOUT_MS } from './config'
 
 // Lazy getters — env vars must be read AFTER dotenv.config() runs.
 // ES module imports are hoisted, so top-level reads would capture empty strings.
-function getBdApiKey(): string { return process.env.BRIGHTDATA_API_KEY ?? '' }
-function getBdZone(): string { return process.env.BRIGHTDATA_ZONE ?? 'static_launch_scraper' }
+function getBdApiKey(): string {
+    return process.env.BRIGHTDATA_API_KEY ?? ''
+}
+function getBdZone(): string {
+    return process.env.BRIGHTDATA_ZONE ?? 'zentrixos_scraper'
+}
 
 // ─── Public API ──────────────────────────────────────────
 
@@ -16,13 +21,19 @@ export async function scrapeAllProfiles(targets: PoliticianTarget[]): Promise<Sc
     const results: ScrapeResult[] = []
 
     for (const target of targets) {
-        console.log(`  Scraping @${target.handle}...`)
+        logger.info('political-intel', `Scraping @${target.handle}...`)
         const result = await scrapeTwitterProfile(target)
 
         if (result.success && result.profile) {
-            console.log(`    ✓ ${result.profile.displayName} — ${fmt(result.profile.followersCount)} seguidores (${result.durationMs}ms)`)
+            logger.info(
+                'political-intel',
+                `Scraped ${result.profile.displayName} — ${fmt(result.profile.followersCount)} seguidores (${result.durationMs}ms)`,
+            )
         } else {
-            console.log(`    ✗ FAILED: ${result.error} (${result.durationMs}ms)`)
+            logger.warn(
+                'political-intel',
+                `Scrape FAILED: ${result.error} (${result.durationMs}ms)`,
+            )
         }
 
         results.push(result)
@@ -90,7 +101,7 @@ async function scrapeTwitterProfile(target: PoliticianTarget): Promise<ScrapeRes
 function extractProfileFromHtml(
     html: string,
     target: PoliticianTarget,
-    sourceUrl: string
+    sourceUrl: string,
 ): TwitterProfileSnapshot | null {
     // Strategy 1: JSON-LD blocks (X embeds UserProfileSchema server-side)
     const jsonLdProfile = extractFromJsonLd(html, target, sourceUrl)
@@ -103,7 +114,7 @@ function extractProfileFromHtml(
 function extractFromJsonLd(
     html: string,
     target: PoliticianTarget,
-    sourceUrl: string
+    sourceUrl: string,
 ): TwitterProfileSnapshot | null {
     const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
     let match: RegExpExecArray | null
@@ -113,10 +124,11 @@ function extractFromJsonLd(
             const parsed = JSON.parse(match[1].trim())
 
             // Buscar schema Person o ProfilePage
-            if (parsed['@type'] === 'Person' ||
+            if (
+                parsed['@type'] === 'Person' ||
                 parsed['@type'] === 'ProfilePage' ||
-                parsed.mainEntity?.['@type'] === 'Person') {
-
+                parsed.mainEntity?.['@type'] === 'Person'
+            ) {
                 const person = parsed.mainEntity ?? parsed
 
                 const stats = Array.isArray(person.interactionStatistic)
@@ -129,9 +141,16 @@ function extractFromJsonLd(
                     bio: String(person.description ?? ''),
                     location: String(person.homeLocation?.name ?? person.location ?? ''),
                     profileImageUrl: String(person.image?.contentUrl ?? person.image ?? ''),
-                    followersCount: extractStatCount(stats, 'Follows') ?? extractStatCount(stats, 'Follow') ?? 0,
-                    followingCount: extractStatCount(stats, 'Friends') ?? extractStatCount(stats, 'Friend') ?? 0,
-                    tweetsCount: extractStatCount(stats, 'Tweets') ?? extractStatCount(stats, 'Tweet') ?? 0,
+                    followersCount:
+                        extractStatCount(stats, 'Follows') ??
+                        extractStatCount(stats, 'Follow') ??
+                        0,
+                    followingCount:
+                        extractStatCount(stats, 'Friends') ??
+                        extractStatCount(stats, 'Friend') ??
+                        0,
+                    tweetsCount:
+                        extractStatCount(stats, 'Tweets') ?? extractStatCount(stats, 'Tweet') ?? 0,
                     accountCreatedAt: String(parsed.dateCreated ?? person.dateCreated ?? ''),
                     scrapedAt: new Date().toISOString(),
                     sourceUrl,
@@ -166,9 +185,11 @@ function extractStatCount(stats: unknown[], namePart: string): number | null {
 function extractFromMetaTags(
     html: string,
     target: PoliticianTarget,
-    sourceUrl: string
+    sourceUrl: string,
 ): TwitterProfileSnapshot | null {
-    const ogDesc = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i)
+    const ogDesc = html.match(
+        /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i,
+    )
     const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i)
     const ogImage = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
 
@@ -182,7 +203,8 @@ function extractFromMetaTags(
         profileImageUrl: ogImage ? ogImage[1] : '',
         followersCount: extractNumberNearLabel(html, 'followers'),
         followingCount: extractNumberNearLabel(html, 'following'),
-        tweetsCount: extractNumberNearLabel(html, 'posts') || extractNumberNearLabel(html, 'tweets'),
+        tweetsCount:
+            extractNumberNearLabel(html, 'posts') || extractNumberNearLabel(html, 'tweets'),
         accountCreatedAt: '',
         scrapedAt: new Date().toISOString(),
         sourceUrl,
@@ -213,5 +235,5 @@ function fmt(n: number): string {
 }
 
 function sleep(ms: number): Promise<void> {
-    return new Promise(r => setTimeout(r, ms))
+    return new Promise((r) => setTimeout(r, ms))
 }

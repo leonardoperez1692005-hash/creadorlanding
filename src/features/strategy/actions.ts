@@ -1,14 +1,26 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { logger } from '@/shared/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { scrapeUrl, serpSearch } from '@/lib/brightdata'
 import { callGemini, parseAndValidate, parseJsonFromAI } from '@/lib/gemini'
 import type {
-    StrategyBriefData, StrategyData, StrategyMeta, StrategyHistoryItem,
-    TacticalResult, ObjectionsData, ContentData,
+    StrategyBriefData,
+    StrategyData,
+    StrategyMeta,
+    StrategyHistoryItem,
+    TacticalResult,
+    ObjectionsData,
+    ContentData,
 } from './types'
-import { strategyDataSchema, strategyBriefDataSchema, strategyMetaSchema, objectionsDataSchema, contentDataSchema } from './schemas'
+import {
+    strategyDataSchema,
+    strategyBriefDataSchema,
+    strategyMetaSchema,
+    objectionsDataSchema,
+    contentDataSchema,
+} from './schemas'
 
 // ================================
 // UTILS
@@ -30,7 +42,11 @@ async function scrapeUrlWithBrightData(url: string): Promise<string> {
     return scrapeUrl(url, { dataFormat: 'markdown' })
 }
 
-async function researchMarketWithBrightData(sector: string, competitors: string, country = 'ar'): Promise<string> {
+async function researchMarketWithBrightData(
+    sector: string,
+    competitors: string,
+    country = 'ar',
+): Promise<string> {
     const queries = [
         `mejores ${sector} ${country} opiniones comparativa`,
         `${sector} problemas frecuentes clientes quejas`,
@@ -56,11 +72,13 @@ async function researchMarketWithBrightData(sector: string, competitors: string,
 // ACTION: RUN FULL ANALYSIS
 // ================================
 export async function runStrategyAnalysisAction(
-    brief: StrategyBriefData
+    brief: StrategyBriefData,
 ): Promise<StrategyActionResult<{ strategy: StrategyData; meta: StrategyMeta }>> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         // === FASE 1: Bright Data — Scraping de competidores ===
@@ -79,7 +97,7 @@ export async function runStrategyAnalysisAction(
                 } catch {
                     // Optional: fallback silently
                 }
-            })
+            }),
         )
 
         // === FASE 2: Bright Data SERP — Research de mercado ===
@@ -88,7 +106,7 @@ export async function runStrategyAnalysisAction(
             marketResearch = await researchMarketWithBrightData(
                 brief.sector,
                 brief.competitors,
-                brief.country ?? 'ar'
+                brief.country ?? 'ar',
             )
         } catch {
             marketResearch = `Sector: ${brief.sector}. Competidores: ${brief.competitors}`
@@ -199,11 +217,13 @@ Responde SOLO con el JSON válido. TODO en español.`
 export async function runTacticalOperationAction(
     type: 'objections' | 'content',
     salesAngle: string,
-    context: { brandName?: string; sector?: string }
+    context: { brandName?: string; sector?: string },
 ): Promise<StrategyActionResult<ObjectionsData | ContentData>> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         let prompt = ''
@@ -251,9 +271,10 @@ Responde SOLO con JSON válido. Todo en español.`
         }
 
         const raw = await callGemini(prompt)
-        const data = type === 'objections'
-            ? parseAndValidate(raw, objectionsDataSchema)
-            : parseAndValidate(raw, contentDataSchema)
+        const data =
+            type === 'objections'
+                ? parseAndValidate(raw, objectionsDataSchema)
+                : parseAndValidate(raw, contentDataSchema)
 
         return { success: true, data }
     } catch (e: unknown) {
@@ -268,89 +289,107 @@ Responde SOLO con JSON válido. Todo en español.`
 const SECTION_SCHEMAS: Record<string, string> = {
     // Shared sections
     hero_vsl: JSON.stringify({
-        headline: "Titular principal impactante (máx 10 palabras)",
-        subheadline: "Subtítulo que amplía el gancho",
-        cta_text: "Texto del botón CTA",
-        video_url: "https://www.youtube.com/watch?v=REEMPLAZAR",
+        headline: 'Titular principal impactante (máx 10 palabras)',
+        subheadline: 'Subtítulo que amplía el gancho',
+        cta_text: 'Texto del botón CTA',
+        video_url: 'https://www.youtube.com/watch?v=REEMPLAZAR',
     }),
     hero_webinar: JSON.stringify({
-        headline: "Titular principal impactante (máx 10 palabras)",
-        subheadline: "Subtítulo que amplía el gancho",
-        date: "Fecha del evento en vivo",
-        cta_text: "Texto del botón CTA",
+        headline: 'Titular principal impactante (máx 10 palabras)',
+        subheadline: 'Subtítulo que amplía el gancho',
+        date: 'Fecha del evento en vivo',
+        cta_text: 'Texto del botón CTA',
     }),
     hero_long_letter: JSON.stringify({
-        headline: "Titular principal impactante (máx 10 palabras)",
-        subheadline: "Subtítulo que amplía el gancho",
-        eyebrow: "Texto pequeño sobre el título",
-        lead: "Párrafo gancho inicial que atrape al lector",
+        headline: 'Titular principal impactante (máx 10 palabras)',
+        subheadline: 'Subtítulo que amplía el gancho',
+        eyebrow: 'Texto pequeño sobre el título',
+        lead: 'Párrafo gancho inicial que atrape al lector',
     }),
     benefits: JSON.stringify({
         items: [
-            { title: "Beneficio 1", description: "Explicación breve" },
-            { title: "Beneficio 2", description: "Explicación breve" },
-            { title: "Beneficio 3", description: "Explicación breve" },
+            { title: 'Beneficio 1', description: 'Explicación breve' },
+            { title: 'Beneficio 2', description: 'Explicación breve' },
+            { title: 'Beneficio 3', description: 'Explicación breve' },
         ],
     }),
-    urgency: JSON.stringify({ text: "OFERTA LIMITADA: Acción inmediata requerida" }),
+    urgency: JSON.stringify({ text: 'OFERTA LIMITADA: Acción inmediata requerida' }),
     countdown: JSON.stringify({
-        headline: "Esta oportunidad desaparece en:",
-        cta_text: "ASEGURAR MI LUGAR AHORA",
+        headline: 'Esta oportunidad desaparece en:',
+        cta_text: 'ASEGURAR MI LUGAR AHORA',
     }),
     offer: JSON.stringify({
-        title: "EL PLAN MAESTRO",
-        price_current: "$99",
-        cta_text: "INICIAR TRANSFORMACIÓN",
-        cta_url: "",
+        title: 'EL PLAN MAESTRO',
+        price_current: '$99',
+        cta_text: 'INICIAR TRANSFORMACIÓN',
+        cta_url: '',
     }),
     lead_capture: JSON.stringify({
-        headline: "Recibe el Plan Completo",
-        subheadline: "Ingresa tu email para desbloquear el acceso",
-        cta_text: "ENVIAR ACCESO",
-        success_message: "¡Revisa tu bandeja de entrada!",
+        headline: 'Recibe el Plan Completo',
+        subheadline: 'Ingresa tu email para desbloquear el acceso',
+        cta_text: 'ENVIAR ACCESO',
+        success_message: '¡Revisa tu bandeja de entrada!',
     }),
     faq: JSON.stringify({
         items: [
-            { question: "¿Cómo funciona?", answer: "Explicación resumida para el prospecto." },
-            { question: "¿Es para mí?", answer: "Cualificación del cliente ideal." },
+            { question: '¿Cómo funciona?', answer: 'Explicación resumida para el prospecto.' },
+            { question: '¿Es para mí?', answer: 'Cualificación del cliente ideal.' },
         ],
     }),
     testimonials: JSON.stringify({
-        items: [
-            { text: "Increíble resultado en tiempo récord.", author: "Juan Pérez, CEO" },
-        ],
+        items: [{ text: 'Increíble resultado en tiempo récord.', author: 'Juan Pérez, CEO' }],
     }),
     speaker: JSON.stringify({
-        name: "Nombre del presentador",
-        bio: "Biografía profesional que genere autoridad (2-3 oraciones)",
-        photo: "",
+        name: 'Nombre del presentador',
+        bio: 'Biografía profesional que genere autoridad (2-3 oraciones)',
+        photo: '',
     }),
     learning: JSON.stringify({
         items: [
-            "Punto clave de aprendizaje 1",
-            "Punto clave de aprendizaje 2",
-            "Punto clave de aprendizaje 3",
+            'Punto clave de aprendizaje 1',
+            'Punto clave de aprendizaje 2',
+            'Punto clave de aprendizaje 3',
         ],
     }),
     target: JSON.stringify({
         items: [
-            { title: "Perfil ideal 1", description: "Descripción del segmento" },
-            { title: "Perfil ideal 2", description: "Descripción del segmento" },
+            { title: 'Perfil ideal 1', description: 'Descripción del segmento' },
+            { title: 'Perfil ideal 2', description: 'Descripción del segmento' },
         ],
     }),
     story: JSON.stringify({
-        text: "Narrativa persuasiva que conecte emocionalmente con el lector. Cuenta la historia del problema y el camino hacia la solución.",
+        text: 'Narrativa persuasiva que conecte emocionalmente con el lector. Cuenta la historia del problema y el camino hacia la solución.',
     }),
     solution: JSON.stringify({
-        title: "La Solución Definitiva",
-        text: "Descripción clara de la solución ofrecida y por qué funciona.",
+        title: 'La Solución Definitiva',
+        text: 'Descripción clara de la solución ofrecida y por qué funciona.',
     }),
 }
 
 const TEMPLATE_SECTIONS: Record<string, string[]> = {
     vsl: ['hero', 'benefits', 'urgency', 'countdown', 'offer', 'lead_capture', 'faq'],
-    webinar: ['hero', 'speaker', 'learning', 'target', 'urgency', 'countdown', 'offer', 'lead_capture', 'faq'],
-    long_letter: ['hero', 'story', 'solution', 'benefits', 'testimonials', 'urgency', 'offer', 'lead_capture', 'faq'],
+    webinar: [
+        'hero',
+        'speaker',
+        'learning',
+        'target',
+        'urgency',
+        'countdown',
+        'offer',
+        'lead_capture',
+        'faq',
+    ],
+    long_letter: [
+        'hero',
+        'story',
+        'solution',
+        'benefits',
+        'testimonials',
+        'urgency',
+        'offer',
+        'lead_capture',
+        'faq',
+    ],
 }
 
 function buildSectionJsonExample(templateType: string): string {
@@ -370,11 +409,13 @@ function buildSectionJsonExample(templateType: string): string {
 export async function generateLandingContentAction(
     strategy: StrategyData,
     templateType: 'vsl' | 'webinar' | 'long_letter',
-    briefData: Partial<StrategyBriefData>
+    briefData: Partial<StrategyBriefData>,
 ): Promise<StrategyActionResult<Record<string, Record<string, string>>>> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         const angle = strategy.salesAngles?.[0]
@@ -417,7 +458,10 @@ Responde SOLO con JSON válido. Todo en español. Que sea copy real, no placehol
         // Validar que todas las secciones requeridas estén presentes
         for (const sectionId of requiredSections) {
             if (!content[sectionId]) {
-                console.warn(`[Zentrix] Sección "${sectionId}" no fue generada por la IA, creando vacía`)
+                logger.warn(
+                    'strategy',
+                    `Sección "${sectionId}" no fue generada por la IA, creando vacía`,
+                )
                 content[sectionId] = {}
             }
         }
@@ -431,10 +475,14 @@ Responde SOLO con JSON válido. Todo en español. Que sea copy real, no placehol
 // ================================
 // ACTION: FETCH HISTORY
 // ================================
-export async function fetchStrategyHistoryAction(): Promise<StrategyActionResult<StrategyHistoryItem[]>> {
+export async function fetchStrategyHistoryAction(): Promise<
+    StrategyActionResult<StrategyHistoryItem[]>
+> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         const { data, error } = await supabase
@@ -463,11 +511,19 @@ export async function fetchStrategyHistoryAction(): Promise<StrategyActionResult
 // ACTION: LOAD HISTORY ITEM
 // ================================
 export async function loadStrategyHistoryItemAction(
-    historyId: string
-): Promise<StrategyActionResult<{ strategy: StrategyData; meta: StrategyMeta; briefData: StrategyBriefData }>> {
+    historyId: string,
+): Promise<
+    StrategyActionResult<{
+        strategy: StrategyData
+        meta: StrategyMeta
+        briefData: StrategyBriefData
+    }>
+> {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
         const { data, error } = await supabase

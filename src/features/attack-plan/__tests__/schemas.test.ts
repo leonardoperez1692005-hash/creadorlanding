@@ -55,26 +55,28 @@ describe('attackVectorSchema', () => {
 describe('attackPlanSchema', () => {
     const validPlan = {
         executiveSummary: 'ZMOT strategy summary',
-        attackMatrix: [{
-            rivalName: 'X',
-            rivalWeakness: 'W',
-            brandStrength: 'S',
-            attackAngle: 'A',
-            outputs: {
-                adCopy: { headline: 'H', body: 'B', cta: 'C' },
-                tiktokScript: { hook: 'H', script: 'S', cta: 'C' },
-                linkedinPost: { hook: 'H', body: 'B', hashtags: ['tag'] },
-                landingSectionCopy: {
-                    heroHeadline: 'HH',
-                    heroSubheadline: 'HS',
-                    benefitTitle: 'BT',
-                    benefitDescription: 'BD',
-                    urgencyText: 'UT',
+        attackMatrix: [
+            {
+                rivalName: 'X',
+                rivalWeakness: 'W',
+                brandStrength: 'S',
+                attackAngle: 'A',
+                outputs: {
+                    adCopy: { headline: 'H', body: 'B', cta: 'C' },
+                    tiktokScript: { hook: 'H', script: 'S', cta: 'C' },
+                    linkedinPost: { hook: 'H', body: 'B', hashtags: ['tag'] },
+                    landingSectionCopy: {
+                        heroHeadline: 'HH',
+                        heroSubheadline: 'HS',
+                        benefitTitle: 'BT',
+                        benefitDescription: 'BD',
+                        urgencyText: 'UT',
+                    },
                 },
             },
-        }],
+        ],
         overallStrategy: 'Overall approach',
-        recommendedLandingType: 'vsl',
+        landingSections: ['hero', 'benefits', 'urgency', 'lead_capture'],
         landingContent: { hero: { headline: 'Test' } },
     }
 
@@ -83,9 +85,9 @@ describe('attackPlanSchema', () => {
         expect(result.success).toBe(true)
     })
 
-    it('rejects invalid recommendedLandingType', () => {
-        const bad = { ...validPlan, recommendedLandingType: 'unknown' }
-        const result = attackPlanSchema.safeParse(bad)
+    it('rejects missing landingSections', () => {
+        const { landingSections, ...missing } = validPlan
+        const result = attackPlanSchema.safeParse(missing)
         expect(result.success).toBe(false)
     })
 
@@ -95,9 +97,34 @@ describe('attackPlanSchema', () => {
         expect(result.success).toBe(false)
     })
 
-    it('accepts all three landing types', () => {
-        for (const type of ['vsl', 'webinar', 'long_letter']) {
-            const plan = { ...validPlan, recommendedLandingType: type }
+    it('defaults clientTasks to empty array when missing', () => {
+        const result = attackPlanSchema.safeParse(validPlan)
+        expect(result.success).toBe(true)
+        if (result.success) {
+            expect(result.data.clientTasks).toEqual([])
+        }
+    })
+
+    it('parses clientTasks when provided', () => {
+        const withTasks = {
+            ...validPlan,
+            clientTasks: ['Completar testimonios', 'Verificar precios'],
+        }
+        const result = attackPlanSchema.safeParse(withTasks)
+        expect(result.success).toBe(true)
+        if (result.success) {
+            expect(result.data.clientTasks).toEqual(['Completar testimonios', 'Verificar precios'])
+        }
+    })
+
+    it('accepts various section compositions', () => {
+        const compositions = [
+            ['hero', 'benefits', 'lead_capture'],
+            ['hero', 'services', 'stats', 'testimonials', 'comparison', 'faq', 'lead_capture'],
+            ['hero', 'about', 'features', 'pricing', 'guarantee', 'lead_capture'],
+        ]
+        for (const sections of compositions) {
+            const plan = { ...validPlan, landingSections: sections }
             const result = attackPlanSchema.safeParse(plan)
             expect(result.success).toBe(true)
         }

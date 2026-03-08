@@ -4,11 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/shared/lib/rate-limit'
 
 // === Schemas ===
 const loginSchema = z.object({
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
 })
 
 const registerSchema = z.object({
@@ -25,7 +26,7 @@ export type ActionResponse<T = null> =
 // === Actions ===
 export async function loginAction(
     prevState: ActionResponse,
-    formData: FormData
+    formData: FormData,
 ): Promise<ActionResponse> {
     const parsed = loginSchema.safeParse({
         email: formData.get('email'),
@@ -34,6 +35,12 @@ export async function loginAction(
 
     if (!parsed.success) {
         return { success: false, error: parsed.error.issues[0].message }
+    }
+
+    // Rate limit: 5 attempts per email per 15 minutes
+    const rl = rateLimit(`login:${parsed.data.email}`, { limit: 5, windowSec: 900 })
+    if (!rl.allowed) {
+        return { success: false, error: 'Demasiados intentos. Intentá de nuevo en unos minutos.' }
     }
 
     const supabase = await createClient()
@@ -49,7 +56,7 @@ export async function loginAction(
 
 export async function registerAction(
     prevState: ActionResponse,
-    formData: FormData
+    formData: FormData,
 ): Promise<ActionResponse> {
     const parsed = registerSchema.safeParse({
         name: formData.get('name'),
@@ -59,6 +66,12 @@ export async function registerAction(
 
     if (!parsed.success) {
         return { success: false, error: parsed.error.issues[0].message }
+    }
+
+    // Rate limit: 3 registrations per email per 30 minutes
+    const rl = rateLimit(`register:${parsed.data.email}`, { limit: 3, windowSec: 1800 })
+    if (!rl.allowed) {
+        return { success: false, error: 'Demasiados intentos de registro. Intentá más tarde.' }
     }
 
     const supabase = await createClient()
@@ -71,10 +84,11 @@ export async function registerAction(
     })
 
     if (error) {
-        if (error.message.includes('already registered')) {
-            return { success: false, error: 'Este email ya tiene una cuenta registrada' }
+        // Generic message to prevent account enumeration
+        return {
+            success: false,
+            error: 'No se pudo completar el registro. Verificá el email e intentá de nuevo.',
         }
-        return { success: false, error: error.message }
     }
 
     revalidatePath('/', 'layout')
