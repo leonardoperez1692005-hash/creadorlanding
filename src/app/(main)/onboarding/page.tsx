@@ -4,12 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { OnboardingFlow } from '@/features/onboarding/components/OnboardingFlow'
 
 export const metadata: Metadata = {
-    title: 'Onboarding de Marca — StaticLaunch',
+    title: 'Onboarding de Marca — ZentrixOS',
 }
 
 export default async function OnboardingPage() {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
 
     if (!user) {
         redirect('/login')

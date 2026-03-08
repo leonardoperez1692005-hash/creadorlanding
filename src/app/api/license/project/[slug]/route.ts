@@ -1,21 +1,20 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/server'
 
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = createServiceClient()
 
 async function resolveActiveLicenseUserId(licenseKey: string): Promise<string | null> {
     if (!licenseKey) return null
 
     const { data: license } = await supabaseAdmin
         .from('licenses')
-        .select(`
+        .select(
+            `
       id, status, expires_at, user_id,
       profiles:profiles!licenses_user_id_fkey ( status )
-    `)
+    `,
+        )
         .eq('key', licenseKey)
         .single()
 
@@ -29,10 +28,7 @@ async function resolveActiveLicenseUserId(licenseKey: string): Promise<string | 
 }
 
 // GET /api/license/project/[slug] — returns compiled HTML for a project
-export async function GET(
-    req: NextRequest,
-    { params }: { params: Promise<{ slug: string }> }
-) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params
     const licenseKey = req.headers.get('x-license-key') ?? ''
 
@@ -42,7 +38,10 @@ export async function GET(
 
     const userId = await resolveActiveLicenseUserId(licenseKey)
     if (!userId) {
-        return NextResponse.json({ error: 'Licencia inválida, inactiva o expirada' }, { status: 403 })
+        return NextResponse.json(
+            { error: 'Licencia inválida, inactiva o expirada' },
+            { status: 403 },
+        )
     }
 
     const { data: project, error } = await supabaseAdmin

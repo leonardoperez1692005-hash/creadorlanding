@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { LeadsPage } from '@/features/leads/components/LeadsPage'
 
 export const metadata: Metadata = {
-    title: 'Leads — StaticLaunch',
+    title: 'Leads — ZentrixOS',
 }
 
 interface Props {
@@ -15,7 +15,9 @@ export default async function ProjectLeadsPage({ params }: Props) {
     const { id } = await params
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
     // Verify the project belongs to this user and fetch its name

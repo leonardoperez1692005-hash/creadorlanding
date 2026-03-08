@@ -1,30 +1,39 @@
-import { readFileSync, readdirSync } from 'fs'
-import { resolve } from 'path'
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
     try {
-        const dir = resolve(process.cwd(), 'output/political-intel')
-        const files = readdirSync(dir)
-            .filter(f => f.startsWith('dashboard-') && f.endsWith('.html'))
-            .sort()
+        // Auth check
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) {
+            return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+        }
 
-        const latest = files.at(-1)
-        if (!latest) {
+        const { data: dashboard } = await supabase
+            .from('political_intel_reports')
+            .select('html_content')
+            .eq('report_type', 'dashboard')
+            .order('report_date', { ascending: false })
+            .limit(1)
+            .single()
+
+        if (!dashboard?.html_content) {
             return new NextResponse(
-                '<h1>No hay dashboard generado</h1><p>Ejecuta: <code>npx tsx scripts/political-intel.ts</code></p>',
+                '<h1>No hay dashboard generado</h1><p>Genera un reporte desde la sección de Inteligencia.</p>',
                 { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
             )
         }
 
-        const html = readFileSync(resolve(dir, latest), 'utf-8')
-        return new NextResponse(html, {
+        return new NextResponse(dashboard.html_content, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
         })
     } catch {
-        return new NextResponse(
-            '<h1>Error</h1><p>No se encontró el directorio output/political-intel/</p>',
-            { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-        )
+        return new NextResponse('<h1>Error</h1><p>No se pudo cargar el dashboard.</p>', {
+            status: 500,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        })
     }
 }

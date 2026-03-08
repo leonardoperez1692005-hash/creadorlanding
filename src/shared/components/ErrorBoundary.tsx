@@ -24,7 +24,28 @@ export class ErrorBoundary extends React.Component<Props, State> {
     }
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
-        console.error('[ErrorBoundary]', error, info.componentStack)
+        // Structured logging — ready for Sentry/Datadog integration
+        const payload = {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            componentStack: info.componentStack,
+            url: typeof window !== 'undefined' ? window.location.href : '',
+        }
+        // In production: structured JSON for log aggregation
+        if (process.env.NODE_ENV === 'production') {
+            console.error(
+                JSON.stringify({
+                    level: 'error',
+                    ts: new Date().toISOString(),
+                    feature: 'ui',
+                    msg: 'React ErrorBoundary caught',
+                    error: payload,
+                }),
+            )
+        } else {
+            console.error('[ErrorBoundary]', error, info.componentStack)
+        }
     }
 
     render() {

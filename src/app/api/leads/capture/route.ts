@@ -1,34 +1,47 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { z } from 'zod'
+import { createServiceClient } from '@/lib/supabase/server'
 
 // Service role: public endpoint, no user session
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseAdmin = createServiceClient()
 
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+const leadSchema = z.object({
+    projectId: z.string().uuid('projectId inválido'),
+    name: z.string().max(200).default(''),
+    email: z.string().email('Email inválido').max(320),
+    phone: z.string().max(30).default(''),
+    source: z.string().max(200).default(''),
+    message: z.string().max(2000).default(''),
+})
+
+function getCorsHeaders(origin?: string | null) {
+    return {
+        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    }
 }
 
-export async function OPTIONS() {
-    return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+export async function OPTIONS(req: NextRequest) {
+    const cors = getCorsHeaders(req.headers.get('origin'))
+    return new NextResponse(null, { status: 204, headers: cors })
 }
 
 export async function POST(req: NextRequest) {
+    const cors = getCorsHeaders(req.headers.get('origin'))
     try {
-        const body = await req.json().catch(() => ({})) as Record<string, string>
-        const { projectId, name = '', email, phone = '', source = '', message = '' } = body
+        const raw = await req.json().catch(() => ({}))
+        const parsed = leadSchema.safeParse(raw)
 
-        if (!projectId || !email) {
+        if (!parsed.success) {
             return NextResponse.json(
-                { error: 'projectId y email son requeridos' },
-                { status: 400, headers: CORS_HEADERS }
+                { error: parsed.error.issues[0]?.message || 'Datos inválidos' },
+                { status: 400, headers: cors },
             )
         }
+
+        const { projectId, name, email, phone, source, message } = parsed.data
 
         // Validate project exists
         const { data: project } = await supabaseAdmin
@@ -40,7 +53,7 @@ export async function POST(req: NextRequest) {
         if (!project) {
             return NextResponse.json(
                 { error: 'Proyecto no encontrado' },
-                { status: 404, headers: CORS_HEADERS }
+                { status: 404, headers: cors },
             )
         }
 
@@ -57,7 +70,7 @@ export async function POST(req: NextRequest) {
         if (existing) {
             return NextResponse.json(
                 { error: 'Recibimos tu solicitud hace poco. Por favor, esperá unos minutos.' },
-                { status: 429, headers: CORS_HEADERS }
+                { status: 429, headers: cors },
             )
         }
 
@@ -78,12 +91,9 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(
             { message: 'Lead capturado', leadId: lead.id },
-            { status: 201, headers: CORS_HEADERS }
+            { status: 201, headers: cors },
         )
     } catch {
-        return NextResponse.json(
-            { error: 'Error al guardar lead' },
-            { status: 500, headers: CORS_HEADERS }
-        )
+        return NextResponse.json({ error: 'Error al guardar lead' }, { status: 500, headers: cors })
     }
 }
