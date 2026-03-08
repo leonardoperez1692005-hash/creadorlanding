@@ -45,7 +45,7 @@ export interface TrackingMeta {
 }
 
 export interface WizardState {
-    projectId: string | null      // null = new project
+    projectId: string | null // null = new project
     projectName: string
     structureType: ProjectStructureType
     visualModel: ProjectVisualModel
@@ -59,13 +59,13 @@ export interface WizardState {
     isPreviewLoading: boolean
     showPersonalization: boolean
     showMobilePreview: boolean
-    fromTemplate: boolean         // true when loaded from template gallery (skips type step)
+    fromTemplate: boolean // true when loaded from template gallery (skips type step)
 }
 
 export interface FieldDefinition {
     key: string
     label: string
-    type: 'text' | 'textarea' | 'datetime-local' | 'url' | 'image'
+    type: 'text' | 'textarea' | 'datetime-local' | 'url' | 'image' | 'color'
     placeholder?: string
 }
 
@@ -100,3 +100,6 @@ export interface WizardNavigationState {
     templateType?: ProjectStructureType
     fromStrategy?: boolean
 }
+
+// Re-export section content types
+export type { PreviewContent, ContentItem } from './sectionContent'
