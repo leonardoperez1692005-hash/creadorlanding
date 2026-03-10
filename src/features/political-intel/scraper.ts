@@ -1,5 +1,5 @@
 // =============================================
-// ZentrixOS Political Intelligence — X/Twitter Scraper
+// BrandVortix Political Intelligence — X/Twitter Scraper
 // =============================================
 
 import { logger } from '@/shared/lib/logger'
@@ -12,7 +12,7 @@ function getBdApiKey(): string {
     return process.env.BRIGHTDATA_API_KEY ?? ''
 }
 function getBdZone(): string {
-    return process.env.BRIGHTDATA_ZONE ?? 'zentrixos_scraper'
+    return process.env.BRIGHTDATA_ZONE ?? 'brandvortix_scraper'
 }
 
 // ─── Public API ──────────────────────────────────────────

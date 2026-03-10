@@ -10,6 +10,11 @@ export interface Theme {
     muted: string
     textMuted: string
     isDark: boolean
+    // Extended theme properties (optional, backward-compatible)
+    fontHeading?: string // Google Font name for headings (default: 'Outfit')
+    fontBody?: string // Google Font name for body text (default: 'Outfit')
+    borderRadius?: 'sharp' | 'rounded' | 'pill' // 4px | 16px | 999px
+    cardStyle?: 'flat' | 'glass' | 'bordered' | 'elevated'
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

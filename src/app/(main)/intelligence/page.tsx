@@ -5,13 +5,15 @@ import { IntelligenceClient } from '@/features/political-intel/components/Intell
 import { loadLatestReport } from '@/features/political-intel/actions'
 
 export const metadata: Metadata = {
-    title: 'Intelligence — ZentrixOS',
+    title: 'Intelligence — BrandVortix',
     description: 'Inteligencia política y competitiva en tiempo real',
 }
 
 export default async function IntelligencePage() {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
     // Try to load the latest report from filesystem
@@ -24,10 +26,5 @@ export default async function IntelligencePage() {
         initialSnapshot = result.data.snapshot
     }
 
-    return (
-        <IntelligenceClient
-            initialReport={initialReport}
-            initialSnapshot={initialSnapshot}
-        />
-    )
+    return <IntelligenceClient initialReport={initialReport} initialSnapshot={initialSnapshot} />
 }

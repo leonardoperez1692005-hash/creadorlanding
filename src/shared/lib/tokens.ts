@@ -1,5 +1,5 @@
 /**
- * Design Tokens — ZentrixOS
+ * Design Tokens — BrandVortix
  *
  * Referencia centralizada de valores de diseno.
  * Los CSS variables en globals.css siguen siendo la fuente de verdad en runtime,

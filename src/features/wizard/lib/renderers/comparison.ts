@@ -34,11 +34,11 @@ export const comparisonRenderer: SectionRenderer = (c, t, _ctx) => {
         .map(
             (item: RendererItem) => `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="reveal cmp-row">
-      <div style="padding:20px 24px;border-radius:14px;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);display:flex;align-items:flex-start;gap:12px">
+      <div style="padding:20px 24px;border-radius:var(--radius,14px);background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);display:flex;align-items:flex-start;gap:12px">
         <span style="color:#ef4444;font-weight:900;font-size:1.2rem;flex-shrink:0;line-height:1.4">✗</span>
         <p style="margin:0;font-size:.95rem;line-height:1.7;color:${textColor};opacity:.65">${esc(item.without || '')}</p>
       </div>
-      <div style="padding:20px 24px;border-radius:14px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.22);display:flex;align-items:flex-start;gap:12px">
+      <div style="padding:20px 24px;border-radius:var(--radius,14px);background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.22);display:flex;align-items:flex-start;gap:12px">
         <span style="color:#22c55e;font-weight:900;font-size:1.2rem;flex-shrink:0;line-height:1.4">✓</span>
         <p style="margin:0;font-size:.95rem;line-height:1.7;color:${textColor};font-weight:600">${esc(item.with || '')}</p>
       </div>

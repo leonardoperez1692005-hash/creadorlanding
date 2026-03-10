@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, EyeOff, Trash2, ExternalLink } from 'lucide-react'
+import { MoreVertical, EyeOff, Trash2, ExternalLink, Code2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { unpublishProjectAction, deleteProjectAction } from '@/features/wizard/actions'
+import { generateEmbedSnippet } from '@/lib/exports/widgetCompiler'
 
 interface ProjectActionsProps {
     projectId: string
@@ -176,6 +177,39 @@ export function ProjectActions({ projectId, slug, isPublished }: ProjectActionsP
                                         <ExternalLink style={{ width: '15px', height: '15px' }} />
                                         Ver publicada
                                     </a>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const snippet = generateEmbedSnippet(
+                                                slug,
+                                                window.location.origin,
+                                            )
+                                            await navigator.clipboard.writeText(snippet)
+                                            toast.success(
+                                                'Código de widget copiado al portapapeles',
+                                            )
+                                            setOpen(false)
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            width: '100%',
+                                            padding: '10px 16px',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            color: '#7C3AED',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                            fontFamily: 'inherit',
+                                            transition: 'background 0.15s',
+                                        }}
+                                    >
+                                        <Code2 style={{ width: '15px', height: '15px' }} />
+                                        Widget embebible
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={handleUnpublish}

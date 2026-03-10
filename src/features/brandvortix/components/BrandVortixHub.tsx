@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { Brain, Radar, Crosshair, ArrowRight, CheckCircle, Clock } from 'lucide-react'
 
-interface ZentrixHubProps {
+interface BrandVortixHubProps {
     latestIntelReport: {
         id: string
         date: string
@@ -16,7 +16,7 @@ interface ZentrixHubProps {
     } | null
 }
 
-export function ZentrixHub({ latestIntelReport, latestAttackPlan }: ZentrixHubProps) {
+export function BrandVortixHub({ latestIntelReport, latestAttackPlan }: BrandVortixHubProps) {
     const router = useRouter()
 
     return (
@@ -40,7 +40,7 @@ export function ZentrixHub({ latestIntelReport, latestAttackPlan }: ZentrixHubPr
                 </div>
 
                 <h1 className="text-3xl font-black text-[var(--text-primary)] mb-3">
-                    Zentrix<span className="text-[var(--cyan)]">OS</span>
+                    Brand<span className="text-[var(--cyan)]">Vortix</span>
                 </h1>
 
                 <p className="text-sm max-w-lg mx-auto leading-relaxed text-[var(--text-muted)]">

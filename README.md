@@ -1,4 +1,4 @@
-# ZentrixOS
+# BrandVortix
 
 Fábrica de landing pages con IA. Crea, personaliza y publica landing pages optimizadas para conversión en minutos.
 

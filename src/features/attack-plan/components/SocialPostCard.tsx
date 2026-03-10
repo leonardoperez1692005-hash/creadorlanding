@@ -1,7 +1,7 @@
 'use client'
 
 import type { SocialPost } from '../types'
-import { Linkedin, Twitter, Clock } from 'lucide-react'
+import { Linkedin, Twitter, Clock, Eye } from 'lucide-react'
 
 const PLATFORM_COLORS: Record<string, string> = {
     linkedin: '#0A66C2',
@@ -18,6 +18,7 @@ const PLATFORM_ICONS: Record<string, typeof Linkedin> = {
 interface Props {
     post: SocialPost
     onClick: () => void
+    onPreview?: () => void
 }
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -29,7 +30,7 @@ function PlatformIcon({ platform }: { platform: string }) {
     return null
 }
 
-export function SocialPostCard({ post, onClick }: Props) {
+export function SocialPostCard({ post, onClick, onPreview }: Props) {
     const color = PLATFORM_COLORS[post.platform] ?? '#94a3b8'
 
     return (
@@ -38,7 +39,7 @@ export function SocialPostCard({ post, onClick }: Props) {
             className="w-full text-left rounded-lg border border-[var(--border)] bg-[var(--bg-card)] hover:border-opacity-80 transition-all hover:shadow-md group p-3"
             style={{ borderLeftColor: color, borderLeftWidth: 3 }}
         >
-            {/* Top: platform + type + time */}
+            {/* Top: platform + type + time + preview */}
             <div className="flex items-center gap-2 mb-1.5">
                 <span
                     className="flex items-center justify-center w-5 h-5 rounded"
@@ -49,6 +50,27 @@ export function SocialPostCard({ post, onClick }: Props) {
                 <span className="text-[10px] text-[var(--text-muted)] capitalize flex-1">
                     {post.contentType}
                 </span>
+                {onPreview && (
+                    <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onPreview()
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.stopPropagation()
+                                onPreview()
+                            }
+                        }}
+                        className="p-0.5 rounded hover:bg-white/10 transition-colors"
+                        title="Vista previa visual"
+                        aria-label="Vista previa visual"
+                    >
+                        <Eye className="w-3 h-3 text-[var(--text-muted)] group-hover:text-[var(--cyan)]" />
+                    </span>
+                )}
                 <span className="flex items-center gap-0.5 text-[10px] text-[var(--text-muted)]">
                     <Clock className="w-2.5 h-2.5" />
                     {post.bestTime}

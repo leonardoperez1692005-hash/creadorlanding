@@ -43,10 +43,19 @@ export const env = {
         if (!key) throw new Error('Missing env var: GEMINI_API_KEY or GOOGLE_AI_API_KEY')
         return key
     },
+    /** AI provider: 'gemini' (default) or 'claude' */
+    get aiProvider(): string {
+        return (process.env.AI_PROVIDER ?? 'gemini').toLowerCase()
+    },
+    get claudeApiKey(): string {
+        const key = process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY
+        if (!key) throw new Error('Missing env var: CLAUDE_API_KEY or ANTHROPIC_API_KEY')
+        return key
+    },
     get brightdataApiKey(): string {
         return process.env.BRIGHTDATA_API_KEY ?? ''
     },
     get brightdataZone(): string {
-        return process.env.BRIGHTDATA_ZONE ?? 'zentrixos_scraper'
+        return process.env.BRIGHTDATA_ZONE ?? 'brandvortix_scraper'
     },
 }

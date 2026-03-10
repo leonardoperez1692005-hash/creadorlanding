@@ -10,7 +10,6 @@ import type {
     StrategyData,
     StrategyMeta,
     StrategyHistoryItem,
-    TacticalResult,
     ObjectionsData,
     ContentData,
 } from './types'
@@ -81,6 +80,20 @@ export async function runStrategyAnalysisAction(
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
+        // === FASE 0: Load brand identity for real product/service data ===
+        const { data: brandRow } = await supabase
+            .from('brand_identities')
+            .select('brand_name, services, differentiators, faqs, testimonials, stats')
+            .eq('user_id', user.id)
+            .single()
+
+        if (!brandRow?.brand_name && !brief.brandName) {
+            return {
+                success: false,
+                error: 'Completá tu configuración de marca en Onboarding antes de generar una estrategia',
+            }
+        }
+
         // === FASE 1: Bright Data — Scraping de competidores ===
         const competitorUrls = extractUrls(brief.competitors)
         const scrapedParts: string[] = []
@@ -113,6 +126,47 @@ export async function runStrategyAnalysisAction(
         }
 
         // === FASE 3: Gemini — Síntesis estratégica ===
+
+        // Build real product/service block from brand identity
+        let realBusinessBlock = ''
+        if (brandRow) {
+            const parts: string[] = []
+            const services = brandRow.services as Array<{
+                title: string
+                description: string
+            }> | null
+            const differentiators = brandRow.differentiators as string | null
+            const faqs = brandRow.faqs as Array<{ question: string; answer: string }> | null
+            const testimonials = brandRow.testimonials as Array<{
+                text: string
+                author: string
+            }> | null
+            const stats = brandRow.stats as Array<{ value: string; label: string }> | null
+
+            if (services && services.length > 0) {
+                const list = services.map((s) => `  - ${s.title}: ${s.description}`).join('\n')
+                parts.push(`Servicios/Productos reales:\n${list}`)
+            }
+            if (differentiators) parts.push(`Diferenciadores: ${differentiators}`)
+            if (faqs && faqs.length > 0) {
+                const list = faqs.map((f) => `  - ${f.question}`).join('\n')
+                parts.push(`Preguntas frecuentes reales:\n${list}`)
+            }
+            if (testimonials && testimonials.length > 0) {
+                parts.push(`Testimonios reales: ${testimonials.length} disponibles`)
+            }
+            if (stats && stats.length > 0) {
+                const list = stats.map((s) => `  - ${s.value} ${s.label}`).join('\n')
+                parts.push(`Métricas reales:\n${list}`)
+            }
+
+            if (parts.length > 0) {
+                realBusinessBlock = `\n## PRODUCTOS/SERVICIOS REALES DEL CLIENTE (usar como base para ángulos de venta)
+${parts.join('\n\n')}
+REGLA: Los ángulos de venta deben construirse desde estos servicios y diferenciadores reales, NO inventar servicios genéricos.\n`
+            }
+        }
+
         const strategyPrompt = `Eres un estratega de marketing de élite con experiencia en mercados hispanohablantes.
 Genera un plan estratégico completo basado en estos datos:
 
@@ -123,6 +177,7 @@ Genera un plan estratégico completo basado en estos datos:
 - Público objetivo: ${brief.targetAudience || 'No especificado'}
 - Objetivos: ${brief.objectives || 'Ventas'}
 - País: ${brief.country || 'Argentina'}
+${realBusinessBlock}
 
 ## DATOS DE COMPETIDORES (Bright Data Scraping)
 ${scrapedParts.join('\n\n---\n\n') || 'No se pudieron scrapear webs de competidores'}
@@ -229,18 +284,42 @@ export async function runTacticalOperationAction(
         let prompt = ''
         const { brandName = 'Mi marca', sector = 'general' } = context
 
+        // Load real business data for richer tactical content
+        const { data: brandRow } = await supabase
+            .from('brand_identities')
+            .select('services, differentiators')
+            .eq('user_id', user.id)
+            .single()
+
+        let businessContext = ''
+        if (brandRow) {
+            const parts: string[] = []
+            const services = brandRow.services as Array<{
+                title: string
+                description: string
+            }> | null
+            const differentiators = brandRow.differentiators as string | null
+            if (services && services.length > 0) {
+                parts.push(`Servicios: ${services.map((s) => s.title).join(', ')}`)
+            }
+            if (differentiators) parts.push(`Diferenciadores: ${differentiators}`)
+            if (parts.length > 0) {
+                businessContext = `\nContexto real del negocio:\n${parts.join('\n')}\nUsa estos datos reales en las respuestas — no inventes servicios genéricos.\n`
+            }
+        }
+
         if (type === 'objections') {
             prompt = `Eres un simulador de ventas experto. La marca "${brandName}" del sector "${sector}" usa este ángulo:
 
 "${salesAngle}"
-
+${businessContext}
 Genera un JSON con 3 objeciones de clientes difíciles y sus contra-argumentos tipo "Judo Verbal":
 
 {
   "objections": [
     {
       "objection": "Lo que diría el cliente escéptico",
-      "counterArgument": "Respuesta usando Judo Verbal (redirigir la objeción a tu favor)",
+      "counterArgument": "Respuesta usando Judo Verbal (redirigir la objeción a tu favor, referenciando servicios y diferenciadores reales)",
       "technique": "Nombre de la técnica usada"
     }
   ]
@@ -251,6 +330,7 @@ Responde SOLO con JSON válido. Todo en español.`
             prompt = `Eres un creador de contenido viral hispano. La marca "${brandName}" del sector "${sector}" quiere contenido basado en:
 
 "${salesAngle}"
+${businessContext}
 
 Genera un JSON con contenido para TikTok y LinkedIn:
 
@@ -422,6 +502,53 @@ export async function generateLandingContentAction(
         const requiredSections = TEMPLATE_SECTIONS[templateType] ?? TEMPLATE_SECTIONS['vsl']!
         const sectionJsonExample = buildSectionJsonExample(templateType)
 
+        // Load real business data for the landing content
+        const { data: brandRow } = await supabase
+            .from('brand_identities')
+            .select('services, differentiators, faqs, testimonials, stats')
+            .eq('user_id', user.id)
+            .single()
+
+        let realDataBlock = ''
+        if (brandRow) {
+            const parts: string[] = []
+            const services = brandRow.services as Array<{
+                title: string
+                description: string
+            }> | null
+            const differentiators = brandRow.differentiators as string | null
+            const faqs = brandRow.faqs as Array<{ question: string; answer: string }> | null
+            const testimonials = brandRow.testimonials as Array<{
+                text: string
+                author: string
+            }> | null
+            const stats = brandRow.stats as Array<{ value: string; label: string }> | null
+
+            if (services && services.length > 0) {
+                const list = services.map((s) => `  - ${s.title}: ${s.description}`).join('\n')
+                parts.push(`Servicios reales:\n${list}`)
+            }
+            if (differentiators) parts.push(`Diferenciadores: ${differentiators}`)
+            if (faqs && faqs.length > 0) {
+                const list = faqs.map((f) => `  - P: ${f.question}\n    R: ${f.answer}`).join('\n')
+                parts.push(`FAQs reales:\n${list}`)
+            }
+            if (testimonials && testimonials.length > 0) {
+                const list = testimonials.map((t) => `  - "${t.text}" — ${t.author}`).join('\n')
+                parts.push(`Testimonios reales (usar tal cual):\n${list}`)
+            }
+            if (stats && stats.length > 0) {
+                const list = stats.map((s) => `  - ${s.value} ${s.label}`).join('\n')
+                parts.push(`Stats reales (usar tal cual):\n${list}`)
+            }
+
+            if (parts.length > 0) {
+                realDataBlock = `\n## DATOS REALES DEL NEGOCIO (USAR COMO BASE — no inventar alternativas)
+${parts.join('\n\n')}
+REGLA: Si hay servicios reales, usar esos. Si hay testimonios/stats, usar tal cual. Solo complementar con contenido del sector si faltan datos.\n`
+            }
+        }
+
         const prompt = `Eres un copywriter de élite que escribe landing pages de alta conversión.
 
 ## BRIEF
@@ -433,7 +560,7 @@ export async function generateLandingContentAction(
 - Nombre: ${angle?.name || ''}
 - Hook: ${angle?.hook || ''}
 - Descripción: ${angle?.description || ''}
-
+${realDataBlock}
 ## BLUEPRINT DE SECCIONES
 ${(strategy.landingBlueprint?.sections || []).map((s, i) => `${i + 1}. ${s.name}: ${s.suggestedContent}`).join('\n')}
 
@@ -446,6 +573,7 @@ Oportunidades: ${(strategy.marketInsights?.opportunities || []).join(', ')}
 2. Cada sección DEBE tener las keys exactas del ejemplo de abajo
 3. Las secciones con "items" DEBEN tener un array "items" con al menos 3 elementos
 4. Todo el copy debe ser REAL y persuasivo, NO placeholders genéricos
+5. Si hay datos reales del negocio arriba, USALOS como base para servicios, testimonios, stats y FAQ
 
 Genera un JSON con esta estructura EXACTA:
 ${sectionJsonExample}
@@ -510,9 +638,7 @@ export async function fetchStrategyHistoryAction(): Promise<
 // ================================
 // ACTION: LOAD HISTORY ITEM
 // ================================
-export async function loadStrategyHistoryItemAction(
-    historyId: string,
-): Promise<
+export async function loadStrategyHistoryItemAction(historyId: string): Promise<
     StrategyActionResult<{
         strategy: StrategyData
         meta: StrategyMeta

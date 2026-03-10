@@ -34,8 +34,11 @@ test.describe('Security headers', () => {
         expect(response.headers()['x-frame-options']).toBe('SAMEORIGIN')
     })
 
-    test('landing pages do NOT include CSP', async ({ request }) => {
+    test('landing pages include relaxed CSP (no strict-dynamic)', async ({ request }) => {
         const response = await request.get('/p/test-slug')
-        expect(response.headers()['content-security-policy']).toBeFalsy()
+        const csp = response.headers()['content-security-policy']
+        expect(csp).toBeTruthy()
+        expect(csp).toContain("'unsafe-inline'")
+        expect(csp).not.toContain('strict-dynamic')
     })
 })

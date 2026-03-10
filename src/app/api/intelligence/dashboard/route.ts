@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
 export async function GET() {
     try {
@@ -10,6 +11,11 @@ export async function GET() {
         } = await supabase.auth.getUser()
         if (!user) {
             return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+        }
+
+        const rl = await rateLimitAsync(`intel-dashboard:${user.id}`, { limit: 30, windowSec: 60 })
+        if (!rl.allowed) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
         }
 
         const { data: dashboard } = await supabase

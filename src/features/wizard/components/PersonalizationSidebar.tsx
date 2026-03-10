@@ -8,6 +8,8 @@ import type {
     ProjectVisualModel,
     ProjectStructureType,
 } from '../types'
+import { THEME_PRESETS } from '../config/themes'
+import { BACKGROUND_PRESETS } from '@/lib/canvas/generativeBackgrounds'
 
 // ─── Catálogo completo de bloques disponibles ─────────────────
 const BLOCK_GROUPS: { label: string; color: string; blocks: { type: string; label: string }[] }[] =
@@ -112,6 +114,7 @@ interface PersonalizationSidebarProps {
     projectName: string
     onAddSection?: (type: string) => void
     onRemoveSection?: (id: string) => void
+    onApplyPreset?: (themeId: string) => void
 }
 
 const sectionTitle: React.CSSProperties = {
@@ -134,6 +137,7 @@ export function PersonalizationSidebar({
     onClose,
     onAddSection,
     onRemoveSection,
+    onApplyPreset,
 }: PersonalizationSidebarProps) {
     const [showBlockPicker, setShowBlockPicker] = useState(false)
 
@@ -202,24 +206,117 @@ export function PersonalizationSidebar({
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
                     onMouseLeave={(e) => (e.currentTarget.style.color = '#5d7099')}
+                    aria-label="Cerrar personalización"
                 >
                     <X style={{ width: '16px', height: '16px' }} />
                 </button>
             </div>
 
-            {/* Scrollable content — 2 columns + sections below */}
+            {/* Scrollable content — 3 columns + sections below */}
             <div
                 style={{
                     flex: 1,
                     overflowY: 'auto',
                     padding: '14px 16px',
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateColumns: '1fr 1fr 1fr',
                     gap: '16px',
                     alignContent: 'start',
                 }}
             >
-                {/* Column 1: Mode + Palette */}
+                {/* Column 1: Theme Presets */}
+                <div>
+                    <p style={sectionTitle}>Temas</p>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            maxHeight: '240px',
+                            overflowY: 'auto',
+                        }}
+                    >
+                        {THEME_PRESETS.map((preset) => {
+                            const isActive = customColors.themePreset === preset.id
+                            return (
+                                <button
+                                    key={preset.id}
+                                    onClick={() => onApplyPreset?.(preset.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '7px 10px',
+                                        borderRadius: '8px',
+                                        border: isActive
+                                            ? '1px solid #00c8ff'
+                                            : '1px solid #1e2847',
+                                        background: isActive ? '#0d1f30' : '#0f1425',
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit',
+                                        textAlign: 'left',
+                                        transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isActive) e.currentTarget.style.borderColor = '#2a4060'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isActive) e.currentTarget.style.borderColor = '#1e2847'
+                                    }}
+                                >
+                                    {/* Color dots */}
+                                    <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                                        {[preset.primary, preset.secondary, preset.accent].map(
+                                            (c, i) => (
+                                                <div
+                                                    key={i}
+                                                    style={{
+                                                        width: '10px',
+                                                        height: '10px',
+                                                        borderRadius: '50%',
+                                                        background: c,
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                    }}
+                                                />
+                                            ),
+                                        )}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <p
+                                            style={{
+                                                fontSize: '11px',
+                                                fontWeight: 700,
+                                                color: isActive ? '#00c8ff' : '#c8d4e8',
+                                                margin: 0,
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}
+                                        >
+                                            {preset.name}
+                                        </p>
+                                        <p style={{ fontSize: '9px', color: '#5d7099', margin: 0 }}>
+                                            {preset.description}
+                                        </p>
+                                    </div>
+                                    {preset.isDark && (
+                                        <span
+                                            style={{
+                                                fontSize: '8px',
+                                                color: '#5d7099',
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            DARK
+                                        </span>
+                                    )}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+
+                {/* Column 2: Mode + Palette */}
                 <div>
                     {/* Visual Model */}
                     <div style={{ marginBottom: '16px' }}>
@@ -261,6 +358,7 @@ export function PersonalizationSidebar({
                                     key={color}
                                     onClick={() => updateColor('primary', color)}
                                     title={color}
+                                    aria-label={`Seleccionar color ${color}`}
                                     style={{
                                         width: '26px',
                                         height: '26px',
@@ -287,9 +385,87 @@ export function PersonalizationSidebar({
                             ))}
                         </div>
                     </div>
+
+                    {/* Generative backgrounds */}
+                    <div style={{ marginTop: '16px' }}>
+                        <p style={sectionTitle}>Fondo Generativo</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <button
+                                onClick={() =>
+                                    setCustomColors({
+                                        ...customColors,
+                                        backgroundPreset: undefined,
+                                    })
+                                }
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    border: !customColors.backgroundPreset
+                                        ? '1px solid #00c8ff'
+                                        : '1px solid #1e2847',
+                                    background: !customColors.backgroundPreset
+                                        ? '#0d1f30'
+                                        : '#0f1425',
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit',
+                                    textAlign: 'left',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: !customColors.backgroundPreset ? '#00c8ff' : '#8b9ec7',
+                                }}
+                            >
+                                Ninguno
+                            </button>
+                            {BACKGROUND_PRESETS.map((preset) => {
+                                const isActive = customColors.backgroundPreset === preset.id
+                                return (
+                                    <button
+                                        key={preset.id}
+                                        onClick={() =>
+                                            setCustomColors({
+                                                ...customColors,
+                                                backgroundPreset: preset.id,
+                                            })
+                                        }
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '6px 10px',
+                                            borderRadius: '8px',
+                                            border: isActive
+                                                ? '1px solid #00c8ff'
+                                                : '1px solid #1e2847',
+                                            background: isActive ? '#0d1f30' : '#0f1425',
+                                            cursor: 'pointer',
+                                            fontFamily: 'inherit',
+                                            textAlign: 'left',
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            color: isActive ? '#00c8ff' : '#8b9ec7',
+                                            transition: 'all 0.15s',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isActive)
+                                                e.currentTarget.style.borderColor = '#2a4060'
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isActive)
+                                                e.currentTarget.style.borderColor = '#1e2847'
+                                        }}
+                                    >
+                                        {preset.name}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Column 2: Precise colors */}
+                {/* Column 3: Precise colors */}
                 <div>
                     <p style={sectionTitle}>Colores Precisos</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -375,7 +551,6 @@ export function PersonalizationSidebar({
                     <p style={sectionTitle}>Secciones</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {sections.map((section, i) => {
-                            const isCustom = section.type === 'html_embed'
                             return (
                                 <div
                                     key={section.id}
@@ -400,6 +575,7 @@ export function PersonalizationSidebar({
                                         <button
                                             onClick={() => i > 0 && moveSection(i, i - 1)}
                                             disabled={i === 0}
+                                            aria-label="Mover arriba"
                                             style={{
                                                 padding: '2px',
                                                 background: 'none',
@@ -416,6 +592,7 @@ export function PersonalizationSidebar({
                                                 i < sections.length - 1 && moveSection(i, i + 1)
                                             }
                                             disabled={i === sections.length - 1}
+                                            aria-label="Mover abajo"
                                             style={{
                                                 padding: '2px',
                                                 background: 'none',
@@ -448,6 +625,11 @@ export function PersonalizationSidebar({
                                     </p>
                                     <button
                                         onClick={() => toggleVisibility(section.id)}
+                                        aria-label={
+                                            section.isVisible
+                                                ? 'Ocultar sección'
+                                                : 'Mostrar sección'
+                                        }
                                         style={{
                                             padding: '4px',
                                             borderRadius: '6px',
@@ -464,10 +646,11 @@ export function PersonalizationSidebar({
                                             <EyeOff style={{ width: '14px', height: '14px' }} />
                                         )}
                                     </button>
-                                    {isCustom && onRemoveSection && (
+                                    {onRemoveSection && (
                                         <button
                                             onClick={() => onRemoveSection(section.id)}
                                             title="Eliminar bloque"
+                                            aria-label="Eliminar bloque"
                                             style={{
                                                 padding: '4px',
                                                 borderRadius: '6px',

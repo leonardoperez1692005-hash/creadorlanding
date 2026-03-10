@@ -36,7 +36,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
     const router = useRouter()
     const store = useWizardStore()
     const { undo, redo, pastStates, futureStates } = useStore(useWizardStore.temporal)
-    const { ready, isEditMode } = useWizardInit(projectId)
+    const { ready } = useWizardInit(projectId)
 
     const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
     const [showFullPreview, setShowFullPreview] = useState(false)
@@ -192,6 +192,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
                     onMouseLeave={(e) => (e.currentTarget.style.color = '#5d7099')}
+                    aria-label="Volver al dashboard"
                 >
                     <ArrowLeft className="w-4 h-4" />
                 </button>
@@ -200,6 +201,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     value={store.projectName}
                     onChange={(e) => store.setProjectName(e.target.value)}
                     placeholder="Nombre del proyecto"
+                    aria-label="Nombre del proyecto"
                     maxLength={80}
                     style={{
                         flex: 1,
@@ -227,6 +229,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                             onClick={() => undo()}
                             disabled={pastStates.length === 0}
                             title="Deshacer (Ctrl+Z)"
+                            aria-label="Deshacer"
                             style={{
                                 padding: '6px',
                                 borderRadius: '6px',
@@ -243,6 +246,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                             onClick={() => redo()}
                             disabled={futureStates.length === 0}
                             title="Rehacer (Ctrl+Shift+Z)"
+                            aria-label="Rehacer"
                             style={{
                                 padding: '6px',
                                 borderRadius: '6px',
@@ -506,6 +510,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                                     cursor: 'pointer',
                                 }}
                                 className="lg:hidden"
+                                aria-label="Volver al editor"
                             >
                                 <ArrowLeft className="w-4 h-4" />
                             </button>
@@ -643,6 +648,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     projectName={store.projectName}
                     onAddSection={store.addSection}
                     onRemoveSection={store.removeSection}
+                    onApplyPreset={store.applyPresetTheme}
                 />
             )}
         </div>

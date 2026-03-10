@@ -6,12 +6,24 @@ import { callGemini, parseAndValidate } from '@/lib/gemini'
 import type { CompetitorSnapshot, IntelReport } from './types'
 import { intelReportSchema } from './schemas'
 
+/** Lightweight brand context for competitive analysis */
+export interface BrandContext {
+    brandName: string
+    sector: string
+    values: string
+    differentiators: string
+    services: Array<{ title: string; description: string }>
+}
+
 /**
  * Analyze competitor snapshots + SERP context via Gemini.
+ * When brand context is provided, vulnerabilities are analyzed
+ * relative to the brand's strengths — not in isolation.
  */
 export async function analyzeCompetitorsWithGemini(
     snapshots: CompetitorSnapshot[],
     serpResults: string[],
+    brand?: BrandContext,
 ): Promise<IntelReport> {
     const successfulSnapshots = snapshots.filter((s) => s.success)
 
@@ -42,11 +54,25 @@ export async function analyzeCompetitorsWithGemini(
             ? serpResults.join('\n\n---\n\n')
             : 'No se pudo obtener contexto SERP.'
 
+    // Brand context block — if available, vulnerabilities are cross-referenced with brand strengths
+    let brandBlock = ''
+    if (brand && brand.brandName) {
+        const parts: string[] = [`- Nombre: ${brand.brandName}`, `- Sector: ${brand.sector}`]
+        if (brand.values) parts.push(`- Valores: ${brand.values}`)
+        if (brand.differentiators) parts.push(`- Diferenciadores: ${brand.differentiators}`)
+        if (brand.services.length > 0) {
+            const list = brand.services.map((s) => `  - ${s.title}: ${s.description}`).join('\n')
+            parts.push(`- Servicios/Productos:\n${list}`)
+        }
+        brandBlock = `\n## TU MARCA (analiza vulnerabilidades EN RELACION a estas fortalezas)
+${parts.join('\n')}\n`
+    }
+
     const prompt = `IDIOMA: TODO el contenido que generes DEBE estar en ESPAÑOL (castellano). Sin excepciones. Ningun texto en ingles.
 
 Eres un analista de inteligencia competitiva de elite.
 Analiza los siguientes competidores y genera un reporte estrategico accionable.
-
+${brandBlock}
 ## COMPETIDORES ANALIZADOS
 ${competitorBlocks}
 
@@ -96,6 +122,7 @@ IMPORTANTE:
 - Genera al menos 2 vulnerabilidades por competidor
 - Al menos 3 attack vectors recomendados
 - Todo el analisis enfocado en encontrar BRECHAS para superar al rival
+${brand?.brandName ? '- Los "exploitAngle" y "suggestedAngle" deben considerar las fortalezas, servicios y diferenciadores de la marca del cliente — no ser genericos' : ''}
 - OBLIGATORIO: TODO el contenido debe estar en ESPAÑOL (castellano). Cero textos en ingles.
 - Responde SOLO con JSON valido`
 

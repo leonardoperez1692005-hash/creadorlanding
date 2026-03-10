@@ -33,6 +33,13 @@ export interface DesignColors {
     accent?: string
     background?: string
     text?: string
+    // Typography & style (from theme presets)
+    fontHeading?: string
+    fontBody?: string
+    borderRadius?: 'sharp' | 'rounded' | 'pill'
+    cardStyle?: 'flat' | 'glass' | 'bordered' | 'elevated'
+    themePreset?: string
+    backgroundPreset?: string
     [key: string]: string | undefined
 }
 
@@ -74,7 +81,7 @@ export interface WizardStepConfig {
     steps: string[]
 }
 
-// Strategy integration (from ZentrixOS)
+// Strategy integration (from BrandVortix)
 export interface StrategyData {
     brandName?: string
     salesAngles?: Array<{

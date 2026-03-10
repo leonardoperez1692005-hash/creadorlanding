@@ -1,4 +1,4 @@
-# Guía de Deployment — ZentrixOS
+# Guía de Deployment — BrandVortix
 
 ## Pre-requisitos
 

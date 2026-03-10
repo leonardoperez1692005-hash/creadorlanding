@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+import Image from 'next/image'
 import { sanitizeHtml } from '@/shared/lib/sanitize'
 import type { SectionPreviewProps, ContentItem } from './types'
 
@@ -60,9 +60,12 @@ export function ServicesPreview({ content, m }: SectionPreviewProps) {
                                           className="relative overflow-hidden"
                                           style={{ aspectRatio: '16/10' }}
                                       >
-                                          <img
+                                          <Image
                                               src={item.image!}
                                               alt={item.title || ''}
+                                              width={800}
+                                              height={500}
+                                              unoptimized
                                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                           />
                                           {item.tag && (
@@ -169,9 +172,12 @@ export function PortfolioPreview({ content, m }: SectionPreviewProps) {
                           >
                               <div className="aspect-video overflow-hidden">
                                   {item.image ? (
-                                      <img
+                                      <Image
                                           src={item.image}
                                           alt={item.title || ''}
+                                          width={800}
+                                          height={450}
+                                          unoptimized
                                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                       />
                                   ) : (
@@ -235,9 +241,12 @@ export function GalleryPreview({ content, m }: SectionPreviewProps) {
                               }}
                           >
                               {item.url ? (
-                                  <img
+                                  <Image
                                       src={item.url}
                                       alt={item.caption || ''}
+                                      width={600}
+                                      height={450}
+                                      unoptimized
                                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                   />
                               ) : (
@@ -291,9 +300,12 @@ export function LogoWallPreview({ content, m, title }: SectionPreviewProps & { t
                               style={{ borderColor: 'var(--preview-muted)' }}
                           >
                               {item.logo ? (
-                                  <img
+                                  <Image
                                       src={item.logo}
                                       alt={item.name || ''}
+                                      width={96}
+                                      height={96}
+                                      unoptimized
                                       className="max-w-full max-h-full object-contain p-2"
                                   />
                               ) : (
@@ -389,9 +401,12 @@ export function SpeakersPreview({ content, m }: SectionPreviewProps) {
                                   }}
                               >
                                   {item.photo ? (
-                                      <img
+                                      <Image
                                           src={item.photo}
                                           alt={item.name || ''}
+                                          width={160}
+                                          height={160}
+                                          unoptimized
                                           className="w-full h-full object-cover"
                                       />
                                   ) : (

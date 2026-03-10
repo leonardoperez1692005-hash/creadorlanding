@@ -111,6 +111,7 @@ export function FullPreviewModal({ onClose }: FullPreviewModalProps) {
                         cursor: 'pointer',
                     }}
                     title="Cerrar (Esc)"
+                    aria-label="Cerrar vista previa"
                 >
                     <X className="w-4 h-4" />
                 </button>

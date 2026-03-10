@@ -1,17 +1,22 @@
 // =============================================
-// ZentrixOS Political Intelligence — Config
+// BrandVortix Political Intelligence — Config
 // =============================================
 
 import type { PoliticianTarget } from './types'
 
 /** Politicos argentinos para demo */
 export const POLITICIANS: PoliticianTarget[] = [
-    { handle: 'JMilei',        fullName: 'Javier Milei',        party: 'LLA',  role: 'Presidente' },
-    { handle: 'CFKArgentina',  fullName: 'Cristina Fernández',  party: 'PJ',   role: 'Ex-Vicepresidenta' },
-    { handle: 'SergioMassa',   fullName: 'Sergio Massa',        party: 'UxP',  role: 'Ex-Min. Economía' },
-    { handle: 'PatoBullrich',  fullName: 'Patricia Bullrich',   party: 'PRO',  role: 'Min. Seguridad' },
-    { handle: 'Aborneyk',      fullName: 'Axel Kicillof',       party: 'PJ',   role: 'Gobernador PBA' },
-    { handle: 'JuanGrabois',   fullName: 'Juan Grabois',        party: 'UP',   role: 'Dirigente Social' },
+    { handle: 'JMilei', fullName: 'Javier Milei', party: 'LLA', role: 'Presidente' },
+    {
+        handle: 'CFKArgentina',
+        fullName: 'Cristina Fernández',
+        party: 'PJ',
+        role: 'Ex-Vicepresidenta',
+    },
+    { handle: 'SergioMassa', fullName: 'Sergio Massa', party: 'UxP', role: 'Ex-Min. Economía' },
+    { handle: 'PatoBullrich', fullName: 'Patricia Bullrich', party: 'PRO', role: 'Min. Seguridad' },
+    { handle: 'Aborneyk', fullName: 'Axel Kicillof', party: 'PJ', role: 'Gobernador PBA' },
+    { handle: 'JuanGrabois', fullName: 'Juan Grabois', party: 'UP', role: 'Dirigente Social' },
 ]
 
 /** Queries SERP para contexto politico */

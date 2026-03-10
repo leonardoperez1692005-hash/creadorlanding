@@ -1,5 +1,5 @@
 // =============================================
-// ZentrixOS Political Intelligence — Gemini Analyzer
+// BrandVortix Political Intelligence — Gemini Analyzer
 // =============================================
 
 import type {
@@ -13,15 +13,19 @@ import { POLITICIANS, GEMINI_MODEL, GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE } from
 // ─── Metrics Computation ─────────────────────────────────
 
 export function computeMetrics(profiles: TwitterProfileSnapshot[]): ProfileMetrics[] {
-    return profiles.map(p => {
-        const target = POLITICIANS.find(t => `@${t.handle}` === p.handle)
+    return profiles.map((p) => {
+        const target = POLITICIANS.find((t) => `@${t.handle}` === p.handle)
         const daysSinceCreation = p.accountCreatedAt
-            ? Math.max(1, Math.floor((Date.now() - new Date(p.accountCreatedAt).getTime()) / 86_400_000))
+            ? Math.max(
+                  1,
+                  Math.floor((Date.now() - new Date(p.accountCreatedAt).getTime()) / 86_400_000),
+              )
             : 365 // fallback
 
-        const ratio = p.followingCount > 0
-            ? Math.round((p.followersCount / p.followingCount) * 100) / 100
-            : p.followersCount
+        const ratio =
+            p.followingCount > 0
+                ? Math.round((p.followersCount / p.followingCount) * 100) / 100
+                : p.followersCount
 
         const tweetsPerDay = Math.round((p.tweetsCount / daysSinceCreation) * 100) / 100
 
@@ -55,25 +59,31 @@ export async function analyzeWithGemini(
     const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY
     if (!apiKey) throw new Error('GEMINI_API_KEY no configurada en .env.local')
 
-    const profilesBlock = profiles.map(p => {
-        const m = metrics.find(x => x.handle === p.handle)
-        return `- **${p.displayName}** (${p.handle}) — ${m?.party ?? ''}, ${m?.role ?? ''}
+    const profilesBlock = profiles
+        .map((p) => {
+            const m = metrics.find((x) => x.handle === p.handle)
+            return `- **${p.displayName}** (${p.handle}) — ${m?.party ?? ''}, ${m?.role ?? ''}
   Bio: ${p.bio.substring(0, 200)}
   Ubicación: ${p.location || 'No especificada'}
   Seguidores: ${fmtNum(p.followersCount)} | Siguiendo: ${fmtNum(p.followingCount)} | Tweets: ${fmtNum(p.tweetsCount)}
   Ratio seg/sig: ${m?.followerToFollowingRatio ?? 0} | Tweets/día: ${m?.tweetsPerDay ?? 0} | Eficiencia: ${m?.audienceEfficiency ?? '?'}
   Cuenta creada: ${p.accountCreatedAt || 'Desconocido'}`
-    }).join('\n\n')
+        })
+        .join('\n\n')
 
     const metricsTable = metrics
         .sort((a, b) => b.followers - a.followers)
-        .map((m, i) => `${i + 1}. ${m.displayName} (${m.party}) — ${fmtNum(m.followers)} seg, ratio ${m.followerToFollowingRatio}, ${m.tweetsPerDay} tw/día, eficiencia ${m.audienceEfficiency}`)
+        .map(
+            (m, i) =>
+                `${i + 1}. ${m.displayName} (${m.party}) — ${fmtNum(m.followers)} seg, ratio ${m.followerToFollowingRatio}, ${m.tweetsPerDay} tw/día, eficiencia ${m.audienceEfficiency}`,
+        )
         .join('\n')
 
-    const serpBlock = serpResults
-        .filter(s => s.success && s.content.length > 50)
-        .map(s => `### Query: "${s.query}"\n${s.content}`)
-        .join('\n\n---\n\n') || 'No se pudo obtener contexto SERP.'
+    const serpBlock =
+        serpResults
+            .filter((s) => s.success && s.content.length > 50)
+            .map((s) => `### Query: "${s.query}"\n${s.content}`)
+            .join('\n\n---\n\n') || 'No se pudo obtener contexto SERP.'
 
     const prompt = `Eres un consultor de inteligencia política de élite especializado en Argentina.
 Analiza los siguientes perfiles de políticos argentinos en X/Twitter y genera un reporte estratégico accionable.
@@ -156,7 +166,7 @@ IMPORTANTE:
                     responseMimeType: 'application/json',
                 },
             }),
-        }
+        },
     )
 
     if (!res.ok) {
@@ -168,11 +178,16 @@ IMPORTANTE:
     const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
     const parsed = parseJsonFromAI(rawText)
-    const analysis = parsed as Omit<PoliticalIntelligenceReport, 'version' | 'generatedAt' | 'profileRankings'>
+    const analysis = parsed as Omit<
+        PoliticalIntelligenceReport,
+        'version' | 'generatedAt' | 'profileRankings'
+    >
 
     // Build rankings
     const byFollowers = [...metrics].sort((a, b) => b.followers - a.followers)
-    const byEfficiency = [...metrics].sort((a, b) => b.followerToFollowingRatio - a.followerToFollowingRatio)
+    const byEfficiency = [...metrics].sort(
+        (a, b) => b.followerToFollowingRatio - a.followerToFollowingRatio,
+    )
     const byEngagement = [...metrics].sort((a, b) => b.tweetsPerDay - a.tweetsPerDay)
 
     return {
@@ -184,9 +199,18 @@ IMPORTANTE:
             byAudienceEfficiency: byEfficiency,
         },
         executiveSummary: analysis.executiveSummary ?? '',
-        strategicInsights: analysis.strategicInsights ?? { dominantNarratives: [], emergingTrends: [], vulnerabilities: [], opportunities: [] },
+        strategicInsights: analysis.strategicInsights ?? {
+            dominantNarratives: [],
+            emergingTrends: [],
+            vulnerabilities: [],
+            opportunities: [],
+        },
         comparativeAnalysis: analysis.comparativeAnalysis ?? [],
-        marketContext: analysis.marketContext ?? { currentPoliticalClimate: '', keyIssues: [], publicSentiment: '' },
+        marketContext: analysis.marketContext ?? {
+            currentPoliticalClimate: '',
+            keyIssues: [],
+            publicSentiment: '',
+        },
         recommendedActions: analysis.recommendedActions ?? [],
     }
 }
@@ -194,7 +218,10 @@ IMPORTANTE:
 // ─── Helpers ─────────────────────────────────────────────
 
 function parseJsonFromAI(raw: string): unknown {
-    let clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    let clean = raw
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim()
     const match = clean.match(/\{[\s\S]*\}/)
     if (match) clean = match[0]
     return JSON.parse(clean)

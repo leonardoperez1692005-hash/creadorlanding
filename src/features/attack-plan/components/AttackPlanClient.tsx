@@ -99,11 +99,11 @@ export function AttackPlanClient() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
                 <div className="flex items-center gap-3">
                     <Link
-                        href="/zentrix"
+                        href="/brandvortix"
                         className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors mr-2"
                     >
                         <ArrowLeft className="w-3.5 h-3.5" />
-                        ZentrixOS
+                        BrandVortix
                     </Link>
                     <div className="w-px h-5 bg-[var(--border)]" />
                     <Crosshair className="w-6 h-6 text-[var(--pink)]" />

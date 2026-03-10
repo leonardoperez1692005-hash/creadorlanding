@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Users, ArrowRight } from 'lucide-react'
 import Loading from './loading'
 
-export const metadata: Metadata = { title: 'Leads — ZentrixOS' }
+export const metadata: Metadata = { title: 'Leads — BrandVortix' }
 
 async function LeadsContent() {
     const supabase = await createClient()

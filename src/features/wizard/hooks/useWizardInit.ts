@@ -82,7 +82,7 @@ export function useWizardInit(projectId?: string) {
             if (isFromStrategy) {
                 const storedContent =
                     typeof window !== 'undefined'
-                        ? localStorage.getItem('zentrix_strategy_content')
+                        ? localStorage.getItem('bv_strategy_content')
                         : null
                 if (storedContent) {
                     try {
@@ -106,8 +106,8 @@ export function useWizardInit(projectId?: string) {
                             `Nuevo - ${getStructureType(templateId).label}`,
                         )
                         setTimeout(() => {
-                            localStorage.removeItem('zentrix_strategy_content')
-                            localStorage.removeItem('zentrix_strategy_type')
+                            localStorage.removeItem('bv_strategy_content')
+                            localStorage.removeItem('bv_strategy_type')
                         }, 500)
                     } catch (e) {
                         logger.error('wizard', 'Error parsing strategy data for template', e)
@@ -133,13 +133,10 @@ export function useWizardInit(projectId?: string) {
             }
             setReady(true)
 
-            // Load brand identity as default colors
+            // Load brand identity as default colors + typography + geometry
             getBrandIdentityAction().then((res) => {
                 if (res.success && res.data) {
-                    const branding = res.data
-                    if (branding.colors && typeof branding.colors === 'object') {
-                        store.setCustomColors(branding.colors as DesignColors)
-                    }
+                    applyBrandDefaults(res.data, store)
                 }
             })
         } else if (templateId && strategyLoadedRef.current) {
@@ -150,11 +147,9 @@ export function useWizardInit(projectId?: string) {
             if (strategyLoadedRef.current) return
 
             const storedContent =
-                typeof window !== 'undefined'
-                    ? localStorage.getItem('zentrix_strategy_content')
-                    : null
+                typeof window !== 'undefined' ? localStorage.getItem('bv_strategy_content') : null
             const storedType =
-                typeof window !== 'undefined' ? localStorage.getItem('zentrix_strategy_type') : null
+                typeof window !== 'undefined' ? localStorage.getItem('bv_strategy_type') : null
 
             if (storedContent && (templateType || storedType)) {
                 try {
@@ -190,8 +185,8 @@ export function useWizardInit(projectId?: string) {
                     strategyLoadedRef.current = true
 
                     setTimeout(() => {
-                        localStorage.removeItem('zentrix_strategy_content')
-                        localStorage.removeItem('zentrix_strategy_type')
+                        localStorage.removeItem('bv_strategy_content')
+                        localStorage.removeItem('bv_strategy_type')
                     }, 500)
                 } catch (e) {
                     logger.error('wizard', 'Error parsing strategy data', e)
@@ -210,10 +205,7 @@ export function useWizardInit(projectId?: string) {
             store.reset(false)
             getBrandIdentityAction().then((res) => {
                 if (res.success && res.data) {
-                    const branding = res.data
-                    if (branding.colors && typeof branding.colors === 'object') {
-                        store.setCustomColors(branding.colors as DesignColors)
-                    }
+                    applyBrandDefaults(res.data, store)
                 }
             })
         }
@@ -221,4 +213,21 @@ export function useWizardInit(projectId?: string) {
     }, [projectId, searchParams])
 
     return { ready, isEditMode }
+}
+
+/** Extract colors + typography + geometry from brand identity into DesignColors */
+function applyBrandDefaults(
+    branding: Record<string, unknown>,
+    store: { setCustomColors: (c: DesignColors) => void },
+) {
+    const merged: DesignColors = {}
+    if (branding.colors && typeof branding.colors === 'object') {
+        Object.assign(merged, branding.colors)
+    }
+    const typo = branding.typography as { headings?: string; body?: string } | null
+    if (typo?.headings) merged.fontHeading = typo.headings
+    if (typo?.body) merged.fontBody = typo.body
+    const geo = branding.geometry as { radius?: string } | null
+    if (geo?.radius) merged.borderRadius = geo.radius as DesignColors['borderRadius']
+    store.setCustomColors(merged)
 }

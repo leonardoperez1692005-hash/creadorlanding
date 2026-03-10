@@ -81,6 +81,7 @@ function ListSection({
                             <button
                                 onClick={() => onRemove(i)}
                                 className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-red-400 transition-all"
+                                aria-label="Eliminar elemento"
                             >
                                 <Trash2 className="w-3.5 h-3.5" />
                             </button>

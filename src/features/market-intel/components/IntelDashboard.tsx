@@ -3,7 +3,8 @@
 import { useIntelStore } from '../store/intelStore'
 import { useRouter } from 'next/navigation'
 import { CompetitorCard } from './CompetitorCard'
-import { Crosshair, TrendingUp, AlertCircle, Zap } from 'lucide-react'
+import { ExportMenu } from '@/shared/components/ExportMenu'
+import { Crosshair, TrendingUp, AlertCircle } from 'lucide-react'
 
 export function IntelDashboard() {
     const store = useIntelStore()
@@ -23,8 +24,20 @@ export function IntelDashboard() {
         <div className="space-y-6">
             {/* Executive Summary */}
             <div className="rounded-lg border border-[var(--cyan)]/30 bg-gradient-to-r from-[var(--cyan)]/5 to-transparent p-5">
-                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">Resumen Ejecutivo</h2>
-                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{report.executiveSummary}</p>
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-bold text-[var(--text-primary)]">
+                        Resumen Ejecutivo
+                    </h2>
+                    <ExportMenu
+                        type="intel-report"
+                        data={report}
+                        formats={['pdf', 'xlsx']}
+                        label="Exportar"
+                    />
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                    {report.executiveSummary}
+                </p>
 
                 {meta && (
                     <div className="flex gap-4 mt-4">
@@ -43,7 +56,9 @@ export function IntelDashboard() {
 
             {/* Competitor Cards */}
             <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-3">Competidores Analizados</h3>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-3">
+                    Competidores Analizados
+                </h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {report.competitors.map((c, i) => (
                         <CompetitorCard key={i} competitor={c} />
@@ -55,37 +70,55 @@ export function IntelDashboard() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-5">
                 <div className="flex items-center gap-2 mb-3">
                     <TrendingUp className="w-4 h-4 text-[var(--purple)]" />
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Contexto de Mercado</h3>
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                        Contexto de Mercado
+                    </h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <span className="text-xs font-medium text-green-400 uppercase block mb-1">Tendencias</span>
+                        <span className="text-xs font-medium text-green-400 uppercase block mb-1">
+                            Tendencias
+                        </span>
                         <ul className="space-y-1">
                             {report.marketContext.trends.map((t, i) => (
-                                <li key={i} className="text-sm text-[var(--text-secondary)]">{t}</li>
+                                <li key={i} className="text-sm text-[var(--text-secondary)]">
+                                    {t}
+                                </li>
                             ))}
                         </ul>
                     </div>
                     <div>
-                        <span className="text-xs font-medium text-red-400 uppercase block mb-1">Pain Points</span>
+                        <span className="text-xs font-medium text-red-400 uppercase block mb-1">
+                            Pain Points
+                        </span>
                         <ul className="space-y-1">
                             {report.marketContext.painPoints.map((p, i) => (
-                                <li key={i} className="text-sm text-[var(--text-secondary)]">{p}</li>
+                                <li key={i} className="text-sm text-[var(--text-secondary)]">
+                                    {p}
+                                </li>
                             ))}
                         </ul>
                     </div>
                     <div>
-                        <span className="text-xs font-medium text-[var(--cyan)] uppercase block mb-1">Oportunidades</span>
+                        <span className="text-xs font-medium text-[var(--cyan)] uppercase block mb-1">
+                            Oportunidades
+                        </span>
                         <ul className="space-y-1">
                             {report.marketContext.opportunities.map((o, i) => (
-                                <li key={i} className="text-sm text-[var(--text-secondary)]">{o}</li>
+                                <li key={i} className="text-sm text-[var(--text-secondary)]">
+                                    {o}
+                                </li>
                             ))}
                         </ul>
                     </div>
                     <div>
-                        <span className="text-xs font-medium text-amber-400 uppercase block mb-1">Sentimiento</span>
-                        <p className="text-sm text-[var(--text-secondary)]">{report.marketContext.sentiment}</p>
+                        <span className="text-xs font-medium text-amber-400 uppercase block mb-1">
+                            Sentimiento
+                        </span>
+                        <p className="text-sm text-[var(--text-secondary)]">
+                            {report.marketContext.sentiment}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -94,20 +127,37 @@ export function IntelDashboard() {
             <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-5">
                 <div className="flex items-center gap-2 mb-3">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Vectores de Ataque Recomendados</h3>
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                        Vectores de Ataque Recomendados
+                    </h3>
                 </div>
                 <div className="space-y-2">
                     {report.recommendedAttackVectors.map((v, i) => (
-                        <div key={i} className="flex items-start gap-3 bg-[var(--bg-secondary)] rounded-lg p-3">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 shrink-0 ${
-                                v.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                                v.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-                                'bg-green-500/20 text-green-400'
-                            }`}>{v.priority.toUpperCase()}</span>
+                        <div
+                            key={i}
+                            className="flex items-start gap-3 bg-[var(--bg-secondary)] rounded-lg p-3"
+                        >
+                            <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 shrink-0 ${
+                                    v.priority === 'high'
+                                        ? 'bg-red-500/20 text-red-400'
+                                        : v.priority === 'medium'
+                                          ? 'bg-amber-500/20 text-amber-400'
+                                          : 'bg-green-500/20 text-green-400'
+                                }`}
+                            >
+                                {v.priority.toUpperCase()}
+                            </span>
                             <div>
-                                <span className="text-sm font-medium text-[var(--text-primary)]">{v.rivalName}</span>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{v.weakness}</p>
-                                <p className="text-xs text-[var(--cyan)] mt-1">{v.suggestedAngle}</p>
+                                <span className="text-sm font-medium text-[var(--text-primary)]">
+                                    {v.rivalName}
+                                </span>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                                    {v.weakness}
+                                </p>
+                                <p className="text-xs text-[var(--cyan)] mt-1">
+                                    {v.suggestedAngle}
+                                </p>
                             </div>
                         </div>
                     ))}

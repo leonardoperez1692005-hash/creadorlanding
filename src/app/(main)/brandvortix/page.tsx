@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { ZentrixHub } from '@/features/zentrix/components/ZentrixHub'
+import { BrandVortixHub } from '@/features/brandvortix/components/BrandVortixHub'
 
 export const metadata: Metadata = {
-    title: 'ZentrixOS — Inteligencia Competitiva & Plan de Ataque',
+    title: 'BrandVortix — Inteligencia Competitiva & Plan de Ataque',
     description: 'Sistema de inteligencia de mercado y planificación estratégica con IA',
 }
 
-export default async function ZentrixPage() {
+export default async function BrandVortixPage() {
     const supabase = await createClient()
     const {
         data: { user },
@@ -33,7 +33,7 @@ export default async function ZentrixPage() {
     ])
 
     return (
-        <ZentrixHub
+        <BrandVortixHub
             latestIntelReport={
                 intelResult.data
                     ? {

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { AlertTriangle, RotateCcw } from 'lucide-react'
+import { logger } from '@/shared/lib/logger'
 
 interface Props {
     children: React.ReactNode
@@ -24,28 +25,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
     }
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
-        // Structured logging — ready for Sentry/Datadog integration
-        const payload = {
-            name: error.name,
-            message: error.message,
-            stack: error.stack,
-            componentStack: info.componentStack,
+        logger.error('error-boundary', 'React ErrorBoundary caught', error, {
+            componentStack: info.componentStack ?? undefined,
             url: typeof window !== 'undefined' ? window.location.href : '',
-        }
-        // In production: structured JSON for log aggregation
-        if (process.env.NODE_ENV === 'production') {
-            console.error(
-                JSON.stringify({
-                    level: 'error',
-                    ts: new Date().toISOString(),
-                    feature: 'ui',
-                    msg: 'React ErrorBoundary caught',
-                    error: payload,
-                }),
-            )
-        } else {
-            console.error('[ErrorBoundary]', error, info.componentStack)
-        }
+        })
     }
 
     render() {

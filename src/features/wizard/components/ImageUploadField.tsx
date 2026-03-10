@@ -147,6 +147,7 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
                             }}
                             style={pillBtn}
                             title="Cambiar imagen"
+                            aria-label="Cambiar imagen"
                         >
                             <Upload style={{ width: '12px', height: '12px' }} />
                         </button>
@@ -155,6 +156,7 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
                             onClick={() => onChange('')}
                             style={{ ...pillBtn, background: 'rgba(239,68,68,0.85)' }}
                             title="Quitar imagen"
+                            aria-label="Quitar imagen"
                         >
                             <X style={{ width: '12px', height: '12px' }} />
                         </button>
@@ -196,7 +198,12 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
                         placeholder="https://ejemplo.com/imagen.jpg"
                         style={inputSt}
                     />
-                    <button type="button" onClick={() => setShowUrlInput(false)} style={smallBtn}>
+                    <button
+                        type="button"
+                        onClick={() => setShowUrlInput(false)}
+                        style={smallBtn}
+                        aria-label="Subir archivo"
+                    >
                         <Upload style={{ width: '13px', height: '13px' }} />
                     </button>
                 </div>

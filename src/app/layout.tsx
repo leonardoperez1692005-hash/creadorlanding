@@ -7,8 +7,8 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
     title: {
-        template: '%s | ZentrixOS',
-        default: 'ZentrixOS — Fábrica de Landing Pages',
+        template: '%s | BrandVortix',
+        default: 'BrandVortix — Fábrica de Landing Pages',
     },
     description:
         'Crea landing pages estáticas ultra-rápidas y desplegalas en WordPress con un clic.',

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { CalendarDay, SocialPost } from '../types'
 import { SocialPostCard } from './SocialPostCard'
 import { SocialPostDetail } from './SocialPostDetail'
+import { SocialPostPreview } from './SocialPostPreview'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
 interface Props {
@@ -24,6 +25,7 @@ export function SocialCalendarGrid({ days }: Props) {
     const [selectedPost, setSelectedPost] = useState<{ post: SocialPost; dayName: string } | null>(
         null,
     )
+    const [previewPost, setPreviewPost] = useState<SocialPost | null>(null)
     const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set())
 
     function toggleDay(dayIndex: number) {
@@ -60,6 +62,7 @@ export function SocialCalendarGrid({ days }: Props) {
                                     key={j}
                                     post={post}
                                     onClick={() => setSelectedPost({ post, dayName: day.dayName })}
+                                    onPreview={() => setPreviewPost(post)}
                                 />
                             ))}
                         </div>
@@ -121,6 +124,11 @@ export function SocialCalendarGrid({ days }: Props) {
                     dayName={selectedPost.dayName}
                     onClose={() => setSelectedPost(null)}
                 />
+            )}
+
+            {/* Visual preview modal */}
+            {previewPost && (
+                <SocialPostPreview post={previewPost} onClose={() => setPreviewPost(null)} />
             )}
         </>
     )

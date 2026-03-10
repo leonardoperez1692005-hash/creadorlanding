@@ -3,6 +3,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import { useWizardStore } from '../store/wizardStore'
 import { compileLandingHtml } from '../lib/htmlCompiler'
+import { logger } from '@/shared/lib/logger'
 
 // Override reveal animations so all content is visible at a glance in preview.
 // Also force instant scroll-behavior so hash-based scroll isn't animated.
@@ -86,7 +87,7 @@ export function IframePreview({ isMobile = false }: IframePreviewProps) {
             try {
                 return injectPreviewOverrides(compileLandingHtml(compileInput))
             } catch (e) {
-                console.error('[IframePreview] compileLandingHtml error:', e)
+                logger.error('wizard', 'compileLandingHtml error', e)
                 return `<html><body style="font-family:sans-serif;color:#f1f5f9;background:#0a0e1a;padding:24px;"><p style="opacity:.6;font-size:14px">Error al compilar el preview — revisá la consola.</p></body></html>`
             }
         }

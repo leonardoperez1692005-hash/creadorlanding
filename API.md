@@ -1,6 +1,6 @@
-# ZentrixOS — API Reference
+# BrandVortix — API Reference
 
-Base URL: `https://<your-domain>` (e.g. `https://app.zentrixos.com`)
+Base URL: `https://<your-domain>` (e.g. `https://app.brandvortix.com`)
 
 ---
 
@@ -36,7 +36,7 @@ Health check endpoint. Returns server status and current timestamp.
 ### Example
 
 ```bash
-curl https://app.zentrixos.com/api/health
+curl https://app.brandvortix.com/api/health
 ```
 
 ---
@@ -108,7 +108,7 @@ Public endpoint for capturing leads from published landing pages. Uses the Supab
 ### Example
 
 ```bash
-curl -X POST https://app.zentrixos.com/api/leads/capture \
+curl -X POST https://app.brandvortix.com/api/leads/capture \
   -H "Content-Type: application/json" \
   -d '{
     "projectId": "550e8400-e29b-41d4-a716-446655440000",
@@ -201,7 +201,7 @@ Possible `error` values:
 ### Example
 
 ```bash
-curl -X POST https://app.zentrixos.com/api/license/verify \
+curl -X POST https://app.brandvortix.com/api/license/verify \
   -H "Content-Type: application/json" \
   -d '{"key": "SL-XXXX-XXXX-XXXX"}'
 ```
@@ -268,7 +268,7 @@ Lists all compiled projects (with `html_output`) for the user associated with th
 ### Example
 
 ```bash
-curl https://app.zentrixos.com/api/license/projects \
+curl https://app.brandvortix.com/api/license/projects \
   -H "x-license-key: SL-XXXX-XXXX-XXXX"
 ```
 
@@ -341,7 +341,7 @@ or
 ### Example
 
 ```bash
-curl https://app.zentrixos.com/api/license/project/my-landing \
+curl https://app.brandvortix.com/api/license/project/my-landing \
   -H "x-license-key: SL-XXXX-XXXX-XXXX"
 ```
 
@@ -393,7 +393,7 @@ Content-Type: text/html; charset=utf-8
 
 ```bash
 # Requires a valid session cookie
-curl https://app.zentrixos.com/api/intelligence/dashboard \
+curl https://app.brandvortix.com/api/intelligence/dashboard \
   -H "Cookie: sb-access-token=eyJ...; sb-refresh-token=eyJ..."
 ```
 

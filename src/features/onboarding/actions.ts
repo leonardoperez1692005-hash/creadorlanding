@@ -25,6 +25,8 @@ const onboardingSchema = z.object({
         .object({
             radius: z.string(),
             neon_glow: z.boolean(),
+            cardStyle: z.enum(['flat', 'glass', 'bordered', 'elevated']).default('flat'),
+            backgroundPreset: z.string().default(''),
         })
         .optional(),
 })
@@ -61,6 +63,16 @@ export async function submitOnboardingAction(data: OnboardingData) {
                 colors: parsed.data.colors,
                 typography: parsed.data.typography,
                 geometry: parsed.data.geometry,
+                design_tokens: {
+                    colors: parsed.data.colors,
+                    typography: {
+                        headingFont: parsed.data.typography.headings,
+                        bodyFont: parsed.data.typography.body,
+                    },
+                    borderRadius: parsed.data.geometry?.radius || '8px',
+                    cardStyle: parsed.data.geometry?.cardStyle || 'flat',
+                    backgroundPreset: parsed.data.geometry?.backgroundPreset || '',
+                },
                 is_completed: true,
                 updated_at: new Date().toISOString(),
             },
@@ -245,7 +257,7 @@ export async function uploadLogoAction(formData: FormData) {
         const ext = file.name.split('.').pop()
         const filename = `${user.id}-${Date.now()}.${ext}`
 
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from('brand-logos')
             .upload(filename, file, { upsert: true })
 

@@ -1,5 +1,5 @@
 // ============================================================
-// SITE CONFIG - ZentrixOS
+// SITE CONFIG - BrandVortix
 // ============================================================
 
 export const DEFAULT_ROUTE = '/' as const
@@ -17,14 +17,14 @@ export interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-    appName: 'ZentrixOS',
+    appName: 'BrandVortix',
     appSlogan: 'Fábrica de Landing Pages de Alto Rendimiento',
     appDescription:
         'Creá landing pages estáticas ultra-rápidas y seguras, desplegables en tu WordPress con un solo clic.',
 
     seo: {
-        siteTitle: 'ZentrixOS | Landing Pages de Alto Rendimiento',
-        titleTemplate: '%s | ZentrixOS',
+        siteTitle: 'BrandVortix | Landing Pages de Alto Rendimiento',
+        titleTemplate: '%s | BrandVortix',
         defaultDescription:
             'Generador de landing pages estáticas con IA, diseño profesional y velocidad extrema.',
         locale: 'es_AR',

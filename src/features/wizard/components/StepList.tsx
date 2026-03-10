@@ -247,6 +247,7 @@ export function StepList({ title, section, onUpdate, itemFields, headerFields }:
                             </div>
                             <button
                                 onClick={() => removeItem(i)}
+                                aria-label="Eliminar elemento"
                                 style={{
                                     padding: '4px 8px',
                                     borderRadius: '6px',
@@ -495,6 +496,7 @@ export function StepSimpleList({ title, section, onUpdate }: StepSimpleListProps
                         />
                         <button
                             onClick={() => updatePoints(points.filter((_, j) => j !== i))}
+                            aria-label="Eliminar punto"
                             style={{
                                 padding: '8px',
                                 borderRadius: '6px',

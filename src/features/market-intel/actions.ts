@@ -10,9 +10,11 @@ import type {
     IntelReportHistoryItem,
 } from './types'
 import { scrapeCompetitors, researchMarket } from './scraper'
-import { analyzeCompetitorsWithGemini } from './analyzer'
+import { analyzeCompetitorsWithGemini, type BrandContext } from './analyzer'
 import { intelReportSchema, intelReportMetaSchema, competitorTargetSchema } from './schemas'
 import { z } from 'zod'
+
+const BRAND_CONTEXT_SELECT = 'brand_name, sector, brand_values, differentiators, services' as const
 
 export type IntelActionResult<T = null> =
     | { success: true; data?: T }
@@ -35,6 +37,28 @@ export async function generateIntelReportAction(
 
         if (targets.length === 0) return { success: false, error: 'Agrega al menos un competidor' }
 
+        // Gate + load brand context in one query
+        const { data: brandRow } = await supabase
+            .from('brand_identities')
+            .select(BRAND_CONTEXT_SELECT)
+            .eq('user_id', user.id)
+            .single()
+
+        if (!brandRow?.brand_name) {
+            return {
+                success: false,
+                error: 'Completá tu configuración de marca en Onboarding antes de analizar competidores',
+            }
+        }
+
+        const brandContext: BrandContext = {
+            brandName: brandRow.brand_name,
+            sector: (brandRow.sector as string) ?? sector,
+            values: (brandRow.brand_values as string) ?? '',
+            differentiators: (brandRow.differentiators as string) ?? '',
+            services: (brandRow.services as BrandContext['services']) ?? [],
+        }
+
         // Phase 1: Scrape competitors
         const snapshots = await scrapeCompetitors(targets)
         const successfulScrapes = snapshots.filter((s) => s.success).length
@@ -43,15 +67,15 @@ export async function generateIntelReportAction(
             return { success: false, error: 'No se pudo scrapear ningun competidor' }
         }
 
-        // Phase 2: SERP research
+        // Phase 2: SERP research (brand context already loaded above)
         const serpResults = await researchMarket(
             sector,
             country,
             targets.map((t) => t.name),
         )
 
-        // Phase 3: Gemini analysis
-        const report = await analyzeCompetitorsWithGemini(snapshots, serpResults)
+        // Phase 3: Gemini analysis (with brand context for better vulnerability targeting)
+        const report = await analyzeCompetitorsWithGemini(snapshots, serpResults, brandContext)
 
         // Calculate costs
         const websiteRequests = targets.filter((t) => t.url).length

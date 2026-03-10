@@ -1,6 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
 'use client'
 
+import Image from 'next/image'
 import { useWizardStore } from '../store/wizardStore'
 import type { WizardSection, DesignColors } from '../types'
 import { PreviewSection } from './preview/PreviewSection'
@@ -114,9 +114,12 @@ function PreviewHeader({
         >
             <div className="flex items-center justify-between">
                 {logoImage ? (
-                    <img
+                    <Image
                         src={logoImage}
                         alt={logoText}
+                        width={120}
+                        height={36}
+                        unoptimized
                         style={{ height: m ? 28 : 36, width: 'auto' }}
                     />
                 ) : (

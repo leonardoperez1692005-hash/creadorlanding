@@ -245,6 +245,7 @@ export function TargetConfigPanel() {
                             <button
                                 onClick={() => store.removeTarget(i)}
                                 className="text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                                aria-label="Quitar competidor"
                             >
                                 <X className="w-4 h-4" />
                             </button>

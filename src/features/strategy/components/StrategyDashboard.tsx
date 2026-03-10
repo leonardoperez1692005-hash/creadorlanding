@@ -23,6 +23,7 @@ import {
     Globe,
     Loader2,
 } from 'lucide-react'
+import { ExportMenu } from '@/shared/components/ExportMenu'
 
 // ===================== Collapsible Card =====================
 function Card({
@@ -134,7 +135,7 @@ export function StrategyDashboard() {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `zentrix-${briefData.brandName || 'export'}.csv`
+        a.download = `bv-${briefData.brandName || 'export'}.csv`
         a.click()
         URL.revokeObjectURL(url)
     }
@@ -151,8 +152,8 @@ export function StrategyDashboard() {
             const content = await generateLandingContent(templateType)
             // Guardar en localStorage para que el Wizard lo recupere
             if (typeof window !== 'undefined') {
-                localStorage.setItem('zentrix_strategy_content', JSON.stringify(content))
-                localStorage.setItem('zentrix_strategy_type', templateType)
+                localStorage.setItem('bv_strategy_content', JSON.stringify(content))
+                localStorage.setItem('bv_strategy_type', templateType)
             }
             router.push(
                 '/templates?' +
@@ -200,6 +201,12 @@ export function StrategyDashboard() {
                     </p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                    <ExportMenu
+                        type="strategy"
+                        data={{ strategy, meta }}
+                        formats={['pdf', 'pptx', 'docx']}
+                        label="Exportar"
+                    />
                     <button
                         onClick={handleExportCSV}
                         className="px-4 py-2 rounded-lg text-sm transition-all hover:bg-white/5 flex items-center gap-2"
@@ -712,7 +719,7 @@ export function StrategyDashboard() {
                     )}
                 </button>
                 <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
-                    ZentrixOS escribe el copy de cada sección basado en tu estrategia
+                    BrandVortix escribe el copy de cada sección basado en tu estrategia
                 </p>
             </div>
 

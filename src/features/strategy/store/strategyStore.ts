@@ -2,8 +2,13 @@
 
 import { create } from 'zustand'
 import type {
-    StrategyBriefData, StrategyData, StrategyMeta, StrategyHistoryItem, TacticalResult,
-    ObjectionsData, ContentData,
+    StrategyBriefData,
+    StrategyData,
+    StrategyMeta,
+    StrategyHistoryItem,
+    TacticalResult,
+    ObjectionsData,
+    ContentData,
 } from '../types'
 import {
     runStrategyAnalysisAction,
@@ -30,7 +35,9 @@ interface StrategyState {
     setBriefData: (data: Partial<StrategyBriefData>) => void
     runAnalysis: () => Promise<void>
     runTacticalOp: (type: 'objections' | 'content', angle: string) => Promise<void>
-    generateLandingContent: (templateType: 'vsl' | 'webinar' | 'long_letter') => Promise<Record<string, Record<string, string>>>
+    generateLandingContent: (
+        templateType: 'vsl' | 'webinar' | 'long_letter',
+    ) => Promise<Record<string, Record<string, string>>>
     loadHistory: () => Promise<void>
     loadStrategyFromHistory: (id: string) => Promise<void>
     closeTacticalOverlay: () => void
@@ -62,7 +69,11 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
 
     runAnalysis: async () => {
         const { briefData } = get()
-        set({ step: 'processing', error: null, processingStatus: '🌐 Inicializando Bright Data Intelligence...' })
+        set({
+            step: 'processing',
+            error: null,
+            processingStatus: '🌐 Inicializando Bright Data Intelligence...',
+        })
 
         await new Promise((r) => setTimeout(r, 600))
         set({ processingStatus: '🔍 Escaneando webs de competidores (Bright Data)...' })
@@ -77,7 +88,7 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
             return
         }
 
-        set({ processingStatus: '🧠 ZentrixOS sintetizando estrategia...' })
+        set({ processingStatus: '🧠 BrandVortix sintetizando estrategia...' })
         await new Promise((r) => setTimeout(r, 400))
 
         set({
@@ -95,7 +106,13 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
             sector: briefData.sector,
         })
         if (!result.success) throw new Error(result.error)
-        set({ tacticalOverlay: { type, salesAngle, data: result.data as ObjectionsData | ContentData } })
+        set({
+            tacticalOverlay: {
+                type,
+                salesAngle,
+                data: result.data as ObjectionsData | ContentData,
+            },
+        })
     },
 
     generateLandingContent: async (templateType) => {
@@ -130,13 +147,14 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
 
     closeTacticalOverlay: () => set({ tacticalOverlay: null }),
 
-    resetStrategy: () => set({
-        step: 'brief',
-        strategy: null,
-        meta: null,
-        error: null,
-        processingStatus: '',
-        tacticalOverlay: null,
-        briefData: { ...emptyBrief },
-    }),
+    resetStrategy: () =>
+        set({
+            step: 'brief',
+            strategy: null,
+            meta: null,
+            error: null,
+            processingStatus: '',
+            tacticalOverlay: null,
+            briefData: { ...emptyBrief },
+        }),
 }))

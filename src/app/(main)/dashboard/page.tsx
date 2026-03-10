@@ -109,7 +109,7 @@ async function DashboardContent() {
                     },
                     {
                         label: 'Módulo',
-                        value: 'ZentrixOS',
+                        value: 'BrandVortix',
                         icon: Brain,
                         color: '#7C3AED',
                         isText: true,
@@ -363,7 +363,7 @@ async function DashboardContent() {
                     </div>
                 </Link>
 
-                <Link href="/zentrix" style={{ textDecoration: 'none', display: 'block' }}>
+                <Link href="/brandvortix" style={{ textDecoration: 'none', display: 'block' }}>
                     <div
                         style={{
                             borderRadius: '14px',
@@ -392,7 +392,7 @@ async function DashboardContent() {
                                     Análisis Competitivo
                                 </h3>
                                 <p style={{ fontSize: '13px', marginTop: '3px', color: '#8b9ec7' }}>
-                                    ZentrixOS · Estrategia con IA
+                                    BrandVortix · Estrategia con IA
                                 </p>
                             </div>
                             <ArrowRight

@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+import Image from 'next/image'
 import { Clock } from 'lucide-react'
 import { sanitizeHtml } from '@/shared/lib/sanitize'
 import type { SectionPreviewProps, ContentItem } from './types'
@@ -221,9 +221,12 @@ export function UrgencyPreview({ content, m }: SectionPreviewProps) {
                     <div
                         className={`${m ? 'rounded-xl' : 'rounded-2xl'} overflow-hidden border-2 border-white/15`}
                     >
-                        <img
+                        <Image
                             src={content.image!}
-                            alt=""
+                            alt="Urgency section image"
+                            width={800}
+                            height={500}
+                            unoptimized
                             className="w-full h-auto object-cover"
                             style={{ aspectRatio: '16/10' }}
                         />
@@ -398,7 +401,14 @@ export function SpeakerPreview({ content, m }: SectionPreviewProps) {
                 }}
             >
                 {content.photo ? (
-                    <img src={content.photo} alt="Speaker" className="w-full h-full object-cover" />
+                    <Image
+                        src={content.photo}
+                        alt="Speaker"
+                        width={320}
+                        height={320}
+                        unoptimized
+                        className="w-full h-full object-cover"
+                    />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center opacity-30 text-5xl font-black">
                         FOTO

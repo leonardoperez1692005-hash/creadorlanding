@@ -1,10 +1,4 @@
-export type Json =
-    | string
-    | number
-    | boolean
-    | null
-    | { [key: string]: Json | undefined }
-    | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
     public: {
@@ -361,11 +355,13 @@ export interface DesignTokens {
         secondary: string
         accent: string
         background: string
-        text: string
+        text?: string
     }
     typography: {
         headingFont: string
         bodyFont: string
     }
     borderRadius: string
+    cardStyle?: 'flat' | 'glass' | 'bordered' | 'elevated'
+    backgroundPreset?: string
 }

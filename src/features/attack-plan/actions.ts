@@ -6,7 +6,7 @@ import { generateAttackPlan, generateSocialCalendar } from './generator'
 import type { AttackPlan, AttackPlanMeta, BrandProfile, SocialMediaCalendar } from './types'
 import { intelReportSchema } from '@/features/market-intel/schemas'
 import { attackPlanSchema, socialMediaCalendarSchema } from './schemas'
-import { z } from 'zod'
+// z not used directly — schemas imported from ./schemas
 
 export type AttackActionResult<T = null> =
     | { success: true; data?: T }
@@ -93,6 +93,13 @@ export async function generateAttackPlanAction(
             .select(BRAND_SELECT)
             .eq('user_id', user.id)
             .single()
+
+        if (!brand?.brand_name) {
+            return {
+                success: false,
+                error: 'Completá tu configuración de marca en Onboarding antes de generar un plan de ataque',
+            }
+        }
 
         const brandProfile = buildBrandProfile(brand)
 
@@ -486,9 +493,7 @@ function mergeBrandData(
     return merged
 }
 
-export async function getAttackPlanLandingDataAction(
-    planId: string,
-): Promise<
+export async function getAttackPlanLandingDataAction(planId: string): Promise<
     AttackActionResult<{
         content: Record<string, Record<string, unknown>>
         landingSections: string[]

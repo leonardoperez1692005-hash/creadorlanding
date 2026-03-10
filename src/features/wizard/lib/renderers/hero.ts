@@ -1,7 +1,7 @@
 import type { SectionRenderer } from './types'
 import { esc, extractYouTubeId } from './utils'
 
-export const heroRenderer: SectionRenderer = (c, _t, _ctx) => {
+export const heroRenderer: SectionRenderer = (c, _t) => {
     // ── Video embed (VSL / SaaS) ─────────────────────────────────
     let videoHtml = ''
     if (c.video_url) {
@@ -47,6 +47,15 @@ export const heroRenderer: SectionRenderer = (c, _t, _ctx) => {
       <img src="${esc(bgImage)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" />
     </div>
     <div aria-hidden="true" style="position:absolute;inset:0;z-index:1;background:${esc(overlayColor)};opacity:${overlayOpacity};"></div>`
+    } else {
+        // Gradient mesh decoration using theme colors (only when no custom bg)
+        sectionExtraStyle = ' style="position:relative;overflow:hidden;"'
+        overlayHtml = `
+    <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden">
+      <div style="position:absolute;width:600px;height:600px;border-radius:50%;background:${esc(_t.primary)};opacity:.06;filter:blur(120px);top:-200px;right:-100px"></div>
+      <div style="position:absolute;width:500px;height:500px;border-radius:50%;background:${esc(_t.secondary)};opacity:.05;filter:blur(100px);bottom:-150px;left:-80px"></div>
+      <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:${esc(_t.accent)};opacity:.04;filter:blur(80px);top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+    </div>`
     }
     const containerZStyle = bgImage ? ' style="position:relative;z-index:2;"' : ''
 

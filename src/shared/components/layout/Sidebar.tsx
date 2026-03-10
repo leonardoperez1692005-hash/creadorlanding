@@ -35,8 +35,8 @@ const NAV_ITEMS: NavItem[] = [
     { href: '/templates', label: 'Plantillas', icon: LayoutGrid },
     { href: '/wizard', label: 'Nueva Landing', icon: MonitorPlay },
     {
-        href: '/zentrix',
-        label: 'ZentrixOS',
+        href: '/brandvortix',
+        label: 'BrandVortix',
         icon: Brain,
         matchPaths: ['/market-intel', '/attack-plan'],
     },
@@ -76,14 +76,14 @@ export default function Sidebar({ user, profile }: SidebarProps) {
             >
                 <Image
                     src="/logo.png"
-                    alt="ZentrixOS"
+                    alt="BrandVortix"
                     width={36}
                     height={36}
                     style={{ borderRadius: '6px', flexShrink: 0 }}
                 />
                 <div>
                     <p style={{ fontWeight: 800, color: '#e2e8f0', lineHeight: 1, margin: 0 }}>
-                        ZentrixOS
+                        BrandVortix
                     </p>
                     <p style={{ fontSize: '11px', marginTop: '2px', color: '#5d7099' }}>ZMOT</p>
                 </div>
@@ -92,6 +92,7 @@ export default function Sidebar({ user, profile }: SidebarProps) {
                     onClick={() => setMobileOpen(false)}
                     className="md:hidden ml-auto p-1.5 rounded-lg hover:bg-white/5 transition-colors"
                     style={{ color: '#5d7099' }}
+                    aria-label="Cerrar menú"
                 >
                     <X className="w-5 h-5" />
                 </button>

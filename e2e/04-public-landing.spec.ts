@@ -21,10 +21,14 @@ test.describe('Public Landing — /p/[slug]', () => {
         expect(response?.status()).toBe(404)
     })
 
-    test('does not include CSP header on landing pages', async ({ request }) => {
+    test('includes relaxed CSP on landing pages (unsafe-inline allowed)', async ({ request }) => {
         const response = await request.get('/p/any-slug')
         const csp = response.headers()['content-security-policy']
-        expect(csp).toBeFalsy()
+        expect(csp).toBeTruthy()
+        // Landing pages use relaxed CSP with unsafe-inline for compiled HTML
+        expect(csp).toContain("'unsafe-inline'")
+        // But no nonce/strict-dynamic (unlike dashboard pages)
+        expect(csp).not.toContain('strict-dynamic')
     })
 
     test('includes security headers on landing pages', async ({ request }) => {

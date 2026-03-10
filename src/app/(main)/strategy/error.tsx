@@ -9,7 +9,7 @@ export default function StrategyError({ error, reset }: { error: Error; reset: (
                 <AlertTriangle className="w-7 h-7 text-red-400" />
             </div>
             <p className="text-sm text-[var(--text-primary)] font-medium mb-1">
-                Error en ZentrixOS Strategy
+                Error en BrandVortix Strategy
             </p>
             <p className="text-xs text-[var(--text-muted)] mb-4 max-w-md text-center">
                 {error.message}

@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+import Image from 'next/image'
 import { Check } from 'lucide-react'
 import type { SectionPreviewProps, ContentItem } from './types'
 
@@ -137,9 +137,12 @@ export function TeamPreview({ content, m }: SectionPreviewProps) {
                                   }}
                               >
                                   {item.photo ? (
-                                      <img
+                                      <Image
                                           src={item.photo}
                                           alt={item.name || ''}
+                                          width={128}
+                                          height={128}
+                                          unoptimized
                                           className="w-full h-full object-cover"
                                       />
                                   ) : (

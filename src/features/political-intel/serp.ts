@@ -1,5 +1,5 @@
 // =============================================
-// ZentrixOS Political Intelligence — SERP Research
+// BrandVortix Political Intelligence — SERP Research
 // =============================================
 
 import { logger } from '@/shared/lib/logger'
@@ -10,7 +10,7 @@ function getBdApiKey(): string {
     return process.env.BRIGHTDATA_API_KEY ?? ''
 }
 function getBdZone(): string {
-    return process.env.BRIGHTDATA_ZONE ?? 'zentrixos_scraper'
+    return process.env.BRIGHTDATA_ZONE ?? 'brandvortix_scraper'
 }
 
 export async function researchPoliticalContext(): Promise<SerpContextResult[]> {

@@ -17,6 +17,7 @@ import {
     AlertCircle,
     Search,
 } from 'lucide-react'
+import { ExportMenu } from '@/shared/components/ExportMenu'
 
 type DateFilter = 'all' | '7d' | '30d' | '90d'
 const DATE_FILTERS: { value: DateFilter; label: string }[] = [
@@ -176,13 +177,24 @@ export function LeadsPage({ projectId, projectName }: LeadsPageProps) {
                     </p>
                 </div>
                 {leads.length > 0 && (
-                    <button
-                        onClick={() => exportToCsv(projectName, leads)}
-                        className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition hover:bg-white/5"
-                        style={{ border: '1px solid var(--border)', color: 'var(--text-muted)' }}
-                    >
-                        <Download className="w-4 h-4" /> Exportar CSV
-                    </button>
+                    <div className="flex gap-2">
+                        <ExportMenu
+                            type="leads"
+                            data={{ leads, projectName }}
+                            formats={['pdf', 'xlsx']}
+                            label="Exportar"
+                        />
+                        <button
+                            onClick={() => exportToCsv(projectName, leads)}
+                            className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition hover:bg-white/5"
+                            style={{
+                                border: '1px solid var(--border)',
+                                color: 'var(--text-muted)',
+                            }}
+                        >
+                            <Download className="w-4 h-4" /> CSV
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -263,6 +275,7 @@ export function LeadsPage({ projectId, projectName }: LeadsPageProps) {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por nombre, email o fuente..."
+                            aria-label="Buscar leads"
                             className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm outline-none"
                             style={{
                                 background: 'var(--bg-card)',
@@ -442,6 +455,7 @@ export function LeadsPage({ projectId, projectName }: LeadsPageProps) {
                                                 disabled={deleting === lead.id}
                                                 className="p-2.5 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
                                                 title="Eliminar registro"
+                                                aria-label="Eliminar registro"
                                                 style={{
                                                     border: '1px solid transparent',
                                                     color: 'var(--text-muted)',

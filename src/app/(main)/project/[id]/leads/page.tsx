@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { LeadsPage } from '@/features/leads/components/LeadsPage'
 
 export const metadata: Metadata = {
-    title: 'Leads — ZentrixOS',
+    title: 'Leads — BrandVortix',
 }
 
 interface Props {

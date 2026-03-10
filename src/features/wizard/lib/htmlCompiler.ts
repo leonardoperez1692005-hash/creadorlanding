@@ -1,5 +1,5 @@
 /**
- * ZentrixOS — Standalone HTML Compiler
+ * BrandVortix — Standalone HTML Compiler
  *
  * Compiles a project's section data into a fully self-contained, production-ready
  * HTML landing page. Zero external JS dependencies. Includes:
@@ -20,6 +20,12 @@ import type { Theme, Content } from './renderers/types'
 import { esc } from './renderers/utils'
 import { getRenderer } from './renderers'
 import { validateTrackingId, validateCSSColor } from '@/shared/lib/sanitize'
+import { getGoogleFontsUrl } from '../config/themes'
+import {
+    generateBackground,
+    type BackgroundPresetId,
+    BACKGROUND_PRESETS,
+} from '@/lib/canvas/generativeBackgrounds'
 
 // ─── Public API ────────────────────────────────────────────────
 
@@ -30,7 +36,7 @@ export interface CompileInput {
     sections: WizardSection[]
     colors: DesignColors
     meta: TrackingMeta
-    baseUrl: string // e.g. https://app.zentrixos.com
+    baseUrl: string // e.g. https://app.brandvortix.com
 }
 
 export function compileLandingHtml(input: CompileInput): string {
@@ -42,6 +48,11 @@ export function compileLandingHtml(input: CompileInput): string {
     const secondary = validateCSSColor(colors.secondary, '#7C3AED')
     const accent = validateCSSColor(colors.accent, '#FF007F')
 
+    const fontHeading = colors.fontHeading || 'Outfit'
+    const fontBody = colors.fontBody || 'Outfit'
+    const borderRadius = (colors.borderRadius as Theme['borderRadius']) || 'rounded'
+    const cardStyle = (colors.cardStyle as Theme['cardStyle']) || 'flat'
+
     const theme: Theme = {
         primary,
         secondary,
@@ -52,6 +63,10 @@ export function compileLandingHtml(input: CompileInput): string {
         muted: visualModel === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)',
         textMuted: visualModel === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)',
         isDark: visualModel === 'dark',
+        fontHeading,
+        fontBody,
+        borderRadius,
+        cardStyle,
     }
 
     const seoTitle = meta.seo_title || projectName
@@ -65,6 +80,13 @@ export function compileLandingHtml(input: CompileInput): string {
     const sectionsHtml = contentSections
         .map((s) => renderSection(s, theme, projectId, baseUrl))
         .join('\n')
+
+    // Generative background layer
+    const bgPresetId = colors.backgroundPreset as BackgroundPresetId | undefined
+    const bgPresetValid = bgPresetId && BACKGROUND_PRESETS.some((p) => p.id === bgPresetId)
+    const bgSvg = bgPresetValid
+        ? generateBackground(bgPresetId, { primary, secondary, accent, bg: theme.bg })
+        : ''
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -88,12 +110,13 @@ ${ogImage ? `<meta name="twitter:image" content="${esc(ogImage)}">` : ''}
 <link rel="icon" href="/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<link href="${esc(getGoogleFontsUrl(fontHeading, fontBody))}" rel="stylesheet">
 ${buildTrackingHead(meta)}
 <style>${minifyCSS(buildCSS(theme))}</style>
 ${buildJsonLd(seoTitle, seoDesc, canonicalUrl, ogImage, contentSections)}
 </head>
 <body>
+${bgSvg ? `<div class="sl-gen-bg" aria-hidden="true">${bgSvg}</div>` : ''}
 ${buildHeader(projectName, headerSection?.content as Record<string, unknown> | undefined, theme)}
 <main>
 ${sectionsHtml}
@@ -122,20 +145,47 @@ function renderSection(
 
 // ─── CSS ───────────────────────────────────────────────────────
 
+function buildCardStyleCSS(t: Theme): string {
+    const style = t.cardStyle || 'flat'
+    const sel = '.benefit-card,.test-card,.svc-card,.faq-item,.target-card,.lead-box'
+    switch (style) {
+        case 'glass':
+            return `${sel}{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:${t.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.5)'};border:1px solid ${t.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}}`
+        case 'bordered':
+            return `${sel}{background:var(--bg);border:2px solid var(--muted);box-shadow:none}`
+        case 'elevated':
+            return `${sel}{background:var(--bg-card);border:none;box-shadow:0 8px 32px ${t.isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.08)'}}`
+        case 'flat':
+        default:
+            return `${sel}{background:var(--bg-card);border:1px solid var(--muted);box-shadow:none}`
+    }
+}
+
 function buildCSS(t: Theme): string {
+    const fh = t.fontHeading || 'Outfit'
+    const fb = t.fontBody || 'Outfit'
+    const radiusMap = { sharp: '4px', rounded: '16px', pill: '999px' } as const
+    const cardRadius = radiusMap[t.borderRadius || 'rounded']
+
     return `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --primary:${t.primary};--secondary:${t.secondary};--accent:${t.accent};
   --bg:${t.bg};--bg-card:${t.bgCard};--text:${t.text};
   --muted:${t.muted};--text-muted:${t.textMuted};
+  --font-heading:'${fh}',system-ui,sans-serif;
+  --font-body:'${fb}',system-ui,sans-serif;
+  --radius:${cardRadius};
 }
 html{scroll-behavior:smooth}
-body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--text);
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);
   line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.sl-gen-bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+.sl-gen-bg svg{width:100%;height:100%;object-fit:cover}
+body:has(.sl-gen-bg) .sl-header,body:has(.sl-gen-bg) main,body:has(.sl-gen-bg) footer{position:relative;z-index:1}
 img{max-width:100%;height:auto;display:block}
 a{color:inherit;text-decoration:none}
-h1,h2{line-height:1.1em}
+h1,h2{font-family:var(--font-heading);line-height:1.1em}
 section[id]{scroll-margin-top:150px}
 
 /* Layout */
@@ -144,6 +194,9 @@ section[id]{scroll-margin-top:150px}
 
 /* Glass */
 .glass{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+
+/* Card Styles (theme-driven) */
+${buildCardStyleCSS(t)}
 
 /* Reveal animations */
 .reveal{opacity:0;transform:translateY(32px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
@@ -196,7 +249,7 @@ section[id]{scroll-margin-top:150px}
 .sl-benefits h2,.sl-section-title{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;
   text-align:center;margin-bottom:56px;letter-spacing:-0.02em}
 .benefit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px}
-.benefit-card{padding:40px;border-radius:24px;border:1px solid var(--muted);
+.benefit-card{padding:40px;border-radius:var(--radius);border:1px solid var(--muted);
   background:var(--bg-card);transition:transform .3s,box-shadow .3s}
 .benefit-card:hover{transform:translateY(-6px);box-shadow:0 20px 60px rgba(0,0,0,.15)}
 .benefit-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;
@@ -235,7 +288,7 @@ section[id]{scroll-margin-top:150px}
 
 /* ---- Lead Capture ---- */
 .sl-lead{padding:100px 0;text-align:center}
-.lead-box{max-width:520px;margin:0 auto;padding:clamp(32px,5vw,64px);border-radius:32px;
+.lead-box{max-width:520px;margin:0 auto;padding:clamp(32px,5vw,64px);border-radius:var(--radius);
   border:1px solid var(--muted);background:var(--bg-card)}
 .lead-box h2{font-size:clamp(1.6rem,3.5vw,2.8rem);font-weight:900;margin-bottom:12px}
 .lead-box .sub{opacity:.6;font-size:1.1rem;margin-bottom:32px;font-weight:300;line-height:1.6}
@@ -257,7 +310,7 @@ section[id]{scroll-margin-top:150px}
 /* ---- FAQ ---- */
 .sl-faq{padding:80px 0}
 .faq-list{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-.faq-item{border-radius:20px;border:1px solid var(--muted);background:var(--bg-card);
+.faq-item{border-radius:var(--radius);border:1px solid var(--muted);background:var(--bg-card);
   overflow:hidden;transition:box-shadow .3s}
 .faq-item:hover{box-shadow:0 8px 30px rgba(0,0,0,.08)}
 .faq-q{display:flex;align-items:center;gap:16px;padding:24px 28px;cursor:pointer;
@@ -316,14 +369,14 @@ section[id]{scroll-margin-top:150px}
 /* ---- Target ---- */
 .sl-target{padding:80px 0}
 .target-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
-.target-card{padding:36px;border-radius:20px;background:${t.isDark ? 'rgba(255,255,255,.03)' : 'rgba(0,0,0,.02)'}}
+.target-card{padding:36px;border-radius:var(--radius);background:${t.isDark ? 'rgba(255,255,255,.03)' : 'rgba(0,0,0,.02)'}}
 .target-card h3{font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:10px}
 .target-card p{opacity:.75;font-size:1rem;line-height:1.7}
 
 /* ---- Testimonials ---- */
 .sl-testimonials{padding:80px 0}
 .test-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
-.test-card{padding:clamp(28px,4vw,48px);border-radius:28px;border:1px solid var(--muted);
+.test-card{padding:clamp(28px,4vw,48px);border-radius:var(--radius);border:1px solid var(--muted);
   background:var(--bg-card);position:relative}
 .test-stars{display:flex;gap:3px;margin-bottom:16px}
 .test-stars svg{color:var(--accent)}
@@ -345,7 +398,7 @@ section[id]{scroll-margin-top:150px}
 .svc-eyebrow{text-align:center;font-size:.7rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--primary);margin-bottom:16px}
 .svc-sub{text-align:center;font-size:clamp(1rem,1.5vw,1.3rem);opacity:.65;max-width:700px;margin:0 auto 48px;line-height:1.7;font-weight:300}
 .svc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px;margin-bottom:48px}
-.svc-card{border-radius:24px;border:1px solid var(--muted);background:var(--bg-card);overflow:hidden;transition:transform .3s,box-shadow .3s}
+.svc-card{border-radius:var(--radius);border:1px solid var(--muted);background:var(--bg-card);overflow:hidden;transition:transform .3s,box-shadow .3s}
 .svc-card:hover{transform:translateY(-6px);box-shadow:0 20px 60px rgba(0,0,0,.15)}
 .svc-featured{border-color:var(--primary);border-width:2px;box-shadow:0 0 40px ${t.isDark ? 'rgba(0,240,255,.12)' : 'rgba(0,200,255,.15)'};position:relative}
 .svc-featured::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--primary),var(--accent))}

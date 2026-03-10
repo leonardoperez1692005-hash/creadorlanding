@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
 const supabaseAdmin = createServiceClient()
 
@@ -34,6 +35,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
     if (!licenseKey) {
         return NextResponse.json({ error: 'x-license-key header requerido' }, { status: 400 })
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+    const rl = await rateLimitAsync(`license-project:${ip}`, { limit: 30, windowSec: 60 })
+    if (!rl.allowed) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
     const userId = await resolveActiveLicenseUserId(licenseKey)

@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
+import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
 // Service role: public endpoint, no user session
 const supabaseAdmin = createServiceClient()
@@ -30,6 +31,13 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     const cors = getCorsHeaders(req.headers.get('origin'))
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+    const rl = await rateLimitAsync(`leads-capture:${ip}`, { limit: 20, windowSec: 60 })
+    if (!rl.allowed) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: cors })
+    }
+
     try {
         const raw = await req.json().catch(() => ({}))
         const parsed = leadSchema.safeParse(raw)

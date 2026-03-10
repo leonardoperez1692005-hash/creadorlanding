@@ -1,5 +1,5 @@
 // =============================================
-// ZentrixOS - Shared Types
+// BrandVortix - Shared Types
 // =============================================
 
 export interface StrategyBriefData {

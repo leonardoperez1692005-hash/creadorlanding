@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { OnboardingFlow } from '@/features/onboarding/components/OnboardingFlow'
 
 export const metadata: Metadata = {
-    title: 'Onboarding de Marca — ZentrixOS',
+    title: 'Onboarding de Marca — BrandVortix',
 }
 
 export default async function OnboardingPage() {

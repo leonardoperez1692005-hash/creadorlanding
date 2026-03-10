@@ -4,6 +4,7 @@ import { useAttackPlanStore } from '../store/attackPlanStore'
 import { useRouter } from 'next/navigation'
 import { AttackVectorCard } from './AttackVectorCard'
 import { LandingPreview } from './LandingPreview'
+import { ExportMenu } from '@/shared/components/ExportMenu'
 import { Rocket, Swords, Target, LayoutGrid, ClipboardList } from 'lucide-react'
 
 export function AttackDashboard() {
@@ -25,11 +26,21 @@ export function AttackDashboard() {
         <div className="space-y-6">
             {/* Executive Summary */}
             <div className="rounded-lg border border-[var(--pink)]/30 bg-gradient-to-r from-[var(--pink)]/5 to-transparent p-5">
-                <div className="flex items-center gap-2 mb-2">
-                    <Swords className="w-5 h-5 text-[var(--pink)]" />
-                    <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                        Estrategia ZMOT
-                    </h2>
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <Swords className="w-5 h-5 text-[var(--pink)]" />
+                        <h2 className="text-lg font-bold text-[var(--text-primary)]">
+                            Estrategia ZMOT
+                        </h2>
+                    </div>
+                    {meta && (
+                        <ExportMenu
+                            type="attack-plan"
+                            data={{ plan, meta }}
+                            formats={['pdf', 'pptx', 'docx']}
+                            label="Exportar"
+                        />
+                    )}
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
                     {plan.executiveSummary}

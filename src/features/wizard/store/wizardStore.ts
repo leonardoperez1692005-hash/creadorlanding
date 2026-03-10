@@ -5,6 +5,7 @@ import { immer } from 'zustand/middleware/immer'
 import { temporal } from 'zundo'
 import type { WizardSection, DesignColors, TrackingMeta, WizardState } from '../types'
 import { getWizardSteps, initializeSections } from '../config/constants'
+import { getPresetById } from '../config/themes'
 
 interface WizardActions {
     // Navigation
@@ -43,6 +44,7 @@ interface WizardActions {
     // Design
     setCustomColors: (colors: DesignColors) => void
     setMeta: (meta: TrackingMeta) => void
+    applyPresetTheme: (themeId: string) => void
 
     // UI flags
     setIsSaving: (loading: boolean) => void
@@ -202,6 +204,23 @@ export const useWizardStore = create<WizardStore>()(
             setMeta: (meta) =>
                 set((s) => {
                     s.meta = meta
+                }),
+            applyPresetTheme: (themeId) =>
+                set((s) => {
+                    const preset = getPresetById(themeId)
+                    if (!preset) return
+                    s.customColors = {
+                        ...s.customColors,
+                        primary: preset.primary,
+                        secondary: preset.secondary,
+                        accent: preset.accent,
+                        fontHeading: preset.fontHeading,
+                        fontBody: preset.fontBody,
+                        borderRadius: preset.borderRadius,
+                        cardStyle: preset.cardStyle,
+                        themePreset: preset.id,
+                    }
+                    s.visualModel = preset.isDark ? 'dark' : 'light'
                 }),
 
             setIsSaving: (loading) =>

@@ -1,18 +1,18 @@
 // =============================================
-// ZentrixOS Political Intelligence — Types
+// BrandVortix Political Intelligence — Types
 // =============================================
 
 /** Configuracion de un politico a monitorear */
 export interface PoliticianTarget {
-    handle: string           // sin @, e.g. "JMilei"
+    handle: string // sin @, e.g. "JMilei"
     fullName: string
     party: string
-    role: string             // "Presidente", "Gobernador", etc.
+    role: string // "Presidente", "Gobernador", etc.
 }
 
 /** Snapshot de perfil extraido de X/Twitter JSON-LD */
 export interface TwitterProfileSnapshot {
-    handle: string                    // "@JMilei"
+    handle: string // "@JMilei"
     displayName: string
     bio: string
     location: string
@@ -20,8 +20,8 @@ export interface TwitterProfileSnapshot {
     followersCount: number
     followingCount: number
     tweetsCount: number
-    accountCreatedAt: string          // ISO date del JSON-LD
-    scrapedAt: string                 // ISO timestamp de este scrape
+    accountCreatedAt: string // ISO date del JSON-LD
+    scrapedAt: string // ISO timestamp de este scrape
     sourceUrl: string
     rawJsonLd: Record<string, unknown> | null
 }

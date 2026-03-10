@@ -144,6 +144,7 @@ export function TemplateGallery() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar plantillas por nombre, categoría o industria..."
+                            aria-label="Buscar plantillas"
                             className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm font-medium outline-none transition-all"
                             style={{
                                 background: '#151d38',
@@ -170,7 +171,7 @@ export function TemplateGallery() {
                     >
                         <Sparkles className="w-5 h-5 flex-shrink-0" style={{ color: '#00F0FF' }} />
                         <p className="text-sm" style={{ color: '#c0d0e8' }}>
-                            <strong style={{ color: '#00F0FF' }}>ZentrixOS recomienda</strong> la
+                            <strong style={{ color: '#00F0FF' }}>BrandVortix recomienda</strong> la
                             plantilla
                             <strong className="text-white">
                                 {' '}
