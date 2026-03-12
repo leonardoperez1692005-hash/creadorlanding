@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
-// Service role: public endpoint, no user session
-const supabaseAdmin = createServiceClient()
+// Service role: public endpoint, no user session — lazy init to avoid build-time crash
+const getAdmin = () => createServiceClient()
 
 const leadSchema = z.object({
     projectId: z.string().uuid('projectId inválido'),
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         const { projectId, name, email, phone, source, message } = parsed.data
 
         // Validate project exists
-        const { data: project } = await supabaseAdmin
+        const { data: project } = await getAdmin()
             .from('projects')
             .select('id')
             .eq('id', projectId)
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
         // Rate limit: block same email + project within 5 minutes
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await getAdmin()
             .from('leads')
             .select('id')
             .eq('project_id', projectId)
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
             )
         }
 
-        const { data: lead, error } = await supabaseAdmin
+        const { data: lead, error } = await getAdmin()
             .from('leads')
             .insert({
                 project_id: projectId,

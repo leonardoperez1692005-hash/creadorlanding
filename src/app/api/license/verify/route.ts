@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
-// Uses service role so it can read licenses + profiles without user session
-const supabaseAdmin = createServiceClient()
+// Uses service role so it can read licenses + profiles without user session — lazy init
+const getAdmin = () => createServiceClient()
 
 export async function POST(req: NextRequest) {
     try {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Fetch license + profile in one query
-        const { data: license, error } = await supabaseAdmin
+        const { data: license, error } = await getAdmin()
             .from('licenses')
             .select(
                 `
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
         // Check expiry
         if (license.expires_at && new Date(license.expires_at) < new Date()) {
-            await supabaseAdmin.from('licenses').update({ status: 'expired' }).eq('id', license.id)
+            await getAdmin().from('licenses').update({ status: 'expired' }).eq('id', license.id)
             return NextResponse.json({ valid: false, error: 'Licencia expirada' })
         }
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         // Get email from auth.users (not stored in profiles)
         let userEmail = ''
         if (license.user_id) {
-            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(license.user_id)
+            const { data: authUser } = await getAdmin().auth.admin.getUserById(license.user_id)
             userEmail = authUser?.user?.email ?? ''
         }
 

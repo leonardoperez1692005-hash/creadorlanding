@@ -3,12 +3,12 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 
-const supabaseAdmin = createServiceClient()
+const getAdmin = () => createServiceClient()
 
 async function resolveActiveLicenseUserId(licenseKey: string): Promise<string | null> {
     if (!licenseKey) return null
 
-    const { data: license } = await supabaseAdmin
+    const { data: license } = await getAdmin()
         .from('licenses')
         .select(
             `
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
         )
     }
 
-    const { data: project, error } = await supabaseAdmin
+    const { data: project, error } = await getAdmin()
         .from('projects')
         .select('slug, html_output')
         .eq('slug', slug)
