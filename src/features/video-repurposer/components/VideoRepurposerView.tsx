@@ -65,10 +65,11 @@ export function VideoRepurposerView() {
 
     // Auto-switch to calendar tab when calendar is generated
     const hasCalendar = !!calendar
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional tab switch on generation complete
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (hasCalendar) setActiveTab('calendar')
     }, [hasCalendar])
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const candidateContext = campaignProfile
         ? `Candidato: ${campaignProfile.candidateName} (${campaignProfile.party})

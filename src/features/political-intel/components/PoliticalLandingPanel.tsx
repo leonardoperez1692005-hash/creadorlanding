@@ -41,14 +41,14 @@ export function PoliticalLandingPanel() {
     // Sync selections when vectors/thematic arrays change length
     const vectorsLen = attackVectors.length
     const thematicLen = thematicAngles.length
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync on external store change
+    /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
     useEffect(() => {
         setSelectedVectors(new Set(attackVectors.map((_, i) => i)))
-    }, [vectorsLen]) // eslint-disable-line react-hooks/exhaustive-deps
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync on external store change
+    }, [vectorsLen])
     useEffect(() => {
         setSelectedThematic(new Set(thematicAngles.map((_, i) => i)))
-    }, [thematicLen]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [thematicLen])
+    /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
     const toggleVector = useCallback((index: number) => {
         setSelectedVectors((prev) => {
