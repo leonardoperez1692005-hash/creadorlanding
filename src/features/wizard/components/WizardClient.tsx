@@ -18,7 +18,20 @@ import {
     Redo2,
 } from 'lucide-react'
 import { useStore } from 'zustand'
-import { useWizardStore } from '../store/wizardStore'
+import { useShallow } from 'zustand/react/shallow'
+import {
+    useWizardStore,
+    selectProjectName,
+    selectStructureType,
+    selectVisualModel,
+    selectCurrentStepIndex,
+    selectIsSaving,
+    selectIsLoading,
+    selectShowPersonalization,
+    selectShowMobilePreview,
+    selectSections,
+    selectCustomColors,
+} from '../store/wizardStore'
 import { StepType } from './StepType'
 import { StepContent } from './StepContent'
 import { WizardProgressBar } from './WizardProgressBar'
@@ -34,14 +47,73 @@ interface WizardClientProps {
 
 export function WizardClient({ projectId }: WizardClientProps) {
     const router = useRouter()
-    const store = useWizardStore()
-    const { undo, redo, pastStates, futureStates } = useStore(useWizardStore.temporal)
+    // ─── Granular state selectors (avoid full-store re-renders) ──
+    const projectName = useWizardStore(selectProjectName)
+    const structureType = useWizardStore(selectStructureType)
+    const visualModel = useWizardStore(selectVisualModel)
+    const currentStepIndex = useWizardStore(selectCurrentStepIndex)
+    const isSaving = useWizardStore(selectIsSaving)
+    const isLoading = useWizardStore(selectIsLoading)
+    const showPersonalization = useWizardStore(selectShowPersonalization)
+    const showMobilePreview = useWizardStore(selectShowMobilePreview)
+    const sections = useWizardStore(selectSections)
+    const customColors = useWizardStore(selectCustomColors)
+
+    // ─── Computed selectors ──────────────────────────────────────
+    const steps = useWizardStore(useShallow((s) => s.getVisibleSteps()))
+    const currentStep = useWizardStore((s) => s.getCurrentStep())
+
+    // ─── Actions (stable refs, grouped to reduce hook calls) ────
+    const actions = useWizardStore(
+        useShallow((s) => ({
+            setProjectName: s.setProjectName,
+            setStructureType: s.setStructureType,
+            setVisualModel: s.setVisualModel,
+            setStepIndex: s.setStepIndex,
+            setShowPersonalization: s.setShowPersonalization,
+            setShowMobilePreview: s.setShowMobilePreview,
+            nextStep: s.nextStep,
+            prevStep: s.prevStep,
+            setCustomColors: s.setCustomColors,
+            toggleSectionVisibility: s.toggleSectionVisibility,
+            moveSection: s.moveSection,
+            addSection: s.addSection,
+            removeSection: s.removeSection,
+            applyPresetTheme: s.applyPresetTheme,
+        })),
+    )
+
+    const { undo, redo, pastStates, futureStates } = useStore(
+        useWizardStore.temporal,
+        useShallow((s) => ({
+            undo: s.undo,
+            redo: s.redo,
+            pastStates: s.pastStates,
+            futureStates: s.futureStates,
+        })),
+    )
     const { ready } = useWizardInit(projectId)
 
     const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
     const [showFullPreview, setShowFullPreview] = useState(false)
     const [publishedSlug, setPublishedSlug] = useState<string | null>(null)
     const [savedFeedback, setSavedFeedback] = useState(false)
+
+    // Warn before leaving with unsaved changes
+    const hasChanges = pastStates.length > 0
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (hasChanges) e.preventDefault()
+        }
+        window.addEventListener('beforeunload', handler)
+        return () => window.removeEventListener('beforeunload', handler)
+    }, [hasChanges])
+
+    const navigateDashboard = useCallback(() => {
+        if (hasChanges && !window.confirm('Tenés cambios sin guardar. ¿Salir sin guardar?')) return
+        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('bv_wizard_draft')
+        router.push('/dashboard')
+    }, [hasChanges, router])
 
     // Undo/Redo keyboard shortcuts
     useEffect(() => {
@@ -61,52 +133,49 @@ export function WizardClient({ projectId }: WizardClientProps) {
     }, [undo, redo])
 
     // Handle save (plain save) or publish (save + compile HTML)
-    const handleSave = useCallback(
-        async (publish = false) => {
-            store.setIsSaving(true)
-            const isNewProject = !store.projectId
-            const payload = {
-                projectId: store.projectId ?? undefined,
-                name: store.projectName || 'Nuevo Proyecto',
-                structureType: store.structureType,
-                visualModel: store.visualModel,
-                sections: store.sections,
-                colors: store.customColors as Record<string, string>,
-                meta: store.meta as Record<string, string>,
-            }
-            try {
-                const result = publish
-                    ? await publishProjectAction(payload)
-                    : await saveProjectAction(payload)
-                store.setIsSaving(false)
-                if (!result.success) {
-                    alert(result.error)
-                } else if (result.data) {
-                    store.setProjectId(result.data.id)
-                    setPublishedSlug(result.data.slug)
-                    if (isNewProject) {
-                        window.history.replaceState({}, '', `/wizard?projectId=${result.data.id}`)
-                    }
-                    if (publish) {
-                        window.open(`/p/${result.data.slug}`, '_blank')
-                    } else {
-                        setSavedFeedback(true)
-                        setTimeout(() => setSavedFeedback(false), 2000)
-                    }
+    const handleSave = useCallback(async (publish = false) => {
+        const state = useWizardStore.getState()
+        state.setIsSaving(true)
+        const isNewProject = !state.projectId
+        const payload = {
+            projectId: state.projectId ?? undefined,
+            name: state.projectName || 'Nuevo Proyecto',
+            structureType: state.structureType,
+            visualModel: state.visualModel,
+            sections: state.sections,
+            colors: state.customColors as Record<string, string>,
+            meta: state.meta as Record<string, string>,
+        }
+        try {
+            const result = publish
+                ? await publishProjectAction(payload)
+                : await saveProjectAction(payload)
+            state.setIsSaving(false)
+            if (!result.success) {
+                alert(result.error)
+            } else if (result.data) {
+                state.setProjectId(result.data.id)
+                setPublishedSlug(result.data.slug)
+                if (typeof sessionStorage !== 'undefined')
+                    sessionStorage.removeItem('bv_wizard_draft')
+                if (isNewProject) {
+                    window.history.replaceState({}, '', `/wizard?projectId=${result.data.id}`)
                 }
-            } catch (e) {
-                store.setIsSaving(false)
-                alert('Error al guardar. Intentá de nuevo.')
-                logger.error('wizard', 'handleSave threw', e)
+                if (publish) {
+                    window.open(`/p/${result.data.slug}`, '_blank')
+                } else {
+                    setSavedFeedback(true)
+                    setTimeout(() => setSavedFeedback(false), 2000)
+                }
             }
-        },
-        [store],
-    )
+        } catch (e) {
+            useWizardStore.getState().setIsSaving(false)
+            alert('Error al guardar. Intentá de nuevo.')
+            logger.error('wizard', 'handleSave threw', e)
+        }
+    }, [])
 
-    const steps = store.getVisibleSteps()
-    const currentStep = store.getCurrentStep()
-
-    if (!ready || store.isLoading) {
+    if (!ready || isLoading) {
         return (
             <div
                 className="min-h-screen flex items-center justify-center"
@@ -129,7 +198,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     style={{ borderColor: 'var(--border)' }}
                 >
                     <button
-                        onClick={() => router.push('/dashboard')}
+                        onClick={navigateDashboard}
                         className="flex items-center gap-2 text-sm transition-all hover:opacity-70"
                         style={{ color: 'var(--text-muted)' }}
                     >
@@ -139,18 +208,18 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     <div />
                 </div>
                 <StepType
-                    structureType={store.structureType}
-                    setStructureType={(type) => store.setStructureType(type)}
-                    projectName={store.projectName}
-                    setProjectName={store.setProjectName}
-                    visualModel={store.visualModel}
-                    setVisualModel={store.setVisualModel}
+                    structureType={structureType}
+                    setStructureType={actions.setStructureType}
+                    projectName={projectName}
+                    setProjectName={actions.setProjectName}
+                    visualModel={visualModel}
+                    setVisualModel={actions.setVisualModel}
                     onContinue={() => {
-                        if (!store.projectName.trim()) {
+                        if (!projectName.trim()) {
                             alert('Ingresa un nombre para el proyecto')
                             return
                         }
-                        store.setStepIndex(1)
+                        actions.setStepIndex(1)
                     }}
                 />
             </div>
@@ -181,7 +250,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                 }}
             >
                 <button
-                    onClick={() => router.push('/dashboard')}
+                    onClick={navigateDashboard}
                     style={{
                         padding: '8px',
                         borderRadius: '8px',
@@ -198,8 +267,8 @@ export function WizardClient({ projectId }: WizardClientProps) {
                 </button>
 
                 <input
-                    value={store.projectName}
-                    onChange={(e) => store.setProjectName(e.target.value)}
+                    value={projectName}
+                    onChange={(e) => actions.setProjectName(e.target.value)}
                     placeholder="Nombre del proyecto"
                     aria-label="Nombre del proyecto"
                     maxLength={80}
@@ -280,7 +349,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                         <Monitor className="w-3.5 h-3.5" /> Preview
                     </button>
                     <button
-                        onClick={() => store.setShowPersonalization(!store.showPersonalization)}
+                        onClick={() => actions.setShowPersonalization(!showPersonalization)}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -300,7 +369,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     </button>
                     <button
                         onClick={() => handleSave(false)}
-                        disabled={store.isSaving}
+                        disabled={isSaving}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -314,11 +383,11 @@ export function WizardClient({ projectId }: WizardClientProps) {
                             fontWeight: 600,
                             cursor: 'pointer',
                             fontFamily: 'inherit',
-                            opacity: store.isSaving ? 0.6 : 1,
+                            opacity: isSaving ? 0.6 : 1,
                             transition: 'all 0.3s',
                         }}
                     >
-                        {store.isSaving ? (
+                        {isSaving ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : savedFeedback ? (
                             <Check className="w-3.5 h-3.5" />
@@ -329,7 +398,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                     </button>
                     <button
                         onClick={() => handleSave(true)}
-                        disabled={store.isSaving}
+                        disabled={isSaving}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -343,7 +412,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                             fontWeight: 700,
                             cursor: 'pointer',
                             fontFamily: 'inherit',
-                            opacity: store.isSaving ? 0.6 : 1,
+                            opacity: isSaving ? 0.6 : 1,
                         }}
                     >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -382,14 +451,14 @@ export function WizardClient({ projectId }: WizardClientProps) {
             {/* Progress */}
             <WizardProgressBar
                 steps={steps}
-                currentStepIndex={store.currentStepIndex}
-                onStepClick={store.setStepIndex}
+                currentStepIndex={currentStepIndex}
+                onStepClick={actions.setStepIndex}
             />
 
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
                 {/* Editor Column */}
                 <div
-                    className={store.showMobilePreview ? 'hidden lg:flex' : 'flex'}
+                    className={showMobilePreview ? 'hidden lg:flex' : 'flex'}
                     style={{
                         flex: 1,
                         flexDirection: 'column',
@@ -431,8 +500,8 @@ export function WizardClient({ projectId }: WizardClientProps) {
                         }}
                     >
                         <button
-                            onClick={store.prevStep}
-                            disabled={store.currentStepIndex === 0}
+                            onClick={actions.prevStep}
+                            disabled={currentStepIndex === 0}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -445,18 +514,18 @@ export function WizardClient({ projectId }: WizardClientProps) {
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                opacity: store.currentStepIndex === 0 ? 0.3 : 1,
+                                opacity: currentStepIndex === 0 ? 0.3 : 1,
                                 fontFamily: 'inherit',
                             }}
                         >
                             <ArrowLeft className="w-4 h-4" /> Anterior
                         </button>
                         <span style={{ fontSize: '12px', color: '#3d4f6e', fontWeight: 600 }}>
-                            {store.currentStepIndex + 1} / {steps.length}
+                            {currentStepIndex + 1} / {steps.length}
                         </span>
                         <button
-                            onClick={store.nextStep}
-                            disabled={store.currentStepIndex === steps.length - 1}
+                            onClick={actions.nextStep}
+                            disabled={currentStepIndex === steps.length - 1}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -469,7 +538,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
                                 fontSize: '13px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
-                                opacity: store.currentStepIndex === steps.length - 1 ? 0.3 : 1,
+                                opacity: currentStepIndex === steps.length - 1 ? 0.3 : 1,
                                 fontFamily: 'inherit',
                             }}
                         >
@@ -480,7 +549,7 @@ export function WizardClient({ projectId }: WizardClientProps) {
 
                 {/* Preview Column */}
                 <div
-                    className={`flex-1 border-l relative flex flex-col ${store.showMobilePreview ? 'fixed inset-0 z-50 lg:static lg:flex' : 'hidden lg:flex overflow-hidden'}`}
+                    className={`flex-1 border-l relative flex flex-col ${showMobilePreview ? 'fixed inset-0 z-50 lg:static lg:flex' : 'hidden lg:flex overflow-hidden'}`}
                     style={{ borderColor: 'var(--border)', background: '#000' }}
                 >
                     {/* Device Toggle Bar */}
@@ -496,9 +565,9 @@ export function WizardClient({ projectId }: WizardClientProps) {
                             flexShrink: 0,
                         }}
                     >
-                        {store.showMobilePreview && (
+                        {showMobilePreview && (
                             <button
-                                onClick={() => store.setShowMobilePreview(false)}
+                                onClick={() => actions.setShowMobilePreview(false)}
                                 style={{
                                     position: 'absolute',
                                     left: '12px',
@@ -634,21 +703,21 @@ export function WizardClient({ projectId }: WizardClientProps) {
 
             {showFullPreview && <FullPreviewModal onClose={() => setShowFullPreview(false)} />}
 
-            {store.showPersonalization && (
+            {showPersonalization && (
                 <PersonalizationSidebar
-                    visualModel={store.visualModel}
-                    setVisualModel={store.setVisualModel}
-                    customColors={store.customColors}
-                    setCustomColors={store.setCustomColors}
-                    sections={store.sections}
-                    toggleVisibility={store.toggleSectionVisibility}
-                    moveSection={store.moveSection}
-                    onClose={() => store.setShowPersonalization(false)}
-                    structureType={store.structureType}
-                    projectName={store.projectName}
-                    onAddSection={store.addSection}
-                    onRemoveSection={store.removeSection}
-                    onApplyPreset={store.applyPresetTheme}
+                    visualModel={visualModel}
+                    setVisualModel={actions.setVisualModel}
+                    customColors={customColors}
+                    setCustomColors={actions.setCustomColors}
+                    sections={sections}
+                    toggleVisibility={actions.toggleSectionVisibility}
+                    moveSection={actions.moveSection}
+                    onClose={() => actions.setShowPersonalization(false)}
+                    structureType={structureType}
+                    projectName={projectName}
+                    onAddSection={actions.addSection}
+                    onRemoveSection={actions.removeSection}
+                    onApplyPreset={actions.applyPresetTheme}
                 />
             )}
         </div>

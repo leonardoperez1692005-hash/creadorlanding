@@ -83,7 +83,9 @@ export async function runStrategyAnalysisAction(
         // === FASE 0: Load brand identity for real product/service data ===
         const { data: brandRow } = await supabase
             .from('brand_identities')
-            .select('brand_name, services, differentiators, faqs, testimonials, stats')
+            .select(
+                'brand_name, services, differentiators, faqs, testimonials, stats, country, candidate_name, party',
+            )
             .eq('user_id', user.id)
             .single()
 
@@ -176,7 +178,8 @@ Genera un plan estratégico completo basado en estos datos:
 - Valores: ${brief.brandValues || 'No especificados'}
 - Público objetivo: ${brief.targetAudience || 'No especificado'}
 - Objetivos: ${brief.objectives || 'Ventas'}
-- País: ${brief.country || 'Argentina'}
+- País: ${brief.country || (brandRow as Record<string, unknown>)?.country || 'Argentina'}
+${(brandRow as Record<string, unknown>)?.candidate_name ? `- Candidato: ${(brandRow as Record<string, unknown>).candidate_name}\n- Partido: ${(brandRow as Record<string, unknown>).party || 'No especificado'}` : ''}
 ${realBusinessBlock}
 
 ## DATOS DE COMPETIDORES (Bright Data Scraping)

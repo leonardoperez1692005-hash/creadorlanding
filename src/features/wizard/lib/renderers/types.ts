@@ -23,6 +23,7 @@ export type Content = Record<string, any>
 /** Generic item type for section items (benefits, FAQs, team members, etc.) */
 export interface RendererItem {
     title?: string
+    subtitle?: string
     description?: string
     question?: string
     answer?: string
@@ -32,18 +33,34 @@ export interface RendererItem {
     label?: string
     name?: string
     role?: string
+    position?: string
+    bio?: string
+    company?: string
+    speaker?: string
     image_url?: string
+    image?: string
+    photo?: string
+    avatar?: string
+    logo?: string
     icon?: string
     url?: string
+    caption?: string
+    tag?: string
+    badge?: string
     time?: string
+    period?: string
     level?: string
+    rating?: number
     price?: string
     currency?: string
     features?: string[]
+    featured?: string | boolean
+    highlighted?: boolean
+    without?: string
+    with?: string
     cta_text?: string
     cta_url?: string
     highlight?: boolean
-    [key: string]: unknown
 }
 
 export interface RenderContext {

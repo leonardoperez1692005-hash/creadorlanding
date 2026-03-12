@@ -69,18 +69,51 @@ export const attackPlanMetaSchema = z.object({
 
 const socialPlatformSchema = z.enum(['linkedin', 'x', 'tiktok', 'instagram'])
 
-const contentFormatSchema = z.enum([
-    'post',
-    'carousel',
-    'reel',
-    'story',
-    'video',
-    'duet',
-    'article',
-    'poll',
-    'thread',
-    'tweet',
-])
+// Gemini sometimes returns variations like "reels", "text_post", "infographic", etc.
+// This preprocess normalizes them to valid values.
+const CONTENT_FORMAT_MAP: Record<string, string> = {
+    reels: 'reel',
+    reel: 'reel',
+    stories: 'story',
+    text_post: 'post',
+    text: 'post',
+    image: 'post',
+    image_post: 'post',
+    infographic: 'carousel',
+    infografia: 'carousel',
+    quote_card: 'post',
+    quote: 'post',
+    threads: 'thread',
+    tweets: 'tweet',
+    articles: 'article',
+    polls: 'poll',
+    videos: 'video',
+    duets: 'duet',
+    carousels: 'carousel',
+    carrusel: 'carousel',
+}
+
+const contentFormatSchema = z.preprocess(
+    (val) => {
+        if (typeof val === 'string') {
+            const normalized = val.toLowerCase().trim()
+            return CONTENT_FORMAT_MAP[normalized] ?? normalized
+        }
+        return val
+    },
+    z.enum([
+        'post',
+        'carousel',
+        'reel',
+        'story',
+        'video',
+        'duet',
+        'article',
+        'poll',
+        'thread',
+        'tweet',
+    ]),
+)
 
 const socialPostContentSchema = z.preprocess(
     (val) => {
@@ -104,7 +137,7 @@ const socialPostContentSchema = z.preprocess(
     }),
 )
 
-const socialPostSchema = z.object({
+export const socialPostSchema = z.object({
     platform: socialPlatformSchema,
     contentType: contentFormatSchema,
     topic: z.string(),

@@ -16,17 +16,14 @@ export interface GeminiOptions {
 }
 
 function sleep(ms: number): Promise<void> {
-    return new Promise(r => setTimeout(r, ms))
+    return new Promise((r) => setTimeout(r, ms))
 }
 
 /**
  * Call Gemini API with a prompt and return the raw text response.
  * Uses JSON response mode by default. Retries on failure with exponential backoff.
  */
-export async function callGemini(
-    prompt: string,
-    options?: GeminiOptions
-): Promise<string> {
+export async function callGemini(prompt: string, options?: GeminiOptions): Promise<string> {
     const model = options?.model ?? DEFAULT_MODEL
     const apiKey = env.geminiApiKey
     const maxRetries = options?.retries ?? 2
@@ -35,21 +32,18 @@ export async function callGemini(
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            const res = await fetch(
-                `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: {
-                            temperature: options?.temperature ?? 0.7,
-                            maxOutputTokens: options?.maxTokens ?? 4096,
-                            responseMimeType: 'application/json',
-                        },
-                    }),
-                }
-            )
+            const res = await fetch(`${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: options?.temperature ?? 0.7,
+                        maxOutputTokens: options?.maxTokens ?? 4096,
+                        responseMimeType: 'application/json',
+                    },
+                }),
+            })
 
             if (!res.ok) {
                 const errText = await res.text()
@@ -71,13 +65,34 @@ export async function callGemini(
 
 /**
  * Parse JSON from AI response text.
- * Handles markdown code blocks and extracts the first JSON object.
+ * Handles markdown code blocks, extracts the first JSON object,
+ * and sanitizes control characters that LLMs sometimes put inside string values.
  */
 export function parseJsonFromAI(raw: string): unknown {
-    let clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    let clean = raw
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim()
     const match = clean.match(/\{[\s\S]*\}/)
     if (match) clean = match[0]
-    return JSON.parse(clean)
+
+    try {
+        return JSON.parse(clean)
+    } catch {
+        // Sanitize control characters inside JSON string values.
+        // Replace literal newlines/tabs/etc inside strings with escaped versions.
+        const sanitized = clean.replace(/("(?:[^"\\]|\\.)*")/g, (str) =>
+            str
+                .replace(/(?<!\\)\n/g, '\\n')
+                .replace(/(?<!\\)\r/g, '\\r')
+                .replace(/(?<!\\)\t/g, '\\t')
+                .replace(
+                    /[\x00-\x1f]/g,
+                    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`,
+                ),
+        )
+        return JSON.parse(sanitized)
+    }
 }
 
 /**

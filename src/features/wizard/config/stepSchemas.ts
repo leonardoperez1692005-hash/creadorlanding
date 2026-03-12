@@ -95,6 +95,12 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
                 placeholder: '#faq o https://...',
             },
             { key: 'bg_image', label: 'Imagen de Fondo', type: 'image' as const },
+            {
+                key: 'bg_video',
+                label: 'Video de Fondo (YouTube o mp4 — autoplay, muted, loop)',
+                type: 'text' as const,
+                placeholder: 'https://www.youtube.com/watch?v=... o URL .mp4',
+            },
             { key: 'overlay_color', label: 'Color del Overlay', type: 'color' as const },
             {
                 key: 'overlay_opacity',
@@ -102,10 +108,9 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
                 type: 'text' as const,
                 placeholder: '50',
             },
+            // ── Video (disponible para todas las plantillas) ──
+            { key: 'video_url', label: 'URL del Video (YouTube o embed)', type: 'url' as const },
             // ── Campos específicos por plantilla ──
-            ...(type === 'vsl'
-                ? [{ key: 'video_url', label: 'URL del Video (YouTube)', type: 'url' as const }]
-                : []),
             ...(type === 'webinar'
                 ? [{ key: 'date', label: 'Fecha del Evento', type: 'text' as const }]
                 : []),

@@ -1,45 +1,38 @@
 // =============================================
-// BrandVortix Political Intelligence — X/Twitter Scraper
+// Political Intelligence V2 — X/Twitter Scraper
+// Uses shared Bright Data client
 // =============================================
 
 import { logger } from '@/shared/lib/logger'
-import type { PoliticianTarget, TwitterProfileSnapshot, ScrapeResult } from './types'
-import { BD_ENDPOINT, BD_REQUEST_DELAY_MS, BD_TIMEOUT_MS } from './config'
-
-// Lazy getters — env vars must be read AFTER dotenv.config() runs.
-// ES module imports are hoisted, so top-level reads would capture empty strings.
-function getBdApiKey(): string {
-    return process.env.BRIGHTDATA_API_KEY ?? ''
-}
-function getBdZone(): string {
-    return process.env.BRIGHTDATA_ZONE ?? 'brandvortix_scraper'
-}
+import { scrapeUrl, sleep } from '@/lib/brightdata'
+import type { PoliticalMonitor, TwitterProfileSnapshot, ScrapeResult } from './types'
+import { BD_REQUEST_DELAY_MS } from './config'
 
 // ─── Public API ──────────────────────────────────────────
 
-export async function scrapeAllProfiles(targets: PoliticianTarget[]): Promise<ScrapeResult[]> {
+export async function scrapeAllProfiles(monitors: PoliticalMonitor[]): Promise<ScrapeResult[]> {
     const results: ScrapeResult[] = []
 
-    for (const target of targets) {
-        logger.info('political-intel', `Scraping @${target.handle}...`)
-        const result = await scrapeTwitterProfile(target)
+    for (let i = 0; i < monitors.length; i++) {
+        const monitor = monitors[i]
+        logger.info('political-intel', `Scraping @${monitor.handle}...`)
+        const result = await scrapeTwitterProfile(monitor)
 
         if (result.success && result.profile) {
             logger.info(
                 'political-intel',
-                `Scraped ${result.profile.displayName} — ${fmt(result.profile.followersCount)} seguidores (${result.durationMs}ms)`,
+                `Scraped ${result.profile.displayName} — ${fmtNum(result.profile.followersCount)} seguidores (${result.durationMs}ms)`,
             )
         } else {
             logger.warn(
                 'political-intel',
-                `Scrape FAILED: ${result.error} (${result.durationMs}ms)`,
+                `Scrape FAILED @${monitor.handle}: ${result.error} (${result.durationMs}ms)`,
             )
         }
 
         results.push(result)
 
-        // Delay entre requests para no saturar
-        if (targets.indexOf(target) < targets.length - 1) {
+        if (i < monitors.length - 1) {
             await sleep(BD_REQUEST_DELAY_MS)
         }
     }
@@ -49,37 +42,16 @@ export async function scrapeAllProfiles(targets: PoliticianTarget[]): Promise<Sc
 
 // ─── Core Scraper ────────────────────────────────────────
 
-async function scrapeTwitterProfile(target: PoliticianTarget): Promise<ScrapeResult> {
-    const url = `https://x.com/${target.handle}`
+async function scrapeTwitterProfile(monitor: PoliticalMonitor): Promise<ScrapeResult> {
+    const url = `https://x.com/${monitor.handle}`
     const start = Date.now()
 
     try {
-        const res = await fetch(BD_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${getBdApiKey()}`,
-            },
-            body: JSON.stringify({ zone: getBdZone(), url, format: 'raw' }),
-            signal: AbortSignal.timeout(BD_TIMEOUT_MS),
-        })
-
-        if (!res.ok) {
-            return {
-                handle: target.handle,
-                success: false,
-                profile: null,
-                error: `HTTP ${res.status}`,
-                httpStatus: res.status,
-                durationMs: Date.now() - start,
-            }
-        }
-
-        const html = await res.text()
-        const profile = extractProfileFromHtml(html, target, url)
+        const html = await scrapeUrl(url, { format: 'raw', maxChars: 100_000 })
+        const profile = extractProfileFromHtml(html, monitor, url)
 
         return {
-            handle: target.handle,
+            handle: monitor.handle,
             success: !!profile,
             profile,
             error: profile ? undefined : 'No se pudo extraer JSON-LD ni meta tags del HTML',
@@ -87,7 +59,7 @@ async function scrapeTwitterProfile(target: PoliticianTarget): Promise<ScrapeRes
         }
     } catch (err) {
         return {
-            handle: target.handle,
+            handle: monitor.handle,
             success: false,
             profile: null,
             error: (err as Error).message,
@@ -100,20 +72,17 @@ async function scrapeTwitterProfile(target: PoliticianTarget): Promise<ScrapeRes
 
 function extractProfileFromHtml(
     html: string,
-    target: PoliticianTarget,
+    monitor: PoliticalMonitor,
     sourceUrl: string,
 ): TwitterProfileSnapshot | null {
-    // Strategy 1: JSON-LD blocks (X embeds UserProfileSchema server-side)
-    const jsonLdProfile = extractFromJsonLd(html, target, sourceUrl)
+    const jsonLdProfile = extractFromJsonLd(html, monitor, sourceUrl)
     if (jsonLdProfile) return jsonLdProfile
-
-    // Strategy 2: Fallback a Open Graph meta tags
-    return extractFromMetaTags(html, target, sourceUrl)
+    return extractFromMetaTags(html, monitor, sourceUrl)
 }
 
 function extractFromJsonLd(
     html: string,
-    target: PoliticianTarget,
+    monitor: PoliticalMonitor,
     sourceUrl: string,
 ): TwitterProfileSnapshot | null {
     const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
@@ -123,21 +92,19 @@ function extractFromJsonLd(
         try {
             const parsed = JSON.parse(match[1].trim())
 
-            // Buscar schema Person o ProfilePage
             if (
                 parsed['@type'] === 'Person' ||
                 parsed['@type'] === 'ProfilePage' ||
                 parsed.mainEntity?.['@type'] === 'Person'
             ) {
                 const person = parsed.mainEntity ?? parsed
-
                 const stats = Array.isArray(person.interactionStatistic)
                     ? person.interactionStatistic
                     : []
 
                 return {
-                    handle: `@${target.handle}`,
-                    displayName: String(person.name ?? target.fullName),
+                    handle: `@${monitor.handle}`,
+                    displayName: String(person.name ?? monitor.fullName),
                     bio: String(person.description ?? ''),
                     location: String(person.homeLocation?.name ?? person.location ?? ''),
                     profileImageUrl: String(person.image?.contentUrl ?? person.image ?? ''),
@@ -167,7 +134,6 @@ function extractFromJsonLd(
 
 function extractStatCount(stats: unknown[], namePart: string): number | null {
     if (!Array.isArray(stats)) return null
-
     for (const stat of stats) {
         const s = stat as Record<string, unknown>
         const name = String(s.name ?? s.interactionType ?? '')
@@ -176,7 +142,6 @@ function extractStatCount(stats: unknown[], namePart: string): number | null {
             return isNaN(count) ? null : count
         }
     }
-
     return null
 }
 
@@ -184,7 +149,7 @@ function extractStatCount(stats: unknown[], namePart: string): number | null {
 
 function extractFromMetaTags(
     html: string,
-    target: PoliticianTarget,
+    monitor: PoliticalMonitor,
     sourceUrl: string,
 ): TwitterProfileSnapshot | null {
     const ogDesc = html.match(
@@ -196,8 +161,8 @@ function extractFromMetaTags(
     if (!ogDesc && !ogTitle) return null
 
     return {
-        handle: `@${target.handle}`,
-        displayName: ogTitle ? ogTitle[1] : target.fullName,
+        handle: `@${monitor.handle}`,
+        displayName: ogTitle ? ogTitle[1] : monitor.fullName,
         bio: ogDesc ? ogDesc[1] : '',
         location: '',
         profileImageUrl: ogImage ? ogImage[1] : '',
@@ -228,12 +193,8 @@ function parseAbbreviated(str: string): number {
 
 // ─── Helpers ─────────────────────────────────────────────
 
-function fmt(n: number): string {
+function fmtNum(n: number): string {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
     if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K'
     return String(n)
-}
-
-function sleep(ms: number): Promise<void> {
-    return new Promise((r) => setTimeout(r, ms))
 }

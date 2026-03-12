@@ -7,6 +7,10 @@ import type { WizardSection, DesignColors, TrackingMeta, WizardState } from '../
 import { getWizardSteps, initializeSections } from '../config/constants'
 import { getPresetById } from '../config/themes'
 
+// Cache for fallback empty sections — avoids creating new object references
+// on every getSection() call, which would cause infinite re-renders in React
+const emptySectionCache = new Map<string, WizardSection>()
+
 interface WizardActions {
     // Navigation
     setStepIndex: (index: number) => void
@@ -166,15 +170,21 @@ export const useWizardStore = create<WizardStore>()(
                     }
                 }),
             getSection: (sectionId) => {
-                return (
-                    get().sections.find((s) => s.id === sectionId) ?? {
+                const found = get().sections.find((s) => s.id === sectionId)
+                if (found) return found
+                // Return cached fallback to avoid new object references per call
+                let cached = emptySectionCache.get(sectionId)
+                if (!cached) {
+                    cached = {
                         id: sectionId,
                         type: sectionId,
                         content: {},
                         isVisible: true,
                         order: 0,
                     }
-                )
+                    emptySectionCache.set(sectionId, cached)
+                }
+                return cached
             },
             addSection: (type) =>
                 set((s) => {
@@ -296,6 +306,36 @@ export const useWizardStore = create<WizardStore>()(
         },
     ),
 )
+
+// ─── Auto-persist draft to sessionStorage (throttled) ────────
+const DRAFT_KEY = 'bv_wizard_draft'
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+
+if (typeof window !== 'undefined') {
+    useWizardStore.subscribe((state) => {
+        if (draftTimer) clearTimeout(draftTimer)
+        draftTimer = setTimeout(() => {
+            try {
+                sessionStorage.setItem(
+                    DRAFT_KEY,
+                    JSON.stringify({
+                        sections: state.sections,
+                        customColors: state.customColors,
+                        projectName: state.projectName,
+                        structureType: state.structureType,
+                        visualModel: state.visualModel,
+                        meta: state.meta,
+                        projectId: state.projectId,
+                        fromTemplate: state.fromTemplate,
+                        timestamp: Date.now(),
+                    }),
+                )
+            } catch {
+                /* sessionStorage full or unavailable */
+            }
+        }, 1000)
+    })
+}
 
 // ─── Granular Selectors (avoid full-store re-renders) ───────
 export const selectSections = (s: WizardStore) => s.sections

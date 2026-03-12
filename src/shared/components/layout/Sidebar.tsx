@@ -19,6 +19,7 @@ import {
     LayoutGrid,
     Menu,
     X,
+    Radar,
 } from 'lucide-react'
 
 interface NavItem {
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
         icon: Brain,
         matchPaths: ['/market-intel', '/attack-plan'],
     },
+    { href: '/intelligence', label: 'Intel Política', icon: Radar },
     { href: '/leads', label: 'Leads Globales', icon: Users },
 ]
 

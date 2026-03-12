@@ -111,6 +111,27 @@ export const MCP_TOOLS: MCPTool[] = [
         },
     },
     {
+        name: 'political_intelligence',
+        description:
+            'Generate a political intelligence report by scraping social media profiles, researching SERP context, and analyzing with Gemini AI. Requires configured monitors.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                monitorIds: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description:
+                        'Optional: specific monitor IDs to analyze. If empty, all active monitors are used.',
+                },
+                generateAttackVectors: {
+                    type: 'boolean',
+                    description:
+                        'Whether to also generate attack vectors for detected vulnerabilities (requires campaign profile)',
+                },
+            },
+        },
+    },
+    {
         name: 'list_theme_presets',
         description: 'List all available landing page theme presets with their colors and fonts.',
         inputSchema: {

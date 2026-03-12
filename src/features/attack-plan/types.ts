@@ -56,6 +56,14 @@ export interface BrandProfile {
     faqs: Array<{ question: string; answer: string }>
     testimonials: Array<{ text: string; author: string }>
     stats: Array<{ value: string; label: string }>
+    // Political identity (unified brain — optional, only for political clients)
+    candidateName?: string
+    party?: string
+    ideologySpectrum?: string
+    corePositions?: Array<{ issue: string; position: string }>
+    redLines?: string[]
+    communicationStyle?: string
+    country?: string
 }
 
 // =============================================

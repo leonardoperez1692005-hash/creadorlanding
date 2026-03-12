@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Zap, ArrowRight, Loader2 } from 'lucide-react'
-import type { PoliticalIntelligenceReport } from '../types'
+import type { PoliticalIntelReport } from '../types'
 
 interface ActionsPanelProps {
-    actions: PoliticalIntelligenceReport['recommendedActions']
-    comparativeAnalysis: PoliticalIntelligenceReport['comparativeAnalysis']
+    actions: PoliticalIntelReport['recommendedActions']
+    comparativeAnalysis: PoliticalIntelReport['comparativeAnalysis']
     executiveSummary: string
 }
 

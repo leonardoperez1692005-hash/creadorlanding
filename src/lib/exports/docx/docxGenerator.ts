@@ -12,7 +12,7 @@ import {
     Packer,
 } from 'docx'
 import type { AttackPlan, AttackPlanMeta } from '@/features/attack-plan/types'
-import type { PoliticalIntelligenceReport } from '@/features/political-intel/types'
+import type { PoliticalIntelReport } from '@/features/political-intel/types'
 import type { StrategyData, StrategyMeta } from '@/features/strategy/types'
 
 // =============================================
@@ -180,9 +180,7 @@ export async function generateAttackPlanDOCX(
 // Political Intelligence DOCX
 // =============================================
 
-export async function generatePoliticalReportDOCX(
-    report: PoliticalIntelligenceReport,
-): Promise<Buffer> {
+export async function generatePoliticalReportDOCX(report: PoliticalIntelReport): Promise<Buffer> {
     const children: (Paragraph | Table)[] = []
 
     children.push(

@@ -30,11 +30,14 @@ export const heroRenderer: SectionRenderer = (c, _t) => {
         ? `<p class="sub reveal" style="font-weight:600;opacity:.9">📅 ${esc(c.date as string)}</p>`
         : ''
 
-    // ── Background image + overlay ──────────────────────────────
+    // ── Background image / video + overlay ─────────────────────
     const bgImage = c.bg_image as string | undefined
+    const bgVideo = c.bg_video as string | undefined
+    const hasBg = bgImage || bgVideo
     let sectionExtraStyle = ''
     let overlayHtml = ''
-    if (bgImage) {
+
+    if (hasBg) {
         sectionExtraStyle = ' style="position:relative;overflow:hidden;"'
         const overlayColor = (c.overlay_color as string) || '#000000'
         const opacityRaw =
@@ -42,9 +45,24 @@ export const heroRenderer: SectionRenderer = (c, _t) => {
                 ? Number(c.overlay_opacity)
                 : 50
         const overlayOpacity = Math.min(Math.max(opacityRaw, 0), 100) / 100
+
+        // Background media: video takes priority over image
+        let mediaBg = ''
+        if (bgVideo) {
+            const bgYtId = extractYouTubeId(bgVideo)
+            if (bgYtId) {
+                // YouTube background: autoplay, mute, loop, no controls, no branding
+                mediaBg = `<iframe src="https://www.youtube.com/embed/${esc(bgYtId)}?autoplay=1&mute=1&loop=1&playlist=${esc(bgYtId)}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3" allow="autoplay;encrypted-media" frameborder="0" style="position:absolute;top:50%;left:50%;width:calc(100% + 200px);height:calc(100% + 200px);transform:translate(-50%,-50%);object-fit:cover;pointer-events:none;border:0;"></iframe>`
+            } else {
+                mediaBg = `<video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block;" src="${esc(bgVideo)}"></video>`
+            }
+        } else if (bgImage) {
+            mediaBg = `<img src="${esc(bgImage)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" />`
+        }
+
         overlayHtml = `
     <div aria-hidden="true" style="position:absolute;inset:0;z-index:0;overflow:hidden;">
-      <img src="${esc(bgImage)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy" />
+      ${mediaBg}
     </div>
     <div aria-hidden="true" style="position:absolute;inset:0;z-index:1;background:${esc(overlayColor)};opacity:${overlayOpacity};"></div>`
     } else {
@@ -57,7 +75,7 @@ export const heroRenderer: SectionRenderer = (c, _t) => {
       <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:${esc(_t.accent)};opacity:.04;filter:blur(80px);top:50%;left:50%;transform:translate(-50%,-50%)"></div>
     </div>`
     }
-    const containerZStyle = bgImage ? ' style="position:relative;z-index:2;"' : ''
+    const containerZStyle = hasBg ? ' style="position:relative;z-index:2;"' : ''
 
     // ── CTAs ────────────────────────────────────────────────────
     const primaryText = c.cta_text as string | undefined

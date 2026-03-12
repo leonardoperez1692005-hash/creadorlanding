@@ -125,13 +125,16 @@ export function buildSectionsFromContent(
     sectionIds: string[],
     content: Record<string, Record<string, unknown>>,
 ) {
-    return sectionIds.map((id, i) => ({
-        id,
-        type: id,
-        content: content[id] ?? {},
-        isVisible: true,
-        order: i,
-    }))
+    const sections = sectionIds
+        .filter((id) => id !== 'header') // avoid duplicate if caller includes it
+        .map((id, i) => ({
+            id,
+            type: id,
+            content: content[id] ?? {},
+            isVisible: true,
+            order: i,
+        }))
+    return [{ ...HEADER_SECTION, content: content['header'] ?? {} }, ...sections]
 }
 
 export function normalizeAndMergeSections(rawSections: unknown[], structureType: string) {

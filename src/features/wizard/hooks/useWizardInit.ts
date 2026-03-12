@@ -28,12 +28,13 @@ export function useWizardInit(projectId?: string) {
     // Track if strategy data was already loaded (survives React 18 Strict Mode double-run)
     const strategyLoadedRef = useRef(false)
 
-    // Prevent flash of type step when initializing from template/strategy/edit/attack
+    // Prevent flash of type step when initializing from template/strategy/edit/attack/political
     const needsAsyncInit =
         isEditMode ||
         Boolean(searchParams.get('templateId')) ||
         searchParams.get('fromStrategy') === '1' ||
-        Boolean(searchParams.get('fromAttackPlan'))
+        Boolean(searchParams.get('fromAttackPlan')) ||
+        searchParams.get('fromPoliticalIntel') === '1'
     const [ready, setReady] = useState(!needsAsyncInit)
 
     useEffect(() => {
@@ -41,18 +42,57 @@ export function useWizardInit(projectId?: string) {
         const templateType = searchParams.get('templateType')
         const templateId = searchParams.get('templateId')
         const fromAttackPlan = searchParams.get('fromAttackPlan')
+        const fromPoliticalIntel = searchParams.get('fromPoliticalIntel') === '1'
 
-        // ZMOT Attack Plan — load content-driven sections from Supabase
-        if (fromAttackPlan && !strategyLoadedRef.current) {
-            strategyLoadedRef.current = true
-            getAttackPlanLandingDataAction(fromAttackPlan).then((result) => {
-                if (result.success && result.data) {
-                    const { content, landingSections, projectName } = result.data
-                    const sections = buildSectionsFromContent(landingSections, content)
-                    store.loadFromStrategy('zmot_attack', sections, projectName)
+        // Political Intel Landing — load from localStorage
+        // Always return when param is present (guards React 18 Strict Mode re-run)
+        if (fromPoliticalIntel) {
+            if (!strategyLoadedRef.current) {
+                strategyLoadedRef.current = true
+                const raw =
+                    typeof window !== 'undefined'
+                        ? localStorage.getItem('bv_political_landing')
+                        : null
+                if (raw) {
+                    try {
+                        const data = JSON.parse(raw) as {
+                            landingSections: string[]
+                            content: Record<string, Record<string, unknown>>
+                            projectName: string
+                        }
+                        const sections = buildSectionsFromContent(
+                            data.landingSections,
+                            data.content,
+                        )
+                        store.loadFromStrategy('zmot_attack', sections, data.projectName)
+                        setTimeout(() => localStorage.removeItem('bv_political_landing'), 500)
+                    } catch (e) {
+                        logger.error('wizard', 'Error parsing political landing data', e)
+                        store.reset(false)
+                    }
+                } else {
+                    logger.warn('wizard', 'fromPoliticalIntel=1 pero no hay datos en localStorage')
+                    store.reset(false)
                 }
                 setReady(true)
-            })
+            }
+            return
+        }
+
+        // ZMOT Attack Plan — load content-driven sections from Supabase
+        // Always return when param is present (guards React 18 Strict Mode re-run)
+        if (fromAttackPlan) {
+            if (!strategyLoadedRef.current) {
+                strategyLoadedRef.current = true
+                getAttackPlanLandingDataAction(fromAttackPlan).then((result) => {
+                    if (result.success && result.data) {
+                        const { content, landingSections, projectName } = result.data
+                        const sections = buildSectionsFromContent(landingSections, content)
+                        store.loadFromStrategy('zmot_attack', sections, projectName)
+                    }
+                    setReady(true)
+                })
+            }
             return
         }
 
@@ -201,6 +241,52 @@ export function useWizardInit(projectId?: string) {
             // Guard: after first save, replaceState updates URL to ?projectId=XXX
             const urlProjectId = searchParams.get('projectId')
             if (urlProjectId && store.projectId === urlProjectId) return
+
+            // Try to recover unsaved draft from sessionStorage
+            const draft =
+                typeof sessionStorage !== 'undefined'
+                    ? sessionStorage.getItem('bv_wizard_draft')
+                    : null
+            if (draft) {
+                try {
+                    const d = JSON.parse(draft) as {
+                        sections: Parameters<typeof store.setSections>[0]
+                        customColors: DesignColors
+                        projectName: string
+                        structureType: string
+                        visualModel: 'dark' | 'light'
+                        meta: Record<string, string>
+                        projectId: string | null
+                        fromTemplate: boolean
+                        timestamp: number
+                    }
+                    const ageMinutes = (Date.now() - d.timestamp) / 60_000
+                    if (ageMinutes < 60 && d.sections.length > 0) {
+                        const recover = window.confirm(
+                            `Hay un borrador sin guardar ("${d.projectName || 'Sin nombre'}"). ¿Querés recuperarlo?`,
+                        )
+                        if (recover) {
+                            if (d.projectId) {
+                                store.loadProject({
+                                    name: d.projectName,
+                                    structureType: d.structureType,
+                                    visualModel: d.visualModel,
+                                    sections: d.sections,
+                                    colors: d.customColors,
+                                    meta: d.meta,
+                                })
+                                store.setProjectId(d.projectId)
+                            } else {
+                                store.loadFromStrategy(d.structureType, d.sections, d.projectName)
+                            }
+                            return
+                        }
+                    }
+                    sessionStorage.removeItem('bv_wizard_draft')
+                } catch {
+                    sessionStorage.removeItem('bv_wizard_draft')
+                }
+            }
 
             store.reset(false)
             getBrandIdentityAction().then((res) => {

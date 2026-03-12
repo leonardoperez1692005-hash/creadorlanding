@@ -1,7 +1,7 @@
 import PDFDocument from 'pdfkit'
 import type { AttackPlan, AttackPlanMeta, SocialMediaCalendar } from '@/features/attack-plan/types'
 import type { IntelReport } from '@/features/market-intel/types'
-import type { PoliticalIntelligenceReport } from '@/features/political-intel/types'
+import type { PoliticalIntelReport } from '@/features/political-intel/types'
 import type { StrategyData, StrategyMeta } from '@/features/strategy/types'
 import type { Lead } from '@/features/leads/types'
 
@@ -239,9 +239,7 @@ export async function generateIntelReportPDF(report: IntelReport): Promise<Buffe
 // Political Intelligence PDF
 // =============================================
 
-export async function generatePoliticalReportPDF(
-    report: PoliticalIntelligenceReport,
-): Promise<Buffer> {
+export async function generatePoliticalReportPDF(report: PoliticalIntelReport): Promise<Buffer> {
     const doc = createDoc()
     const bufferPromise = collectBuffer(doc)
 

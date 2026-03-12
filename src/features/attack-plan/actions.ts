@@ -17,7 +17,7 @@ export type AttackActionResult<T = null> =
 // ================================
 
 const BRAND_SELECT =
-    'brand_name, sector, brand_values, target_audience, business_objective, differentiators, services, faqs, testimonials, stats' as const
+    'brand_name, sector, brand_values, target_audience, business_objective, differentiators, services, faqs, testimonials, stats, candidate_name, party, ideology_spectrum, core_positions, red_lines, communication_style, country' as const
 
 const DEFAULT_BRAND: BrandProfile = {
     brandName: 'Mi Marca',
@@ -46,6 +46,14 @@ function buildBrandProfile(row: Record<string, any> | null): BrandProfile {
         faqs: (row.faqs as BrandProfile['faqs']) ?? [],
         testimonials: (row.testimonials as BrandProfile['testimonials']) ?? [],
         stats: (row.stats as BrandProfile['stats']) ?? [],
+        // Political identity (unified brain)
+        candidateName: row.candidate_name ?? undefined,
+        party: row.party ?? undefined,
+        ideologySpectrum: row.ideology_spectrum ?? undefined,
+        corePositions: (row.core_positions as BrandProfile['corePositions']) ?? undefined,
+        redLines: (row.red_lines as BrandProfile['redLines']) ?? undefined,
+        communicationStyle: row.communication_style ?? undefined,
+        country: row.country ?? undefined,
     }
 }
 

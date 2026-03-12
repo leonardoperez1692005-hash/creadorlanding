@@ -61,10 +61,13 @@ export interface PreviewContent {
     price_current?: string
     // Embed
     html_code?: string
-    // Background
+    // Background & overlay
     bg_color?: string
     bg_image?: string
+    bg_video?: string
     text_color?: string
+    overlay_color?: string
+    overlay_opacity?: string
     // Comparison
     without_title?: string
     with_title?: string
@@ -75,6 +78,4 @@ export interface PreviewContent {
     logo_image?: string
     // Items
     items?: ContentItem[]
-    // Allow dynamic access for edge cases
-    [key: string]: unknown
 }

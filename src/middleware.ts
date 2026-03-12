@@ -67,10 +67,11 @@ export async function middleware(request: NextRequest) {
     const publicRoutes = ['/login', '/register', '/pricing', '/p/']
     const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
 
-    // API routes for WordPress plugin - always public
+    // API routes for WordPress plugin + OAuth callbacks - always public
     const isPublicApi =
         pathname.startsWith('/api/license') ||
         pathname.startsWith('/api/leads/capture') ||
+        pathname.startsWith('/api/auth/') ||
         pathname === '/api/health'
 
     // Published landing pages: relaxed CSP (compiled HTML uses inline scripts/styles)

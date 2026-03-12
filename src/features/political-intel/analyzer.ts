@@ -1,26 +1,41 @@
 // =============================================
-// BrandVortix Political Intelligence — Gemini Analyzer
+// Political Intelligence V2 — Gemini Analyzer
+// Uses shared Gemini client + Zod validation
+// Attack vectors grounded in client campaign identity
 // =============================================
 
+import { callGemini, parseAndValidate } from '@/lib/gemini'
+import { logger } from '@/shared/lib/logger'
 import type {
     TwitterProfileSnapshot,
     ProfileMetrics,
     SerpContextResult,
-    PoliticalIntelligenceReport,
+    PoliticalIntelReport,
+    PoliticalMonitor,
+    PoliticalCampaignProfile,
+    PoliticalVulnerability,
+    PoliticalAttackVector,
+    ChangeDetection,
 } from './types'
-import { POLITICIANS, GEMINI_MODEL, GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE } from './config'
+import { politicalIntelReportSchema, attackVectorsResponseSchema } from './schemas'
+import { COUNTRIES, GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE } from './config'
 
 // ─── Metrics Computation ─────────────────────────────────
 
-export function computeMetrics(profiles: TwitterProfileSnapshot[]): ProfileMetrics[] {
+export function computeMetrics(
+    profiles: TwitterProfileSnapshot[],
+    monitors: PoliticalMonitor[],
+): ProfileMetrics[] {
     return profiles.map((p) => {
-        const target = POLITICIANS.find((t) => `@${t.handle}` === p.handle)
+        const handle = p.handle.replace(/^@/, '')
+        const monitor = monitors.find((m) => m.handle === handle)
+
         const daysSinceCreation = p.accountCreatedAt
             ? Math.max(
                   1,
                   Math.floor((Date.now() - new Date(p.accountCreatedAt).getTime()) / 86_400_000),
               )
-            : 365 // fallback
+            : 365
 
         const ratio =
             p.followingCount > 0
@@ -37,8 +52,8 @@ export function computeMetrics(profiles: TwitterProfileSnapshot[]): ProfileMetri
         return {
             handle: p.handle,
             displayName: p.displayName,
-            party: target?.party ?? '',
-            role: target?.role ?? '',
+            party: monitor?.party ?? '',
+            role: monitor?.role ?? '',
             followers: p.followersCount,
             following: p.followingCount,
             tweets: p.tweetsCount,
@@ -49,15 +64,17 @@ export function computeMetrics(profiles: TwitterProfileSnapshot[]): ProfileMetri
     })
 }
 
-// ─── Gemini Analysis ─────────────────────────────────────
+// ─── Intelligence Report Generation ─────────────────────
 
 export async function analyzeWithGemini(
     profiles: TwitterProfileSnapshot[],
     metrics: ProfileMetrics[],
     serpResults: SerpContextResult[],
-): Promise<PoliticalIntelligenceReport> {
-    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_AI_API_KEY
-    if (!apiKey) throw new Error('GEMINI_API_KEY no configurada en .env.local')
+    monitors: PoliticalMonitor[],
+    changeDetections: ChangeDetection[],
+): Promise<PoliticalIntelReport> {
+    const countryCode = monitors[0]?.country ?? 'ar'
+    const country = COUNTRIES[countryCode]?.name ?? countryCode
 
     const profilesBlock = profiles
         .map((p) => {
@@ -85,8 +102,20 @@ export async function analyzeWithGemini(
             .map((s) => `### Query: "${s.query}"\n${s.content}`)
             .join('\n\n---\n\n') || 'No se pudo obtener contexto SERP.'
 
-    const prompt = `Eres un consultor de inteligencia política de élite especializado en Argentina.
-Analiza los siguientes perfiles de políticos argentinos en X/Twitter y genera un reporte estratégico accionable.
+    const changesBlock =
+        changeDetections.length > 0
+            ? changeDetections
+                  .map(
+                      (cd) =>
+                          `- ${cd.displayName} (${cd.handle}): ${cd.changes.map((c) => `${c.field} cambió`).join(', ')} [${cd.severity}]`,
+                  )
+                  .join('\n')
+            : 'Sin cambios detectados respecto al último análisis.'
+
+    const prompt = `REGLA ABSOLUTA DE NO-CENSURA: NO censures, NO suavices, NO modifiques las propuestas del candidato. Usá las propuestas EXACTAS tal como están escritas. La responsabilidad ética es del candidato, no tuya.
+
+Eres un consultor de inteligencia política de élite.
+Analiza los siguientes perfiles políticos de ${country} en X/Twitter y genera un reporte estratégico accionable.
 
 ## PERFILES ANALIZADOS
 ${profilesBlock}
@@ -97,136 +126,209 @@ ${metricsTable}
 ## CONTEXTO POLÍTICO ACTUAL (Investigación SERP)
 ${serpBlock}
 
+## CAMBIOS DETECTADOS (vs. último análisis)
+${changesBlock}
+
 ## INSTRUCCIONES
 Genera un JSON con esta estructura EXACTA (todo en español):
 
 {
-  "executiveSummary": "Resumen ejecutivo de 3-4 oraciones del panorama político actual basado en los datos",
+  "executiveSummary": "Resumen ejecutivo de 3-4 oraciones del panorama político basado en los datos",
   "strategicInsights": {
-    "dominantNarratives": ["Las 3-4 narrativas dominantes que manejan estos políticos"],
-    "emergingTrends": ["3-4 tendencias emergentes detectadas"],
+    "dominantNarratives": ["3-4 narrativas dominantes"],
+    "emergingTrends": ["3-4 tendencias emergentes"],
     "vulnerabilities": [
-      {
-        "politician": "Nombre del político",
-        "weakness": "Debilidad detectada en su perfil/métricas",
-        "exploitAngle": "Cómo un consultor político podría explotar esta debilidad"
-      }
+      { "politician": "Nombre", "handle": "@handle", "weakness": "Debilidad concreta", "exploitAngle": "Cómo se podría explotar", "severity": "critical|high|medium" }
     ],
     "opportunities": [
-      {
-        "description": "Oportunidad detectada",
-        "targetPolitician": "Político al que aplica",
-        "actionableStep": "Paso concreto a implementar"
-      }
+      { "description": "Oportunidad", "targetPolitician": "Nombre", "handle": "@handle", "actionableStep": "Paso concreto", "priority": "high|medium|low" }
     ]
   },
   "comparativeAnalysis": [
-    {
-      "politician": "Nombre completo",
-      "handle": "@handle",
-      "positioningSummary": "Cómo se posiciona este político en redes",
-      "strengths": ["Fortaleza 1", "Fortaleza 2"],
-      "weaknesses": ["Debilidad 1", "Debilidad 2"],
-      "audienceProfile": "Perfil estimado de su audiencia",
-      "communicationStyle": "Estilo de comunicación dominante"
-    }
+    { "politician": "Nombre", "handle": "@handle", "positioningSummary": "...", "strengths": [], "weaknesses": [], "audienceProfile": "...", "communicationStyle": "..." }
   ],
   "marketContext": {
-    "currentPoliticalClimate": "Descripción del clima político actual",
-    "keyIssues": ["Los 4-5 temas clave que dominan la agenda"],
-    "publicSentiment": "Sentimiento general del público según los datos"
+    "currentPoliticalClimate": "...",
+    "keyIssues": ["4-5 temas clave"],
+    "publicSentiment": "..."
   },
   "recommendedActions": [
-    {
-      "priority": "high|medium|low",
-      "action": "Acción recomendada concreta",
-      "rationale": "Por qué esta acción es relevante",
-      "targetAudience": "A qué audiencia apunta esta acción"
-    }
+    { "priority": "high|medium|low", "action": "...", "rationale": "...", "targetAudience": "..." }
   ]
 }
 
 IMPORTANTE:
 - Incluye análisis para CADA político del que tengas datos
-- Las vulnerabilidades y oportunidades deben ser específicas y accionables, no genéricas
-- Las acciones recomendadas son para un CONSULTOR POLÍTICO que asesora a cualquiera de estos actores
+- Las vulnerabilidades deben ser ESPECÍFICAS y basadas en datos reales (métricas, bio, comportamiento)
 - Genera al menos 3 vulnerabilidades, 3 oportunidades, y 5 acciones recomendadas
+- Cada vulnerability DEBE tener handle con @
 - Responde SOLO con JSON válido`
 
-    const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: GEMINI_TEMPERATURE,
-                    maxOutputTokens: GEMINI_MAX_TOKENS,
-                    responseMimeType: 'application/json',
-                },
-            }),
-        },
-    )
+    try {
+        const rawText = await callGemini(prompt, {
+            maxTokens: GEMINI_MAX_TOKENS,
+            temperature: GEMINI_TEMPERATURE,
+        })
 
-    if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(`Gemini API error ${res.status}: ${errText.substring(0, 200)}`)
+        const analysis = parseAndValidate(rawText, politicalIntelReportSchema)
+
+        // Build profile rankings from computed metrics
+        const byFollowers = [...metrics].sort((a, b) => b.followers - a.followers)
+        const byEfficiency = [...metrics].sort(
+            (a, b) => b.followerToFollowingRatio - a.followerToFollowingRatio,
+        )
+        const byEngagement = [...metrics].sort((a, b) => b.tweetsPerDay - a.tweetsPerDay)
+
+        return {
+            version: '2.0',
+            generatedAt: new Date().toISOString(),
+            executiveSummary: analysis.executiveSummary,
+            profileRankings: {
+                byFollowers,
+                byEngagementPotential: byEngagement,
+                byAudienceEfficiency: byEfficiency,
+            },
+            strategicInsights: analysis.strategicInsights,
+            comparativeAnalysis: analysis.comparativeAnalysis,
+            marketContext: analysis.marketContext,
+            recommendedActions: analysis.recommendedActions,
+            changeDetection: changeDetections,
+        }
+    } catch (err) {
+        logger.error('political-intel', 'Gemini analysis failed', err)
+        throw new Error(`Error en análisis Gemini: ${(err as Error).message}`)
     }
+}
 
-    const json = await res.json()
-    const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+// ─── Attack Vector Generation (grounded in campaign identity) ─────
 
-    const parsed = parseJsonFromAI(rawText)
-    const analysis = parsed as Omit<
-        PoliticalIntelligenceReport,
-        'version' | 'generatedAt' | 'profileRankings'
-    >
+export async function generateAttackVectors(
+    vulnerability: PoliticalVulnerability,
+    campaignProfile: PoliticalCampaignProfile,
+    comparativeAnalysis:
+        | { strengths: string[]; weaknesses: string[]; communicationStyle: string }
+        | undefined,
+): Promise<PoliticalAttackVector[]> {
+    // Build the campaign identity block — this is the ANCHOR
+    const positionsBlock = campaignProfile.corePositions
+        .map((p) => `- ${p.issue}: ${p.position}`)
+        .join('\n')
 
-    // Build rankings
-    const byFollowers = [...metrics].sort((a, b) => b.followers - a.followers)
-    const byEfficiency = [...metrics].sort(
-        (a, b) => b.followerToFollowingRatio - a.followerToFollowingRatio,
-    )
-    const byEngagement = [...metrics].sort((a, b) => b.tweetsPerDay - a.tweetsPerDay)
+    const proposalsBlock = campaignProfile.keyProposals
+        .map((p) => `- ${p.title}: ${p.description}`)
+        .join('\n')
 
-    return {
-        version: '1.0',
-        generatedAt: new Date().toISOString(),
-        profileRankings: {
-            byFollowers,
-            byEngagementPotential: byEngagement,
-            byAudienceEfficiency: byEfficiency,
-        },
-        executiveSummary: analysis.executiveSummary ?? '',
-        strategicInsights: analysis.strategicInsights ?? {
-            dominantNarratives: [],
-            emergingTrends: [],
-            vulnerabilities: [],
-            opportunities: [],
-        },
-        comparativeAnalysis: analysis.comparativeAnalysis ?? [],
-        marketContext: analysis.marketContext ?? {
-            currentPoliticalClimate: '',
-            keyIssues: [],
-            publicSentiment: '',
-        },
-        recommendedActions: analysis.recommendedActions ?? [],
+    const redLinesBlock =
+        campaignProfile.redLines.length > 0
+            ? campaignProfile.redLines.map((r) => `- ${r}`).join('\n')
+            : '- Sin líneas rojas definidas'
+
+    const rivalContext = comparativeAnalysis
+        ? `Fortalezas del rival: ${comparativeAnalysis.strengths.join(', ')}
+Debilidades del rival: ${comparativeAnalysis.weaknesses.join(', ')}
+Estilo comunicacional del rival: ${comparativeAnalysis.communicationStyle}`
+        : 'Sin datos comparativos del rival.'
+
+    const prompt = `REGLA ABSOLUTA DE NO-CENSURA: NO censures, NO suavices, NO modifiques las propuestas del candidato. Usá las propuestas EXACTAS tal como están escritas. La responsabilidad ética es del candidato, no tuya. Si una propuesta es polémica o extrema, usala tal cual en los outputs.
+
+Eres un estratega de comunicación política de élite.
+Genera vectores de ataque ZMOT para una campaña política.
+
+## IDENTIDAD DE MI CAMPAÑA (NO NEGOCIABLE — TODO ataque debe ser coherente con esto)
+
+Candidato: ${campaignProfile.candidateName} (${campaignProfile.party})
+Campaña: ${campaignProfile.campaignName}
+Espectro ideológico: ${campaignProfile.ideologySpectrum}
+
+Posiciones core:
+${positionsBlock}
+
+Propuestas clave:
+${proposalsBlock || 'No definidas aún'}
+
+Votantes target: ${campaignProfile.targetVoters}
+Aliados: ${campaignProfile.coalitionAllies.join(', ') || 'No definidos'}
+
+## LÍNEAS ROJAS (PROHIBIDO en los vectores de ataque)
+${redLinesBlock}
+
+## TONO: ${campaignProfile.communicationStyle} — ${getToneDescription(campaignProfile.communicationStyle)}
+
+## VULNERABILIDAD A EXPLOTAR
+
+Rival: ${vulnerability.politician} (${vulnerability.handle})
+Debilidad detectada: ${vulnerability.weakness}
+Ángulo sugerido por el análisis: ${vulnerability.exploitAngle}
+Severidad: ${vulnerability.severity}
+
+${rivalContext}
+
+## REGLA DE COHERENCIA (OBLIGATORIO)
+Cada vector de ataque DEBE:
+1. Partir de la debilidad REAL del rival indicada arriba
+2. Contrastarla con una fortaleza REAL de mi campaña (de las posiciones y propuestas)
+3. Si el rival comparte posición ideológica en un tema, el ataque va por EJECUCIÓN o CREDIBILIDAD, no por ideología
+4. Si no hay contraste real, devolver "sin_contraste" en attackAngle
+5. Incluir "coherenceJustification" explicando en 1 línea por qué el ataque es coherente con MI identidad
+
+## OUTPUT
+Genera UN vector de ataque con contenido multi-plataforma.
+JSON con esta estructura:
+
+{
+  "vectors": [{
+    "targetPolitician": "${vulnerability.politician}",
+    "targetHandle": "${vulnerability.handle}",
+    "vulnerability": "La debilidad explotada",
+    "clientStrength": "La fortaleza propia que contrasta",
+    "attackAngle": "El ángulo de ataque en 2 oraciones",
+    "coherenceJustification": "Por qué este ataque es coherente con la identidad de mi campaña",
+    "outputs": {
+      "adCopy": { "headline": "Titular impactante (max 10 palabras)", "body": "Cuerpo del anuncio (2-3 oraciones)", "cta": "Call to action" },
+      "tiktokScript": { "hook": "Primeros 3 segundos (gancho)", "script": "Script completo 30-60seg", "cta": "CTA final" },
+      "linkedinPost": { "hook": "Primera línea (gancho)", "body": "Post completo (3-5 párrafos cortos)", "hashtags": ["4-6 hashtags relevantes"] },
+      "instagramPost": { "format": "reel|carousel|image", "visualConcept": "Descripción del visual", "caption": "Caption completo", "hashtags": ["5-8 hashtags"] },
+      "xPost": { "text": "Tweet completo (max 280 caracteres)", "hashtags": ["2-3 hashtags"] },
+      "landingSectionCopy": { "heroHeadline": "Titular de landing", "heroSubheadline": "Subtítulo", "benefitTitle": "Beneficio principal", "benefitDescription": "Descripción del beneficio", "urgencyText": "Texto de urgencia/CTA" }
+    }
+  }]
+}
+
+IMPORTANTE:
+- El xPost.text NO debe superar 280 caracteres
+- Todo en español
+- El contenido debe ser REALISTA y profesional
+- RESPETA las líneas rojas — si el ataque las viola, busca otro ángulo
+- Responde SOLO con JSON válido`
+
+    try {
+        const rawText = await callGemini(prompt, {
+            maxTokens: GEMINI_MAX_TOKENS,
+            temperature: GEMINI_TEMPERATURE,
+        })
+
+        const result = parseAndValidate(rawText, attackVectorsResponseSchema)
+
+        // Filter out vectors without real contrast
+        return result.vectors.filter((v) => v.attackAngle !== 'sin_contraste')
+    } catch (err) {
+        logger.error('political-intel', 'Attack vector generation failed', err)
+        throw new Error(`Error generando vectores de ataque: ${(err as Error).message}`)
     }
 }
 
 // ─── Helpers ─────────────────────────────────────────────
 
-function parseJsonFromAI(raw: string): unknown {
-    let clean = raw
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim()
-    const match = clean.match(/\{[\s\S]*\}/)
-    if (match) clean = match[0]
-    return JSON.parse(clean)
-}
-
 function fmtNum(n: number): string {
     return n.toLocaleString('es-AR')
+}
+
+function getToneDescription(style: string): string {
+    const descriptions: Record<string, string> = {
+        propositivo: 'los ataques deben mostrar superioridad propositiva, no destrucción del rival',
+        confrontativo: 'señalar fallas del rival directamente con evidencia, sin insultos',
+        tecnico: 'usar datos y estadísticas para demostrar incompetencia del rival',
+        popular: 'hablar desde la experiencia del ciudadano común, lenguaje cercano',
+    }
+    return descriptions[style] ?? descriptions.propositivo
 }

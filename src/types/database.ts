@@ -132,6 +132,34 @@ export type Database = {
                     user_id: string
                     logo_url: string
                     design_tokens: Json
+                    brand_name: string | null
+                    sector: string | null
+                    target_audience: string | null
+                    brand_values: string | null
+                    business_objective: string | null
+                    colors: Json | null
+                    typography: Json | null
+                    geometry: Json | null
+                    is_completed: boolean | null
+                    services: Json | null
+                    faqs: Json | null
+                    testimonials: Json | null
+                    stats: Json | null
+                    team_members: Json | null
+                    differentiators: string | null
+                    // Political identity (unified brain)
+                    campaign_name: string | null
+                    candidate_name: string | null
+                    party: string | null
+                    ideology_spectrum: string | null
+                    core_positions: Json | null
+                    key_proposals: Json | null
+                    target_voters: string | null
+                    coalition_allies: Json | null
+                    red_lines: Json | null
+                    tone_guidelines: string | null
+                    communication_style: string | null
+                    country: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -140,6 +168,33 @@ export type Database = {
                     user_id: string
                     logo_url?: string
                     design_tokens?: Json
+                    brand_name?: string | null
+                    sector?: string | null
+                    target_audience?: string | null
+                    brand_values?: string | null
+                    business_objective?: string | null
+                    colors?: Json | null
+                    typography?: Json | null
+                    geometry?: Json | null
+                    is_completed?: boolean | null
+                    services?: Json | null
+                    faqs?: Json | null
+                    testimonials?: Json | null
+                    stats?: Json | null
+                    team_members?: Json | null
+                    differentiators?: string | null
+                    campaign_name?: string | null
+                    candidate_name?: string | null
+                    party?: string | null
+                    ideology_spectrum?: string | null
+                    core_positions?: Json | null
+                    key_proposals?: Json | null
+                    target_voters?: string | null
+                    coalition_allies?: Json | null
+                    red_lines?: Json | null
+                    tone_guidelines?: string | null
+                    communication_style?: string | null
+                    country?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -148,6 +203,33 @@ export type Database = {
                     user_id?: string
                     logo_url?: string
                     design_tokens?: Json
+                    brand_name?: string | null
+                    sector?: string | null
+                    target_audience?: string | null
+                    brand_values?: string | null
+                    business_objective?: string | null
+                    colors?: Json | null
+                    typography?: Json | null
+                    geometry?: Json | null
+                    is_completed?: boolean | null
+                    services?: Json | null
+                    faqs?: Json | null
+                    testimonials?: Json | null
+                    stats?: Json | null
+                    team_members?: Json | null
+                    differentiators?: string | null
+                    campaign_name?: string | null
+                    candidate_name?: string | null
+                    party?: string | null
+                    ideology_spectrum?: string | null
+                    core_positions?: Json | null
+                    key_proposals?: Json | null
+                    target_voters?: string | null
+                    coalition_allies?: Json | null
+                    red_lines?: Json | null
+                    tone_guidelines?: string | null
+                    communication_style?: string | null
+                    country?: string | null
                     created_at?: string
                     updated_at?: string
                 }

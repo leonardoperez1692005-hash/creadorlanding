@@ -1,7 +1,17 @@
 'use client'
 
 import type { SocialPost } from '../types'
-import { Linkedin, Twitter, Clock, Eye } from 'lucide-react'
+import type { PostPublishStatus } from '@/features/social-publisher/adapters/types'
+import {
+    Linkedin,
+    Twitter,
+    Clock,
+    Eye,
+    Check,
+    CalendarClock,
+    AlertCircle,
+    Loader2,
+} from 'lucide-react'
 
 const PLATFORM_COLORS: Record<string, string> = {
     linkedin: '#0A66C2',
@@ -15,10 +25,22 @@ const PLATFORM_ICONS: Record<string, typeof Linkedin> = {
     x: Twitter,
 }
 
+const STATUS_BADGE: Record<
+    PostPublishStatus,
+    { color: string; bg: string; label: string; Icon: typeof Check }
+> = {
+    draft: { color: '#94a3b8', bg: '#94a3b815', label: 'Borrador', Icon: Clock },
+    queued: { color: '#F59E0B', bg: '#F59E0B15', label: 'Programado', Icon: CalendarClock },
+    publishing: { color: '#3B82F6', bg: '#3B82F615', label: 'Publicando', Icon: Loader2 },
+    published: { color: '#10B981', bg: '#10B98115', label: 'Publicado', Icon: Check },
+    failed: { color: '#EF4444', bg: '#EF444415', label: 'Error', Icon: AlertCircle },
+}
+
 interface Props {
     post: SocialPost
     onClick: () => void
     onPreview?: () => void
+    publishStatus?: PostPublishStatus
 }
 
 function PlatformIcon({ platform }: { platform: string }) {
@@ -30,7 +52,7 @@ function PlatformIcon({ platform }: { platform: string }) {
     return null
 }
 
-export function SocialPostCard({ post, onClick, onPreview }: Props) {
+export function SocialPostCard({ post, onClick, onPreview, publishStatus }: Props) {
     const color = PLATFORM_COLORS[post.platform] ?? '#94a3b8'
 
     return (
@@ -82,12 +104,31 @@ export function SocialPostCard({ post, onClick, onPreview }: Props) {
                 {post.content.hook || post.content.text}
             </p>
 
-            {/* Hashtag count */}
-            {post.content.hashtags.length > 0 && (
-                <span className="text-[10px] mt-1.5 inline-block" style={{ color }}>
-                    {post.content.hashtags.length} hashtags
-                </span>
-            )}
+            {/* Bottom row: hashtags + status badge */}
+            <div className="flex items-center justify-between mt-1.5">
+                {post.content.hashtags.length > 0 && (
+                    <span className="text-[10px]" style={{ color }}>
+                        {post.content.hashtags.length} hashtags
+                    </span>
+                )}
+                {publishStatus &&
+                    publishStatus !== 'draft' &&
+                    (() => {
+                        const badge = STATUS_BADGE[publishStatus]
+                        const BadgeIcon = badge.Icon
+                        return (
+                            <span
+                                className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full"
+                                style={{ color: badge.color, backgroundColor: badge.bg }}
+                            >
+                                <BadgeIcon
+                                    className={`w-2.5 h-2.5 ${publishStatus === 'publishing' ? 'animate-spin' : ''}`}
+                                />
+                                {badge.label}
+                            </span>
+                        )
+                    })()}
+            </div>
         </button>
     )
 }

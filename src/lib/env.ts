@@ -58,4 +58,8 @@ export const env = {
     get brightdataZone(): string {
         return process.env.BRIGHTDATA_ZONE ?? 'brandvortix_scraper'
     },
+    /** OpenAI API key for Whisper transcription (optional — falls back to YouTube captions) */
+    get openaiApiKey(): string {
+        return process.env.OPENAI_API_KEY ?? ''
+    },
 }

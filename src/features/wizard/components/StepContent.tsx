@@ -10,7 +10,9 @@ import { saveProjectAction, publishProjectAction } from '../actions'
 // ─── Main component ──────────────────────────────────────────
 
 export function StepContent({ step }: { step: string }) {
-    const store = useWizardStore()
+    const structureType = useWizardStore((s) => s.structureType)
+    const section = useWizardStore((s) => s.getSection(step))
+    const updateSection = useWizardStore((s) => s.updateSection)
     // For dynamic sections like 'html_embed_2', fall back to base type schema ('html_embed')
     const schema = getStepSchema(step) ?? getStepSchema(step.replace(/_\d+$/, ''))
 
@@ -18,14 +20,12 @@ export function StepContent({ step }: { step: string }) {
 
     switch (schema.kind) {
         case 'generic': {
-            const fields = schema.fieldsFn
-                ? schema.fieldsFn(store.structureType)
-                : (schema.fields ?? [])
+            const fields = schema.fieldsFn ? schema.fieldsFn(structureType) : (schema.fields ?? [])
             return (
                 <StepGeneric
                     title={schema.title}
-                    section={store.getSection(step)}
-                    onUpdate={(c) => store.updateSection(step, c)}
+                    section={section}
+                    onUpdate={(c) => updateSection(step, c)}
                     fields={fields}
                 />
             )
@@ -34,8 +34,8 @@ export function StepContent({ step }: { step: string }) {
             return (
                 <StepList
                     title={schema.title}
-                    section={store.getSection(step)}
-                    onUpdate={(c) => store.updateSection(step, c)}
+                    section={section}
+                    onUpdate={(c) => updateSection(step, c)}
                     itemFields={schema.itemFields}
                     headerFields={schema.headerFields}
                 />
@@ -44,8 +44,8 @@ export function StepContent({ step }: { step: string }) {
             return (
                 <StepSimpleList
                     title={schema.title}
-                    section={store.getSection(step)}
-                    onUpdate={(c) => store.updateSection(step, c)}
+                    section={section}
+                    onUpdate={(c) => updateSection(step, c)}
                 />
             )
         case 'special':
@@ -58,9 +58,9 @@ export function StepContent({ step }: { step: string }) {
 // ─── TrackingStep ────────────────────────────────────────────
 
 function TrackingStep() {
-    const store = useWizardStore()
-    const meta = store.meta
-    const update = (key: string, value: string) => store.setMeta({ ...meta, [key]: value })
+    const meta = useWizardStore((s) => s.meta)
+    const setMeta = useWizardStore((s) => s.setMeta)
+    const update = (key: string, value: string) => setMeta({ ...meta, [key]: value })
 
     const fields = [
         { key: 'facebook_pixel_id', label: 'Facebook Pixel ID', placeholder: 'Ej: 1234567890' },
@@ -105,29 +105,30 @@ function TrackingStep() {
 // ─── ReviewStep ──────────────────────────────────────────────
 
 function ReviewStep() {
-    const store = useWizardStore()
+    const isSaving = useWizardStore((s) => s.isSaving)
 
     const handleSave = async (publish: boolean) => {
-        store.setIsSaving(true)
-        const isNewProject = !store.projectId
+        const state = useWizardStore.getState()
+        state.setIsSaving(true)
+        const isNewProject = !state.projectId
         const payload = {
-            projectId: store.projectId ?? undefined,
-            name: store.projectName || 'Nuevo Proyecto',
-            structureType: store.structureType,
-            visualModel: store.visualModel,
-            sections: store.sections,
-            colors: store.customColors as Record<string, string>,
-            meta: store.meta as Record<string, string>,
+            projectId: state.projectId ?? undefined,
+            name: state.projectName || 'Nuevo Proyecto',
+            structureType: state.structureType,
+            visualModel: state.visualModel,
+            sections: state.sections,
+            colors: state.customColors as Record<string, string>,
+            meta: state.meta as Record<string, string>,
         }
         try {
             const result = publish
                 ? await publishProjectAction(payload)
                 : await saveProjectAction(payload)
-            store.setIsSaving(false)
+            state.setIsSaving(false)
             if (!result.success) {
                 alert(result.error)
             } else if (result.data) {
-                store.setProjectId(result.data.id)
+                state.setProjectId(result.data.id)
                 if (isNewProject) {
                     window.history.replaceState({}, '', `/wizard?projectId=${result.data.id}`)
                 }
@@ -136,7 +137,7 @@ function ReviewStep() {
                 }
             }
         } catch {
-            store.setIsSaving(false)
+            useWizardStore.getState().setIsSaving(false)
             alert('Error al guardar. Intentá de nuevo.')
         }
     }
@@ -153,11 +154,11 @@ function ReviewStep() {
             <div className="flex flex-col gap-3 w-full max-w-xs">
                 <button
                     onClick={() => handleSave(true)}
-                    disabled={store.isSaving}
+                    disabled={isSaving}
                     className="inline-flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-black text-base transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                     style={{ background: 'linear-gradient(135deg, #FF007F, #00F0FF)' }}
                 >
-                    {store.isSaving ? (
+                    {isSaving ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                         <ExternalLink className="w-5 h-5" />
@@ -166,7 +167,7 @@ function ReviewStep() {
                 </button>
                 <button
                     onClick={() => handleSave(false)}
-                    disabled={store.isSaving}
+                    disabled={isSaving}
                     className="inline-flex items-center justify-center gap-2.5 px-8 py-3 rounded-xl font-semibold text-white/60 text-sm transition-all hover:text-white/80 active:scale-95 disabled:opacity-50 border border-white/10 hover:border-white/20"
                 >
                     <Save className="w-4 h-4" />

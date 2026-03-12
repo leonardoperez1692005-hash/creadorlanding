@@ -9,6 +9,13 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 
 interface Props {
     days: CalendarDay[]
+    onDeletePost?: (dayIndex: number, postIndex: number) => void
+    onEditPost?: (dayIndex: number, postIndex: number, updated: SocialPost) => void
+    onRewritePost?: (
+        dayIndex: number,
+        postIndex: number,
+        instructions?: string,
+    ) => Promise<SocialPost | null>
 }
 
 const DAY_COLORS = [
@@ -21,10 +28,13 @@ const DAY_COLORS = [
     '#94a3b8', // Domingo
 ]
 
-export function SocialCalendarGrid({ days }: Props) {
-    const [selectedPost, setSelectedPost] = useState<{ post: SocialPost; dayName: string } | null>(
-        null,
-    )
+export function SocialCalendarGrid({ days, onDeletePost, onEditPost, onRewritePost }: Props) {
+    const [selectedPost, setSelectedPost] = useState<{
+        post: SocialPost
+        dayName: string
+        dayIndex: number
+        postIndex: number
+    } | null>(null)
     const [previewPost, setPreviewPost] = useState<SocialPost | null>(null)
     const [collapsedDays, setCollapsedDays] = useState<Set<number>>(new Set())
 
@@ -61,7 +71,14 @@ export function SocialCalendarGrid({ days }: Props) {
                                 <SocialPostCard
                                     key={j}
                                     post={post}
-                                    onClick={() => setSelectedPost({ post, dayName: day.dayName })}
+                                    onClick={() =>
+                                        setSelectedPost({
+                                            post,
+                                            dayName: day.dayName,
+                                            dayIndex: i,
+                                            postIndex: j,
+                                        })
+                                    }
                                     onPreview={() => setPreviewPost(post)}
                                 />
                             ))}
@@ -106,7 +123,12 @@ export function SocialCalendarGrid({ days }: Props) {
                                             key={j}
                                             post={post}
                                             onClick={() =>
-                                                setSelectedPost({ post, dayName: day.dayName })
+                                                setSelectedPost({
+                                                    post,
+                                                    dayName: day.dayName,
+                                                    dayIndex: i,
+                                                    postIndex: j,
+                                                })
                                             }
                                         />
                                     ))}
@@ -123,6 +145,35 @@ export function SocialCalendarGrid({ days }: Props) {
                     post={selectedPost.post}
                     dayName={selectedPost.dayName}
                     onClose={() => setSelectedPost(null)}
+                    onEdit={
+                        onEditPost
+                            ? (updated) => {
+                                  onEditPost(selectedPost.dayIndex, selectedPost.postIndex, updated)
+                                  setSelectedPost({ ...selectedPost, post: updated })
+                              }
+                            : undefined
+                    }
+                    onDelete={
+                        onDeletePost
+                            ? () => {
+                                  onDeletePost(selectedPost.dayIndex, selectedPost.postIndex)
+                                  setSelectedPost(null)
+                              }
+                            : undefined
+                    }
+                    onRewrite={
+                        onRewritePost
+                            ? async (instructions) => {
+                                  const result = await onRewritePost(
+                                      selectedPost.dayIndex,
+                                      selectedPost.postIndex,
+                                      instructions,
+                                  )
+                                  if (result) setSelectedPost({ ...selectedPost, post: result })
+                                  return result
+                              }
+                            : undefined
+                    }
                 />
             )}
 
