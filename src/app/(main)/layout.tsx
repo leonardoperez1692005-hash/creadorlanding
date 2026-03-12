@@ -6,15 +6,27 @@ import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 export const dynamic = 'force-dynamic'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    let profile = null
+
+    try {
+        const supabase = await createClient()
+        const { data } = await supabase.auth.getUser()
+        user = data.user
+
+        if (user) {
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+            profile = profileData
+        }
+    } catch {
+        // Supabase unavailable
+    }
 
     if (!user) redirect('/login')
-
-    // Fetch profile
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
 
     return (
         <div className="flex min-h-screen" style={{ background: 'var(--bg-primary)' }}>
