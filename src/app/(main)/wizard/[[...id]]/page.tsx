@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LazyWizardClient } from '@/shared/components/ClientOnly'
+import { logger } from '@/shared/lib/logger'
 
 interface WizardPageProps {
     params: Promise<{ id?: string[] }>
@@ -22,10 +23,15 @@ export default async function WizardPage({ params }: WizardPageProps) {
         } = await supabase.auth.getUser()
         if (!user) redirect('/login')
     } catch (e) {
-        // If Supabase is unavailable during RSC re-render after server action,
-        // render the client component anyway — it manages its own auth state.
         const err = e as { digest?: string }
+        // Re-throw redirects so Next.js handles them correctly
         if (err?.digest?.startsWith('NEXT_REDIRECT')) throw e
+        // Log actual errors but continue rendering — WizardClient manages its own state
+        logger.error(
+            'wizard-page',
+            'Auth check failed during render',
+            e instanceof Error ? e : new Error(String(e)),
+        )
     }
 
     const { id } = await params

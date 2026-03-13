@@ -8,13 +8,15 @@ export const metadata: Metadata = {
 }
 
 export default async function BrandSettingsPage() {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-        redirect('/login')
+    try {
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) redirect('/login')
+    } catch (e) {
+        const err = e as { digest?: string }
+        if (err?.digest?.startsWith('NEXT_REDIRECT')) throw e
     }
 
     return <LazyOnboardingFlow />

@@ -8,24 +8,26 @@ export const metadata: Metadata = {
 }
 
 export default async function OnboardingPage() {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    try {
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) redirect('/login')
 
-    if (!user) {
-        redirect('/login')
-    }
+        // Verificar si ya completó el onboarding
+        const { data: brandIdentity } = await supabase
+            .from('brand_identities')
+            .select('is_completed')
+            .eq('user_id', user.id)
+            .single()
 
-    // Verificar si ya completó el onboarding
-    const { data: brandIdentity } = await supabase
-        .from('brand_identities')
-        .select('is_completed')
-        .eq('user_id', user.id)
-        .single()
-
-    if (brandIdentity?.is_completed) {
-        redirect('/dashboard') // Si ya lo hizo, no tiene que estar acá
+        if (brandIdentity?.is_completed) {
+            redirect('/dashboard')
+        }
+    } catch (e) {
+        const err = e as { digest?: string }
+        if (err?.digest?.startsWith('NEXT_REDIRECT')) throw e
     }
 
     return <LazyOnboardingFlow />
