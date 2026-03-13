@@ -1,11 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-function buildCspHeader(nonce: string): string {
+function buildCspHeader(): string {
     const isDev = process.env.NODE_ENV === 'development'
     return [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com https://connect.facebook.net${isDev ? " 'unsafe-eval'" : ''}`,
+        `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net${isDev ? " 'unsafe-eval'" : ''}`,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com",
         "img-src 'self' data: blob: https://img.youtube.com https://www.facebook.com https://*.supabase.co",
@@ -19,20 +19,13 @@ function buildCspHeader(nonce: string): string {
 
 export async function middleware(request: NextRequest) {
     try {
-        // Generate per-request nonce for CSP
-        const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-
-        // Pass nonce to server components via request header
         const requestHeaders = new Headers(request.headers)
-        requestHeaders.set('x-nonce', nonce)
-
-        const csp = buildCspHeader(nonce)
+        const csp = buildCspHeader()
 
         let supabaseResponse = NextResponse.next({
             request: { headers: requestHeaders },
         })
         supabaseResponse.headers.set('Content-Security-Policy', csp)
-        supabaseResponse.headers.set('x-nonce', nonce)
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -54,7 +47,6 @@ export async function middleware(request: NextRequest) {
                     })
                     // Re-apply CSP after Supabase recreates the response
                     supabaseResponse.headers.set('Content-Security-Policy', csp)
-                    supabaseResponse.headers.set('x-nonce', nonce)
                     cookiesToSet.forEach(({ name, value, options }) =>
                         supabaseResponse.cookies.set(name, value, options),
                     )
