@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getUserPermissions } from '@/lib/permissions'
 import { LazyWizardClient } from '@/shared/components/ClientOnly'
 
 interface WizardPageProps {
@@ -16,14 +15,18 @@ export async function generateMetadata({ params }: WizardPageProps): Promise<Met
 }
 
 export default async function WizardPage({ params }: WizardPageProps) {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) redirect('/login')
-
-    const perms = await getUserPermissions(user.id)
-    if (!perms.features.modules.includes('wizard')) redirect('/dashboard')
+    try {
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) redirect('/login')
+    } catch (e) {
+        // If Supabase is unavailable during RSC re-render after server action,
+        // render the client component anyway — it manages its own auth state.
+        const err = e as { digest?: string }
+        if (err?.digest?.startsWith('NEXT_REDIRECT')) throw e
+    }
 
     const { id } = await params
     const projectId = id?.[0]
