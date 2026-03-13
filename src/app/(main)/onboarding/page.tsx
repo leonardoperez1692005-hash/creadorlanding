@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { OnboardingFlow } from '@/features/onboarding/components/OnboardingFlow'
+import { LazyOnboardingFlow } from '@/shared/components/ClientOnly'
 
 export const metadata: Metadata = {
     title: 'Onboarding de Marca — BrandVortix',
@@ -28,5 +28,5 @@ export default async function OnboardingPage() {
         redirect('/dashboard') // Si ya lo hizo, no tiene que estar acá
     }
 
-    return <OnboardingFlow />
+    return <LazyOnboardingFlow />
 }

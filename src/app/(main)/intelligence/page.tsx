@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getUserPermissions } from '@/lib/permissions'
-import { PoliticalIntelClient } from '@/features/political-intel/components/PoliticalIntelClient'
+import { LazyPoliticalIntelClient } from '@/shared/components/ClientOnly'
 import type { PoliticalMonitor, PoliticalReportHistoryItem } from '@/features/political-intel/types'
 
 export const dynamic = 'force-dynamic'
@@ -99,7 +99,7 @@ export default async function IntelligencePage() {
     }
 
     return (
-        <PoliticalIntelClient
+        <LazyPoliticalIntelClient
             initialMonitors={initialMonitors}
             initialHistory={initialHistory}
             allowedIntelViews={allowedIntelViews}

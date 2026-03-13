@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getUserPermissions } from '@/lib/permissions'
-import { AttackPlanClient } from '@/features/attack-plan/components/AttackPlanClient'
+import { LazyAttackPlanClient } from '@/shared/components/ClientOnly'
 
 export const metadata: Metadata = {
     title: 'Attack Plan — BrandVortix',
@@ -19,5 +19,5 @@ export default async function AttackPlanPage() {
     const perms = await getUserPermissions(user.id)
     if (!perms.features.modules.includes('brandvortix')) redirect('/dashboard')
 
-    return <AttackPlanClient />
+    return <LazyAttackPlanClient />
 }

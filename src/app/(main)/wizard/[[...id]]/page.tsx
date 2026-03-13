@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getUserPermissions } from '@/lib/permissions'
-import { WizardClient } from '@/features/wizard/components/WizardClient'
+import { LazyWizardClient } from '@/shared/components/ClientOnly'
 
 interface WizardPageProps {
     params: Promise<{ id?: string[] }>
@@ -28,5 +28,5 @@ export default async function WizardPage({ params }: WizardPageProps) {
     const { id } = await params
     const projectId = id?.[0]
 
-    return <WizardClient projectId={projectId} />
+    return <LazyWizardClient projectId={projectId} />
 }
