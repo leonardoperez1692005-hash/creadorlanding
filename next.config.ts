@@ -8,7 +8,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 })
 
 const nextConfig: NextConfig = {
-    serverExternalPackages: ['pdfkit'],
+    serverExternalPackages: ['pdfkit', 'jsdom', 'isomorphic-dompurify'],
     turbopack: {
         root: path.resolve(__dirname),
         resolveAlias: {

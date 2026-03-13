@@ -52,6 +52,9 @@
         "zundo": "^2.3.0",
         "zustand": "^5.0.11"
     },
+    "overrides": {
+        "jsdom": "26.1.0"
+    },
     "devDependencies": {
         "@commitlint/cli": "^20.4.3",
         "@commitlint/config-conventional": "^20.4.3",
