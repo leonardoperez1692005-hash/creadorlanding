@@ -679,6 +679,7 @@ export function SocialPostDetail({
                                     <button
                                         onClick={() => setConfirmDelete(true)}
                                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                                        aria-label="Eliminar post"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>

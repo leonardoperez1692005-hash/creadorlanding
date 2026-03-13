@@ -312,6 +312,7 @@ export function UserDetailModal({ userId, onClose, showToast }: UserDetailModalP
                                                 rel="noopener noreferrer"
                                                 className="p-1 rounded hover:bg-white/10 transition-all inline-block"
                                                 style={{ color: 'var(--cyan)' }}
+                                                aria-label="Ver proyecto publicado"
                                             >
                                                 <ExternalLink className="w-3 h-3" />
                                             </a>

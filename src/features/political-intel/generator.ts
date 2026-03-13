@@ -12,6 +12,7 @@ import { GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE, COUNTRIES } from './config'
 
 // ─── Political Social Calendar ─────────────────────────────
 
+/** Genera un calendario semanal de redes sociales para campaña política general (60% propositivo, 40% contraste). */
 export async function generatePoliticalSocialCalendar(
     vectors: PoliticalAttackVector[],
     profile: PoliticalCampaignProfile,
@@ -159,6 +160,7 @@ IMPORTANTE:
 
 // ─── Thematic Social Calendar (focused on ONE topic) ──────
 
+/** Genera un calendario semanal 100% focalizado en un solo tema (70% propositivo, 30% contraste vs problema). */
 export async function generateThematicSocialCalendar(
     topicName: string,
     contextPrompt: string,
@@ -333,6 +335,7 @@ export interface PoliticalLandingResult {
     projectName: string
 }
 
+/** Genera contenido de landing política centrado en vectores de ataque contra rivales. */
 export async function generatePoliticalLandingContent(
     vectors: PoliticalAttackVector[],
     profile: PoliticalCampaignProfile,
@@ -502,6 +505,7 @@ IMPORTANTE:
 
 // ─── Thematic Landing Content (100% focalizada en UN tema) ───
 
+/** Genera contenido de landing temática 100% focalizada en un problema social (sin mencionar rivales). */
 export async function generateThematicLandingContent(
     topicName: string,
     contextPrompt: string,

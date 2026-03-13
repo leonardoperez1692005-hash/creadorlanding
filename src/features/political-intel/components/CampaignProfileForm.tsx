@@ -258,6 +258,7 @@ export function CampaignProfileForm() {
                                                 corePositions.filter((_, j) => j !== i),
                                             )
                                         }
+                                        aria-label="Eliminar posición"
                                         style={iconBtnStyle}
                                     >
                                         <X size={14} />
@@ -308,6 +309,7 @@ export function CampaignProfileForm() {
                                     onClick={() =>
                                         setKeyProposals(keyProposals.filter((_, j) => j !== i))
                                     }
+                                    aria-label="Eliminar propuesta"
                                     style={iconBtnStyle}
                                 >
                                     <X size={14} />
@@ -355,6 +357,7 @@ export function CampaignProfileForm() {
                                             coalitionAllies.filter((_, j) => j !== i),
                                         )
                                     }
+                                    aria-label="Eliminar aliado"
                                     style={{
                                         background: 'none',
                                         border: 'none',
@@ -388,6 +391,7 @@ export function CampaignProfileForm() {
                                     setNewAlly('')
                                 }
                             }}
+                            aria-label="Agregar aliado"
                             style={addBtnStyle}
                         >
                             <Plus size={14} />
@@ -418,6 +422,7 @@ export function CampaignProfileForm() {
                                 {line}
                                 <button
                                     onClick={() => setRedLines(redLines.filter((_, j) => j !== i))}
+                                    aria-label="Eliminar línea roja"
                                     style={{
                                         background: 'none',
                                         border: 'none',
@@ -451,6 +456,7 @@ export function CampaignProfileForm() {
                                     setNewRedLine('')
                                 }
                             }}
+                            aria-label="Agregar línea roja"
                             style={addBtnStyle}
                         >
                             <Plus size={14} />

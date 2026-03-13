@@ -62,7 +62,7 @@ async function generateUniqueSlug(
     return `${base}-${suffix}`
 }
 
-// === Fetch Project ===
+/** Carga un proyecto existente por ID, normalizando y fusionando secciones según su estructura. */
 export async function fetchProjectAction(id: string): Promise<
     ActionResult<{
         name: string
@@ -109,7 +109,7 @@ export async function fetchProjectAction(id: string): Promise<
     }
 }
 
-// === Save Project (Create or Update) ===
+/** Guarda un proyecto (crea o actualiza). Valida límite de proyectos del plan al crear. */
 export async function saveProjectAction(
     input: SaveProjectInput,
 ): Promise<ActionResult<{ id: string; slug: string }>> {
@@ -127,20 +127,23 @@ export async function saveProjectAction(
     const contentData = { sections, colors: colors ?? {}, meta: meta ?? {} }
     const slug = await generateUniqueSlug(name, supabase)
 
+    // Get permissions (needed for limit check and superadmin bypass)
+    const perms = await getUserPermissions(user.id)
+
     // Enforce project creation limit (only for new projects)
-    if (!projectId) {
-        const perms = await getUserPermissions(user.id)
-        if (hasReachedLimit(perms, 'projects')) {
-            return {
-                success: false,
-                error: `Límite de proyectos alcanzado (${perms.limits.maxProjects}). Contactá al administrador para ampliar tu plan.`,
-            }
+    if (!projectId && hasReachedLimit(perms, 'projects')) {
+        return {
+            success: false,
+            error: `Límite de proyectos alcanzado (${perms.limits.maxProjects}). Contactá al administrador para ampliar tu plan.`,
         }
     }
 
+    // Superadmin uses service client to bypass RLS (no active membership required)
+    const dbClient = perms.isSuperadmin ? createServiceClient() : supabase
+
     if (projectId) {
         // UPDATE
-        const { data, error } = await supabase
+        const { data, error } = await dbClient
             .from('projects')
             .update({
                 name,
@@ -159,7 +162,7 @@ export async function saveProjectAction(
         return { success: true, data: { id: projectId, slug: data.slug } }
     } else {
         // CREATE
-        const { data, error } = await supabase
+        const { data, error } = await dbClient
             .from('projects')
             .insert({
                 slug,
@@ -177,7 +180,7 @@ export async function saveProjectAction(
     }
 }
 
-// === Fetch Brand Identity (for default colors) ===
+/** Obtiene los colores de la identidad de marca del usuario para pre-popular el wizard. */
 export async function fetchBrandColorsAction(): Promise<Record<string, string>> {
     const supabase = await createClient()
     const {
@@ -196,7 +199,7 @@ export async function fetchBrandColorsAction(): Promise<Record<string, string>> 
     return (tokens['colors'] as Record<string, string>) ?? {}
 }
 
-// === Publish Project (Save + Compile HTML) ===
+/** Guarda y publica un proyecto: compila HTML standalone y revalida rutas públicas. */
 export async function publishProjectAction(
     input: SaveProjectInput,
 ): Promise<ActionResult<{ id: string; slug: string }>> {
@@ -213,6 +216,10 @@ export async function publishProjectAction(
 
     const contentData = { sections, colors: colors ?? {}, meta: meta ?? {} }
     const slug = await generateUniqueSlug(name, supabase)
+
+    // Superadmin uses service client to bypass RLS (no active membership required)
+    const perms = await getUserPermissions(user.id)
+    const dbClient = perms.isSuperadmin ? createServiceClient() : supabase
 
     // Resolve base URL for API endpoints embedded in HTML
     const h = await headers()
@@ -232,7 +239,7 @@ export async function publishProjectAction(
     })
 
     if (projectId) {
-        const { data, error } = await supabase
+        const { data, error } = await dbClient
             .from('projects')
             .update({
                 name,
@@ -252,7 +259,7 @@ export async function publishProjectAction(
         return { success: true, data: { id: projectId, slug: data.slug } }
     } else {
         // For new projects, compile again with the real project ID
-        const { data, error } = await supabase
+        const { data, error } = await dbClient
             .from('projects')
             .insert({
                 slug,
@@ -279,7 +286,7 @@ export async function publishProjectAction(
             meta: (meta ?? {}) as TrackingMeta,
             baseUrl,
         })
-        await supabase
+        await dbClient
             .from('projects')
             .update({ html_output: finalHtml })
             .eq('id', data.id)
@@ -290,7 +297,7 @@ export async function publishProjectAction(
     }
 }
 
-// === Unpublish Project (set to draft) ===
+/** Despublica un proyecto eliminando su HTML compilado (vuelve a borrador). */
 export async function unpublishProjectAction(projectId: string): Promise<ActionResult> {
     const supabase = await createClient()
     const {
@@ -310,7 +317,7 @@ export async function unpublishProjectAction(projectId: string): Promise<ActionR
     return { success: true }
 }
 
-// === Delete Project ===
+/** Elimina un proyecto permanentemente. */
 export async function deleteProjectAction(projectId: string): Promise<ActionResult> {
     const supabase = await createClient()
     const {
@@ -330,7 +337,7 @@ export async function deleteProjectAction(projectId: string): Promise<ActionResu
     return { success: true }
 }
 
-// === Upload Project Image ===
+/** Sube una imagen para un proyecto al bucket de Storage (máx 5MB). */
 export async function uploadProjectImageAction(
     formData: FormData,
 ): Promise<ActionResult<{ url: string }>> {

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/shared/lib/logger'
+import { getUserPermissions, canAccessModule } from '@/lib/permissions'
 import { BD_COST_PER_REQUEST } from '@/lib/brightdata'
 import type {
     CompetitorTarget,
@@ -20,9 +21,7 @@ export type IntelActionResult<T = null> =
     | { success: true; data?: T }
     | { success: false; error: string }
 
-// ================================
-// ACTION: GENERATE INTEL REPORT
-// ================================
+/** Genera un reporte de inteligencia competitiva: scraping + SERP + análisis Gemini. */
 export async function generateIntelReportAction(
     targets: CompetitorTarget[],
     sector: string,
@@ -34,6 +33,11 @@ export async function generateIntelReportAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         if (targets.length === 0) return { success: false, error: 'Agrega al menos un competidor' }
 
@@ -117,9 +121,7 @@ export async function generateIntelReportAction(
     }
 }
 
-// ================================
-// ACTION: LOAD INTEL REPORT
-// ================================
+/** Carga un reporte de inteligencia existente con sus targets originales. */
 export async function loadIntelReportAction(
     reportId: string,
 ): Promise<
@@ -154,9 +156,7 @@ export async function loadIntelReportAction(
     }
 }
 
-// ================================
-// ACTION: LIST INTEL REPORTS
-// ================================
+/** Lista el historial de reportes de inteligencia del usuario (últimos 20). */
 export async function listIntelReportsAction(): Promise<
     IntelActionResult<IntelReportHistoryItem[]>
 > {

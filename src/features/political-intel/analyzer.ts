@@ -22,6 +22,7 @@ import { COUNTRIES, GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE } from './config'
 
 // ─── Metrics Computation ─────────────────────────────────
 
+/** Calcula métricas derivadas (ratio seguidores, tweets/día, eficiencia) para cada perfil scrapeado. */
 export function computeMetrics(
     profiles: TwitterProfileSnapshot[],
     monitors: PoliticalMonitor[],
@@ -66,6 +67,7 @@ export function computeMetrics(
 
 // ─── Intelligence Report Generation ─────────────────────
 
+/** Genera un reporte de inteligencia política completo usando Gemini (perfiles, métricas, SERP, cambios). */
 export async function analyzeWithGemini(
     profiles: TwitterProfileSnapshot[],
     metrics: ProfileMetrics[],
@@ -202,6 +204,7 @@ IMPORTANTE:
 
 // ─── Attack Vector Generation (grounded in campaign identity) ─────
 
+/** Genera vectores de ataque ZMOT anclados en la identidad de campaña, contrastando debilidad del rival vs fortaleza propia. */
 export async function generateAttackVectors(
     vulnerability: PoliticalVulnerability,
     campaignProfile: PoliticalCampaignProfile,

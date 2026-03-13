@@ -408,6 +408,7 @@ Estilo: ${campaignProfile.communicationStyle}`
                             </button>
                             <button
                                 onClick={reset}
+                                aria-label="Nuevo video"
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -445,6 +446,11 @@ Estilo: ${campaignProfile.communicationStyle}`
                     {/* Toggle transcript */}
                     <button
                         onClick={() => setShowTranscript(!showTranscript)}
+                        aria-label={
+                            showTranscript
+                                ? 'Ocultar transcripción completa'
+                                : 'Ver transcripción completa'
+                        }
                         style={{
                             color: '#00c8ff',
                             fontSize: '0.8rem',
@@ -494,6 +500,7 @@ Estilo: ${campaignProfile.communicationStyle}`
                 >
                     <button
                         onClick={() => setActiveTab('moments')}
+                        aria-label="Pestaña Momentos"
                         style={{
                             padding: '0.5rem 1rem',
                             fontSize: '0.82rem',
@@ -523,6 +530,7 @@ Estilo: ${campaignProfile.communicationStyle}`
                                 ? setActiveTab('calendar')
                                 : generateCalendar(campaignProfile?.candidateName, candidateContext)
                         }
+                        aria-label={calendar ? 'Pestaña Calendario' : 'Generar Calendario'}
                         style={{
                             padding: '0.5rem 1rem',
                             fontSize: '0.82rem',
@@ -567,6 +575,7 @@ Estilo: ${campaignProfile.communicationStyle}`
                                 clipsPhase === 'polling' ||
                                 selectedMoments.length === 0
                             }
+                            aria-label={`Cortar Clips (${selectedMoments.length})`}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -616,6 +625,7 @@ Estilo: ${campaignProfile.communicationStyle}`
                                         candidateContext,
                                     )
                                 }
+                                aria-label="Generar Calendario de Contenido"
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -716,6 +726,7 @@ Estilo: ${campaignProfile.communicationStyle}`
                             onClick={() =>
                                 generateCalendar(campaignProfile?.candidateName, candidateContext)
                             }
+                            aria-label="Regenerar calendario"
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',

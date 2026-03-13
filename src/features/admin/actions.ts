@@ -53,6 +53,7 @@ export type AdminActionResult<T = null> =
 // =============================================
 // METRICS
 // =============================================
+/** Obtiene métricas globales del panel de administración (usuarios, proyectos, membresías, leads, licencias). */
 export async function fetchAdminMetricsAction(): Promise<
     AdminActionResult<{
         totalUsers: number
@@ -105,6 +106,7 @@ export async function fetchAdminMetricsAction(): Promise<
 // =============================================
 // USERS
 // =============================================
+/** Lista todos los usuarios con sus membresías y emails (requiere rol admin). */
 export async function fetchAdminUsersAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
@@ -141,6 +143,7 @@ export async function fetchAdminUsersAction(): Promise<AdminActionResult<unknown
     }
 }
 
+/** Cambia el rol de un usuario (solo superadmin). */
 export async function updateUserRoleAction(
     userId: string,
     role: 'user' | 'admin' | 'superadmin',
@@ -164,6 +167,7 @@ export async function updateUserRoleAction(
     }
 }
 
+/** Cambia el estado de un usuario: activo, suspendido o cancelado (solo superadmin). */
 export async function updateUserStatusAction(
     userId: string,
     status: 'active' | 'suspended' | 'cancelled',
@@ -188,6 +192,7 @@ export async function updateUserStatusAction(
     }
 }
 
+/** Elimina un usuario de auth y su perfil (solo superadmin). */
 export async function deleteUserAction(userId: string): Promise<AdminActionResult> {
     try {
         const { role, user } = await requireAdmin()
@@ -208,7 +213,7 @@ export async function deleteUserAction(userId: string): Promise<AdminActionResul
     }
 }
 
-// --- Create User (ALTA) ---
+/** Crea un nuevo usuario con email, contraseña, nombre y rol (solo superadmin). */
 export async function createUserAction(input: {
     email: string
     password: string
@@ -243,7 +248,7 @@ export async function createUserAction(input: {
     }
 }
 
-// --- Update User (MODIFICACION) ---
+/** Actualiza nombre, email, rol o estado de un usuario existente. */
 export async function updateUserAction(
     userId: string,
     input: {
@@ -284,7 +289,7 @@ export async function updateUserAction(
     }
 }
 
-// --- Fetch User Detail ---
+/** Obtiene el detalle completo de un usuario: perfil, email, licencias, proyectos y membresías. */
 export async function fetchUserDetailAction(userId: string): Promise<
     AdminActionResult<{
         profile: {
@@ -399,6 +404,7 @@ export async function fetchUserDetailAction(userId: string): Promise<
 // =============================================
 // PERMISSIONS (getUserPermissionsAction)
 // =============================================
+/** Obtiene los permisos del usuario autenticado actual (para uso desde el cliente). */
 export async function getUserPermissionsAction(): Promise<AdminActionResult<UserPermissions>> {
     try {
         const supabase = await createClient()
@@ -464,6 +470,7 @@ const planSchema = z.object({
 
 export type PlanInput = z.infer<typeof planSchema>
 
+/** Lista todos los planes con sus membresías asociadas (requiere rol admin). */
 export async function fetchAdminPlansAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
@@ -480,6 +487,7 @@ export async function fetchAdminPlansAction(): Promise<AdminActionResult<unknown
     }
 }
 
+/** Crea un nuevo plan de suscripción con features y límites (solo superadmin). */
 export async function createPlanAction(
     input: PlanInput,
 ): Promise<AdminActionResult<{ id: string }>> {
@@ -505,6 +513,7 @@ export async function createPlanAction(
     }
 }
 
+/** Actualiza un plan existente (solo superadmin). */
 export async function updatePlanAction(
     planId: string,
     input: Partial<PlanInput>,
@@ -523,6 +532,7 @@ export async function updatePlanAction(
     }
 }
 
+/** Elimina un plan si no tiene membresías activas (solo superadmin). */
 export async function deletePlanAction(planId: string): Promise<AdminActionResult> {
     try {
         const { supabase, role, user } = await requireAdmin()
@@ -552,6 +562,7 @@ export async function deletePlanAction(planId: string): Promise<AdminActionResul
 // =============================================
 // MEMBERSHIPS
 // =============================================
+/** Lista todas las membresías con plan y email del usuario asociado. */
 export async function fetchAdminMembershipsAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
@@ -579,6 +590,7 @@ export async function fetchAdminMembershipsAction(): Promise<AdminActionResult<u
     }
 }
 
+/** Crea una membresía activa para un usuario en un plan específico. */
 export async function createMembershipAction(input: {
     user_id: string
     plan_id: string
@@ -601,6 +613,7 @@ export async function createMembershipAction(input: {
     }
 }
 
+/** Actualiza el estado o fecha de expiración de una membresía. */
 export async function updateMembershipAction(
     membershipId: string,
     input: {
@@ -630,6 +643,7 @@ export async function updateMembershipAction(
     }
 }
 
+/** Elimina una membresía permanentemente. */
 export async function deleteMembershipAction(membershipId: string): Promise<AdminActionResult> {
     try {
         const { supabase } = await requireAdmin()
@@ -645,6 +659,7 @@ export async function deleteMembershipAction(membershipId: string): Promise<Admi
 // =============================================
 // LICENSES
 // =============================================
+/** Lista todas las licencias con perfil y email del usuario asociado. */
 export async function fetchAdminLicensesAction(): Promise<AdminActionResult<unknown[]>> {
     try {
         const { supabase } = await requireAdmin()
@@ -671,6 +686,7 @@ export async function fetchAdminLicensesAction(): Promise<AdminActionResult<unkn
     }
 }
 
+/** Crea una nueva licencia con clave auto-generada, opcionalmente asignada a un usuario/dominio. */
 export async function createLicenseAction(input: {
     user_id?: string
     domain?: string
@@ -694,6 +710,7 @@ export async function createLicenseAction(input: {
     }
 }
 
+/** Actualiza dominio, expiración o estado de una licencia existente. */
 export async function updateLicenseAction(
     licenseId: string,
     input: {
@@ -718,6 +735,7 @@ export async function updateLicenseAction(
     }
 }
 
+/** Revoca una licencia activa (soft-delete, cambia estado a 'revoked'). */
 export async function revokeLicenseAction(licenseId: string): Promise<AdminActionResult> {
     try {
         const { supabase, user } = await requireAdmin()
@@ -739,6 +757,7 @@ export async function revokeLicenseAction(licenseId: string): Promise<AdminActio
     }
 }
 
+/** Elimina una licencia permanentemente. */
 export async function deleteLicenseAction(licenseId: string): Promise<AdminActionResult> {
     try {
         const { supabase, user } = await requireAdmin()

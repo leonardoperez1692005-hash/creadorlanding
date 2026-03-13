@@ -24,6 +24,8 @@ export type ActionResponse<T = null> =
     | { success: false; error: string }
 
 // === Actions ===
+
+/** Autentica al usuario con email/password, aplicando rate limit de 5 intentos cada 15 min. */
 export async function loginAction(
     prevState: ActionResponse,
     formData: FormData,
@@ -54,6 +56,7 @@ export async function loginAction(
     redirect('/')
 }
 
+/** Registra un nuevo usuario con rate limit de 3 intentos cada 30 min (previene enumeración). */
 export async function registerAction(
     prevState: ActionResponse,
     formData: FormData,
@@ -95,6 +98,7 @@ export async function registerAction(
     redirect('/')
 }
 
+/** Cierra la sesión del usuario y redirige a /login. */
 export async function logoutAction(): Promise<void> {
     const supabase = await createClient()
     await supabase.auth.signOut()

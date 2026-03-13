@@ -96,6 +96,7 @@ function footer(generatedAt: string) {
 // Attack Plan DOCX
 // =============================================
 
+/** Genera un DOCX del plan de ataque ZMOT con vectores y contenido multi-plataforma. */
 export async function generateAttackPlanDOCX(
     plan: AttackPlan,
     meta: AttackPlanMeta,
@@ -180,6 +181,7 @@ export async function generateAttackPlanDOCX(
 // Political Intelligence DOCX
 // =============================================
 
+/** Genera un DOCX del reporte de inteligencia política con rankings, insights y acciones recomendadas. */
 export async function generatePoliticalReportDOCX(report: PoliticalIntelReport): Promise<Buffer> {
     const children: (Paragraph | Table)[] = []
 
@@ -332,6 +334,7 @@ export async function generatePoliticalReportDOCX(report: PoliticalIntelReport):
 // Strategy DOCX
 // =============================================
 
+/** Genera un DOCX de estrategia competitiva con competidores, ángulos de venta y pilares de contenido. */
 export async function generateStrategyDOCX(
     data: StrategyData,
     meta?: StrategyMeta,

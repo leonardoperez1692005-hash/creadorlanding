@@ -12,6 +12,7 @@ interface AuditEntry {
     ip?: string
 }
 
+/** Registra una entrada de auditoría en la base de datos (nunca interrumpe el flujo principal). */
 export async function logAudit(entry: AuditEntry): Promise<void> {
     try {
         const svc = createServiceClient()

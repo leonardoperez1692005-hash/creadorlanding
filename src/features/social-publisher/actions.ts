@@ -6,6 +6,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/shared/lib/logger'
+import { getUserPermissions, canAccessModule } from '@/lib/permissions'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import {
     publishPost as publishPostService,
@@ -39,8 +40,7 @@ interface ActionResult<T = void> {
     data?: T
 }
 
-// ── Get Connected Accounts ──
-
+/** Obtiene las cuentas de redes sociales conectadas y activas del usuario. */
 export async function getConnectedAccountsAction(): Promise<
     ActionResult<ReturnType<typeof toSocialAccount>[]>
 > {
@@ -66,8 +66,7 @@ export async function getConnectedAccountsAction(): Promise<
     }
 }
 
-// ── Disconnect Account ──
-
+/** Desconecta una cuenta social (soft-delete) y cancela sus posts programados. */
 export async function disconnectAccountAction(input: { accountId: string }): Promise<ActionResult> {
     const userId = await getAuthUserId()
     if (!userId) return { success: false, error: 'No autenticado' }
@@ -101,14 +100,18 @@ export async function disconnectAccountAction(input: { accountId: string }): Pro
     return { success: true }
 }
 
-// ── Publish Post Now ──
-
+/** Publica un post inmediatamente en una cuenta social conectada (rate-limited: 30/hora). */
 export async function publishPostNowAction(input: {
     accountId: string
     post: SocialPost
 }): Promise<ActionResult<{ platformPostId: string; platformPostUrl: string }>> {
     const userId = await getAuthUserId()
     if (!userId) return { success: false, error: 'No autenticado' }
+
+    const perms = await getUserPermissions(userId)
+    if (!canAccessModule(perms, 'intelligence')) {
+        return { success: false, error: 'No tienes acceso a este módulo' }
+    }
 
     // Rate limit: 30 publishes per hour
     const rl = await rateLimitAsync(`social-publish:${userId}`, { limit: 30, windowSec: 3600 })
@@ -159,8 +162,7 @@ export async function publishPostNowAction(input: {
     }
 }
 
-// ── Schedule Post ──
-
+/** Programa un post para publicación futura en una cuenta social. */
 export async function schedulePostAction(input: {
     accountId: string
     post: SocialPost
@@ -170,6 +172,11 @@ export async function schedulePostAction(input: {
 }): Promise<ActionResult<{ scheduledPostId: string }>> {
     const userId = await getAuthUserId()
     if (!userId) return { success: false, error: 'No autenticado' }
+
+    const perms = await getUserPermissions(userId)
+    if (!canAccessModule(perms, 'intelligence')) {
+        return { success: false, error: 'No tienes acceso a este módulo' }
+    }
 
     const parsed = schedulePostInputSchema.safeParse(input)
     if (!parsed.success) {
@@ -194,8 +201,7 @@ export async function schedulePostAction(input: {
     }
 }
 
-// ── Schedule Entire Day ──
-
+/** Programa todos los posts de un día en sus cuentas correspondientes por plataforma. */
 export async function scheduleDayAction(input: {
     accountIds: Partial<Record<SocialPlatform, string>>
     posts: SocialPost[]
@@ -205,6 +211,11 @@ export async function scheduleDayAction(input: {
 }): Promise<ActionResult<{ scheduledCount: number; errors: string[] }>> {
     const userId = await getAuthUserId()
     if (!userId) return { success: false, error: 'No autenticado' }
+
+    const perms = await getUserPermissions(userId)
+    if (!canAccessModule(perms, 'intelligence')) {
+        return { success: false, error: 'No tienes acceso a este módulo' }
+    }
 
     const parsed = scheduleDayInputSchema.safeParse(input)
     if (!parsed.success) {
@@ -250,8 +261,7 @@ export async function scheduleDayAction(input: {
     return { success: true, data: { scheduledCount, errors } }
 }
 
-// ── Cancel Scheduled Post ──
-
+/** Cancela un post programado que aún no fue publicado. */
 export async function cancelScheduledPostAction(input: {
     scheduledPostId: string
 }): Promise<ActionResult> {
@@ -270,8 +280,7 @@ export async function cancelScheduledPostAction(input: {
     }
 }
 
-// ── Get Scheduled Posts ──
-
+/** Lista los posts programados del usuario, opcionalmente filtrados por reporte. */
 export async function getScheduledPostsAction(
     reportId?: string,
 ): Promise<ActionResult<ReturnType<typeof toScheduledPost>[]>> {

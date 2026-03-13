@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/shared/lib/logger'
 import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions, canAccessModule } from '@/lib/permissions'
 import { scrapeUrl, serpSearch } from '@/lib/brightdata'
 import { callGemini, parseAndValidate, parseJsonFromAI } from '@/lib/gemini'
 import type {
@@ -67,9 +68,7 @@ async function researchMarketWithBrightData(
         : `Sector: ${sector}. Competidores referenciados: ${competitors}`
 }
 
-// ================================
-// ACTION: RUN FULL ANALYSIS
-// ================================
+/** Ejecuta análisis estratégico completo: scraping de competidores + SERP + síntesis Gemini. */
 export async function runStrategyAnalysisAction(
     brief: StrategyBriefData,
 ): Promise<StrategyActionResult<{ strategy: StrategyData; meta: StrategyMeta }>> {
@@ -79,6 +78,11 @@ export async function runStrategyAnalysisAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         // === FASE 0: Load brand identity for real product/service data ===
         const { data: brandRow } = await supabase
@@ -269,9 +273,7 @@ Responde SOLO con el JSON válido. TODO en español.`
     }
 }
 
-// ================================
-// ACTION: TACTICAL OPERATION
-// ================================
+/** Genera operaciones tácticas: objeciones con Judo Verbal o contenido para TikTok/LinkedIn. */
 export async function runTacticalOperationAction(
     type: 'objections' | 'content',
     salesAngle: string,
@@ -283,6 +285,11 @@ export async function runTacticalOperationAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         let prompt = ''
         const { brandName = 'Mi marca', sector = 'general' } = context
@@ -489,6 +496,7 @@ function buildSectionJsonExample(templateType: string): string {
     return `{\n${entries.join(',\n')}\n}`
 }
 
+/** Genera contenido de landing page (copy por sección) según estrategia y tipo de template. */
 export async function generateLandingContentAction(
     strategy: StrategyData,
     templateType: 'vsl' | 'webinar' | 'long_letter',
@@ -500,6 +508,11 @@ export async function generateLandingContentAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         const angle = strategy.salesAngles?.[0]
         const requiredSections = TEMPLATE_SECTIONS[templateType] ?? TEMPLATE_SECTIONS['vsl']!
@@ -603,9 +616,7 @@ Responde SOLO con JSON válido. Todo en español. Que sea copy real, no placehol
     }
 }
 
-// ================================
-// ACTION: FETCH HISTORY
-// ================================
+/** Lista el historial de análisis estratégicos del usuario (últimos 20). */
 export async function fetchStrategyHistoryAction(): Promise<
     StrategyActionResult<StrategyHistoryItem[]>
 > {
@@ -638,9 +649,7 @@ export async function fetchStrategyHistoryAction(): Promise<
     }
 }
 
-// ================================
-// ACTION: LOAD HISTORY ITEM
-// ================================
+/** Carga un análisis estratégico histórico completo por ID. */
 export async function loadStrategyHistoryItemAction(historyId: string): Promise<
     StrategyActionResult<{
         strategy: StrategyData

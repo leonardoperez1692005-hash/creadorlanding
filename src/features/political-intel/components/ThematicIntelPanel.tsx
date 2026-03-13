@@ -2,36 +2,12 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-    BookOpen,
-    Plus,
-    Trash2,
-    Search,
-    Loader2,
-    TrendingUp,
-    TrendingDown,
-    Minus,
-    AlertTriangle,
-    Users,
-    MessageSquare,
-    Sparkles,
-    Crosshair,
-    ArrowRight,
-    CalendarDays,
-    Layout,
-    Edit3,
-    Check,
-    X,
-    FileText,
-} from 'lucide-react'
+import { BookOpen, Plus, Trash2, Search, Loader2, Edit3, Check, X, FileText } from 'lucide-react'
 import { useIntelligenceStore } from '../store/intelligenceStore'
-import {
-    addTopicAction,
-    deleteTopicAction,
-    updateTopicAction,
-    getThematicLandingDataAction,
-} from '../actions'
-import type { PoliticalAttackVector } from '../types'
+import { deleteTopicAction, updateTopicAction, getThematicLandingDataAction } from '../actions'
+import type { PoliticalTopic } from '../types'
+import { TopicForm } from './TopicForm'
+import { ThematicReportDisplay } from './ThematicReportDisplay'
 
 export function ThematicIntelPanel() {
     const router = useRouter()
@@ -51,11 +27,6 @@ export function ThematicIntelPanel() {
     } = useIntelligenceStore()
 
     const [showForm, setShowForm] = useState(false)
-    const [topicName, setTopicName] = useState('')
-    const [topicDesc, setTopicDesc] = useState('')
-    const [topicContext, setTopicContext] = useState('')
-    const [isAdding, setIsAdding] = useState(false)
-    const [addError, setAddError] = useState<string | null>(null)
 
     // Inline editing state for existing topics
     const [editingTopicId, setEditingTopicId] = useState<string | null>(null)
@@ -85,37 +56,13 @@ export function ThematicIntelPanel() {
         }
     }, [thematicReportId, router])
 
-    const handleAddTopic = useCallback(async () => {
-        if (!topicName.trim()) return
-        setIsAdding(true)
-        setAddError(null)
-
-        const result = await addTopicAction({
-            name: topicName.trim(),
-            description: topicDesc.trim(),
-            contextPrompt: topicContext.trim(),
-        })
-        if (result.success) {
-            addTopic({
-                id: result.data.id,
-                userId: '',
-                name: topicName.trim(),
-                description: topicDesc.trim(),
-                contextPrompt: topicContext.trim(),
-                serpQueries: [],
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            })
-            setTopicName('')
-            setTopicDesc('')
-            setTopicContext('')
+    const handleTopicAdded = useCallback(
+        (topic: PoliticalTopic) => {
+            addTopic(topic)
             setShowForm(false)
-        } else {
-            setAddError(result.error)
-        }
-        setIsAdding(false)
-    }, [topicName, topicDesc, topicContext, addTopic])
+        },
+        [addTopic],
+    )
 
     const handleSaveContext = useCallback(
         async (topicId: string) => {
@@ -141,6 +88,20 @@ export function ThematicIntelPanel() {
             if (result.success) removeTopic(id)
         },
         [removeTopic],
+    )
+
+    const handleGenerateCalendar = useCallback(
+        (topicName: string) => {
+            // Set active topic for the calendar header
+            const activeTopic = topics.find((t) => topicName === t.name)
+            if (activeTopic) {
+                useIntelligenceStore.getState().setActiveTopic(activeTopic.id)
+            }
+            // Generate calendar from thematic angles ONLY (no rival vectors)
+            void generateCalendar({ thematicOnly: true })
+            setView('calendar')
+        },
+        [topics, generateCalendar, setView],
     )
 
     const isResearching = thematicPhase === 'researching' || thematicPhase === 'analyzing'
@@ -199,110 +160,7 @@ export function ThematicIntelPanel() {
 
             {/* Add Topic Form */}
             {showForm && (
-                <div
-                    style={{
-                        padding: '1rem 1.25rem',
-                        borderRadius: '10px',
-                        background: 'rgba(16,185,129,0.04)',
-                        border: '1px solid rgba(16,185,129,0.12)',
-                        marginBottom: '1.25rem',
-                    }}
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        <input
-                            value={topicName}
-                            onChange={(e) => setTopicName(e.target.value)}
-                            placeholder="Nombre del tema (ej: Inseguridad, Inflación, Educación)"
-                            style={{
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '6px',
-                                fontSize: '0.85rem',
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid #1e2540',
-                                color: '#fff',
-                                outline: 'none',
-                            }}
-                        />
-                        <input
-                            value={topicDesc}
-                            onChange={(e) => setTopicDesc(e.target.value)}
-                            placeholder="Descripción corta (ej: Foco en robos y narcotráfico en zona sur)"
-                            style={{
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '6px',
-                                fontSize: '0.82rem',
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid #1e2540',
-                                color: '#c4cfe8',
-                                outline: 'none',
-                            }}
-                        />
-                        <textarea
-                            value={topicContext}
-                            onChange={(e) => setTopicContext(e.target.value)}
-                            placeholder="Contexto detallado (muy recomendado): Tus ideas, propuestas, datos, posición sobre este tema. Cuanto más escribas, mejor será el análisis de IA..."
-                            rows={5}
-                            maxLength={10000}
-                            style={{
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '6px',
-                                fontSize: '0.82rem',
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid #1e2540',
-                                color: '#c4cfe8',
-                                outline: 'none',
-                                resize: 'vertical',
-                                minHeight: '100px',
-                                fontFamily: 'inherit',
-                            }}
-                        />
-                        <p style={{ color: '#4B5563', fontSize: '0.7rem', margin: 0 }}>
-                            {topicContext.length}/10.000 caracteres — cuanto más detallado, mejor el
-                            análisis
-                        </p>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                                onClick={handleAddTopic}
-                                disabled={!topicName.trim() || isAdding}
-                                style={{
-                                    padding: '0.4rem 1rem',
-                                    borderRadius: '6px',
-                                    fontSize: '0.82rem',
-                                    fontWeight: 600,
-                                    background: '#10B981',
-                                    border: 'none',
-                                    color: '#fff',
-                                    cursor: isAdding ? 'wait' : 'pointer',
-                                    opacity: !topicName.trim() || isAdding ? 0.5 : 1,
-                                }}
-                            >
-                                {isAdding ? 'Guardando...' : 'Guardar'}
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowForm(false)
-                                    setAddError(null)
-                                }}
-                                style={{
-                                    padding: '0.4rem 1rem',
-                                    borderRadius: '6px',
-                                    fontSize: '0.82rem',
-                                    background: 'transparent',
-                                    border: '1px solid #1e2540',
-                                    color: '#6B7280',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-                        {addError && (
-                            <p style={{ color: '#F87171', fontSize: '0.78rem', margin: 0 }}>
-                                {addError}
-                            </p>
-                        )}
-                    </div>
-                </div>
+                <TopicForm onTopicAdded={handleTopicAdded} onCancel={() => setShowForm(false)} />
             )}
 
             {/* Topics List */}
@@ -418,6 +276,7 @@ export function ThematicIntelPanel() {
                                             }
                                         }}
                                         title="Editar contexto"
+                                        aria-label="Editar contexto"
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -461,6 +320,7 @@ export function ThematicIntelPanel() {
                                     </button>
                                     <button
                                         onClick={() => handleDelete(topic.id)}
+                                        aria-label="Eliminar tema"
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -612,677 +472,21 @@ export function ThematicIntelPanel() {
 
             {/* Thematic Report */}
             {thematicReport && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {/* Executive Summary */}
-                    <div
-                        style={{
-                            padding: '1.25rem',
-                            borderRadius: '10px',
-                            background: 'rgba(16,185,129,0.04)',
-                            border: '1px solid rgba(16,185,129,0.12)',
-                            borderLeft: '4px solid #10B981',
-                        }}
-                    >
-                        <h3
-                            style={{
-                                color: '#10B981',
-                                fontSize: '0.9rem',
-                                fontWeight: 700,
-                                margin: '0 0 0.5rem',
-                            }}
-                        >
-                            Reporte: {thematicReport.topicName}
-                        </h3>
-                        <p
-                            style={{
-                                color: '#c4cfe8',
-                                fontSize: '0.82rem',
-                                margin: 0,
-                                lineHeight: 1.6,
-                            }}
-                        >
-                            {thematicReport.executiveSummary}
-                        </p>
-                    </div>
-
-                    {/* Public Sentiment */}
-                    <div
-                        style={{
-                            padding: '1rem 1.25rem',
-                            borderRadius: '10px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid #1e2540',
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                marginBottom: '0.5rem',
-                            }}
-                        >
-                            <MessageSquare size={14} color="#A78BFA" />
-                            <span
-                                style={{ color: '#A78BFA', fontSize: '0.82rem', fontWeight: 600 }}
-                            >
-                                Sentimiento Público
-                            </span>
-                            <SentimentBadge overall={thematicReport.publicSentiment.overall} />
-                        </div>
-                        <p
-                            style={{
-                                color: '#c4cfe8',
-                                fontSize: '0.8rem',
-                                margin: '0 0 0.4rem',
-                                lineHeight: 1.5,
-                            }}
-                        >
-                            {thematicReport.publicSentiment.description}
-                        </p>
-                        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            {thematicReport.publicSentiment.keyEmotions.map((e, i) => (
-                                <span
-                                    key={i}
-                                    style={{
-                                        padding: '0.15rem 0.4rem',
-                                        borderRadius: '4px',
-                                        fontSize: '0.7rem',
-                                        background: 'rgba(167,139,250,0.1)',
-                                        color: '#A78BFA',
-                                        border: '1px solid rgba(167,139,250,0.15)',
-                                    }}
-                                >
-                                    {e}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Pain Points */}
-                    <div
-                        style={{
-                            padding: '1rem 1.25rem',
-                            borderRadius: '10px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid #1e2540',
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                marginBottom: '0.75rem',
-                            }}
-                        >
-                            <AlertTriangle size={14} color="#F87171" />
-                            <span
-                                style={{ color: '#F87171', fontSize: '0.82rem', fontWeight: 600 }}
-                            >
-                                Dolores Ciudadanos ({thematicReport.painPoints.length})
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {thematicReport.painPoints.map((pp, i) => (
-                                <div
-                                    key={i}
-                                    style={{
-                                        padding: '0.6rem 0.8rem',
-                                        borderRadius: '6px',
-                                        background:
-                                            pp.severity === 'critical'
-                                                ? 'rgba(248,113,113,0.06)'
-                                                : 'rgba(255,255,255,0.02)',
-                                        border: `1px solid ${
-                                            pp.severity === 'critical'
-                                                ? 'rgba(248,113,113,0.15)'
-                                                : '#1e2540'
-                                        }`,
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.4rem',
-                                            marginBottom: '0.25rem',
-                                        }}
-                                    >
-                                        <SeverityBadge severity={pp.severity} />
-                                        <span
-                                            style={{
-                                                color: '#c4cfe8',
-                                                fontSize: '0.8rem',
-                                                fontWeight: 600,
-                                            }}
-                                        >
-                                            {pp.description}
-                                        </span>
-                                    </div>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            gap: '0.75rem',
-                                            fontSize: '0.74rem',
-                                        }}
-                                    >
-                                        <span style={{ color: '#6B7280' }}>
-                                            <Users
-                                                size={11}
-                                                style={{
-                                                    verticalAlign: 'middle',
-                                                    marginRight: '0.2rem',
-                                                }}
-                                            />
-                                            {pp.affectedGroup}
-                                        </span>
-                                        {pp.candidateMatchingProposal && (
-                                            <span style={{ color: '#10B981' }}>
-                                                <Crosshair
-                                                    size={11}
-                                                    style={{
-                                                        verticalAlign: 'middle',
-                                                        marginRight: '0.2rem',
-                                                    }}
-                                                />
-                                                {pp.candidateMatchingProposal}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Trends */}
-                    <div
-                        style={{
-                            padding: '1rem 1.25rem',
-                            borderRadius: '10px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid #1e2540',
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                marginBottom: '0.75rem',
-                            }}
-                        >
-                            <TrendingUp size={14} color="#00c8ff" />
-                            <span
-                                style={{ color: '#00c8ff', fontSize: '0.82rem', fontWeight: 600 }}
-                            >
-                                Tendencias
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                            {thematicReport.trends.map((t, i) => (
-                                <div
-                                    key={i}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        fontSize: '0.8rem',
-                                    }}
-                                >
-                                    {t.direction === 'growing' && (
-                                        <TrendingUp size={13} color="#F87171" />
-                                    )}
-                                    {t.direction === 'stable' && (
-                                        <Minus size={13} color="#6B7280" />
-                                    )}
-                                    {t.direction === 'declining' && (
-                                        <TrendingDown size={13} color="#10B981" />
-                                    )}
-                                    <span style={{ color: '#c4cfe8' }}>{t.description}</span>
-                                    <span
-                                        style={{
-                                            padding: '0.1rem 0.3rem',
-                                            borderRadius: '3px',
-                                            fontSize: '0.65rem',
-                                            background:
-                                                t.relevance === 'high'
-                                                    ? 'rgba(248,113,113,0.1)'
-                                                    : 'rgba(107,114,128,0.1)',
-                                            color: t.relevance === 'high' ? '#F87171' : '#6B7280',
-                                        }}
-                                    >
-                                        {t.relevance}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Citizen Voices */}
-                    {thematicReport.citizenVoices.length > 0 && (
-                        <div
-                            style={{
-                                padding: '1rem 1.25rem',
-                                borderRadius: '10px',
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid #1e2540',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    marginBottom: '0.75rem',
-                                }}
-                            >
-                                <MessageSquare size={14} color="#6B7280" />
-                                <span
-                                    style={{
-                                        color: '#8b9ec7',
-                                        fontSize: '0.82rem',
-                                        fontWeight: 600,
-                                    }}
-                                >
-                                    Voces Ciudadanas
-                                </span>
-                            </div>
-                            <div
-                                style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
-                            >
-                                {thematicReport.citizenVoices.map((v, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            padding: '0.5rem 0.75rem',
-                                            borderRadius: '6px',
-                                            borderLeft: '3px solid rgba(167,139,250,0.3)',
-                                            background: 'rgba(167,139,250,0.03)',
-                                        }}
-                                    >
-                                        <p
-                                            style={{
-                                                color: '#c4cfe8',
-                                                fontSize: '0.78rem',
-                                                margin: 0,
-                                                fontStyle: 'italic',
-                                            }}
-                                        >
-                                            &ldquo;{v}&rdquo;
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Generate Angles Button */}
-                    <button
-                        onClick={generateThematicAnglesFromReport}
-                        disabled={isGeneratingAngles || isResearching}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.75rem 1.5rem',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            fontSize: '0.9rem',
-                            color: '#fff',
-                            border: 'none',
-                            cursor: isGeneratingAngles ? 'wait' : 'pointer',
-                            background: isGeneratingAngles
-                                ? 'rgba(16,185,129,0.3)'
-                                : 'linear-gradient(135deg, #10B981 0%, #00C8FF 100%)',
-                            opacity: isGeneratingAngles || isResearching ? 0.7 : 1,
-                            transition: 'all 0.15s',
-                        }}
-                    >
-                        {isGeneratingAngles ? (
-                            <>
-                                <Loader2
-                                    size={16}
-                                    style={{ animation: 'spin 1s linear infinite' }}
-                                />
-                                Generando ángulos con Gemini...
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles size={16} />
-                                Generar Ángulos de Comunicación
-                                <ArrowRight size={14} />
-                            </>
-                        )}
-                    </button>
-
-                    {/* Thematic Angles */}
-                    {thematicAngles.length > 0 && (
-                        <div
-                            style={{
-                                padding: '1rem 1.25rem',
-                                borderRadius: '10px',
-                                background: 'rgba(16,185,129,0.04)',
-                                border: '1px solid rgba(16,185,129,0.12)',
-                            }}
-                        >
-                            <h3
-                                style={{
-                                    color: '#10B981',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 700,
-                                    margin: '0 0 0.75rem',
-                                }}
-                            >
-                                Ángulos de Comunicación ({thematicAngles.length})
-                            </h3>
-                            <div
-                                style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
-                            >
-                                {thematicAngles.map((angle, i) => (
-                                    <AngleCard key={i} angle={angle} index={i} />
-                                ))}
-                            </div>
-
-                            {/* Action buttons */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    gap: '0.75rem',
-                                    marginTop: '1rem',
-                                    flexWrap: 'wrap',
-                                }}
-                            >
-                                <button
-                                    onClick={() => {
-                                        // Set active topic for the calendar header
-                                        const activeTopic = topics.find(
-                                            (t) => thematicReport?.topicName === t.name,
-                                        )
-                                        if (activeTopic) {
-                                            useIntelligenceStore
-                                                .getState()
-                                                .setActiveTopic(activeTopic.id)
-                                        }
-                                        // Generate calendar from thematic angles ONLY (no rival vectors)
-                                        void generateCalendar({ thematicOnly: true })
-                                        setView('calendar')
-                                    }}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.4rem',
-                                        padding: '0.5rem 1rem',
-                                        borderRadius: '6px',
-                                        fontSize: '0.8rem',
-                                        fontWeight: 600,
-                                        border: '1px solid rgba(0,200,255,0.3)',
-                                        background: 'rgba(0,200,255,0.08)',
-                                        color: '#00c8ff',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    <CalendarDays size={14} />
-                                    Generar Calendario
-                                </button>
-                                <button
-                                    onClick={handleGenerateLanding}
-                                    disabled={isGeneratingLanding}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.4rem',
-                                        padding: '0.5rem 1rem',
-                                        borderRadius: '6px',
-                                        fontSize: '0.8rem',
-                                        fontWeight: 600,
-                                        border: '1px solid rgba(124,58,237,0.3)',
-                                        background: isGeneratingLanding
-                                            ? 'rgba(124,58,237,0.15)'
-                                            : 'rgba(124,58,237,0.08)',
-                                        color: '#A78BFA',
-                                        cursor: isGeneratingLanding ? 'wait' : 'pointer',
-                                        opacity: isGeneratingLanding ? 0.7 : 1,
-                                    }}
-                                >
-                                    {isGeneratingLanding ? (
-                                        <>
-                                            <Loader2
-                                                size={14}
-                                                style={{ animation: 'spin 1s linear infinite' }}
-                                            />
-                                            Generando landing con Gemini...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Layout size={14} />
-                                            Crear Landing
-                                        </>
-                                    )}
-                                </button>
-                                {landingError && (
-                                    <p
-                                        style={{
-                                            color: '#F87171',
-                                            fontSize: '0.75rem',
-                                            margin: 0,
-                                            width: '100%',
-                                        }}
-                                    >
-                                        {landingError}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <ThematicReportDisplay
+                    thematicReport={thematicReport}
+                    thematicAngles={thematicAngles}
+                    isResearching={isResearching}
+                    isGeneratingAngles={isGeneratingAngles}
+                    isGeneratingLanding={isGeneratingLanding}
+                    landingError={landingError}
+                    topics={topics}
+                    onGenerateAngles={generateThematicAnglesFromReport}
+                    onGenerateCalendar={handleGenerateCalendar}
+                    onGenerateLanding={handleGenerateLanding}
+                />
             )}
 
             <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-        </div>
-    )
-}
-
-// ─── Sub-components ──────────────────────────────
-
-function SentimentBadge({ overall }: { overall: string }) {
-    const colors: Record<string, { bg: string; text: string }> = {
-        positivo: { bg: 'rgba(16,185,129,0.12)', text: '#10B981' },
-        negativo: { bg: 'rgba(248,113,113,0.12)', text: '#F87171' },
-        mixto: { bg: 'rgba(251,191,36,0.12)', text: '#FBBF24' },
-        indiferente: { bg: 'rgba(107,114,128,0.12)', text: '#6B7280' },
-    }
-    const c = colors[overall] ?? colors.indiferente
-    return (
-        <span
-            style={{
-                padding: '0.1rem 0.4rem',
-                borderRadius: '4px',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                background: c.bg,
-                color: c.text,
-            }}
-        >
-            {overall}
-        </span>
-    )
-}
-
-function SeverityBadge({ severity }: { severity: string }) {
-    const colors: Record<string, string> = {
-        critical: '#F87171',
-        high: '#FBBF24',
-        medium: '#6B7280',
-    }
-    return (
-        <span
-            style={{
-                padding: '0.1rem 0.3rem',
-                borderRadius: '3px',
-                fontSize: '0.62rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                background: `${colors[severity] || '#6B7280'}18`,
-                color: colors[severity] || '#6B7280',
-            }}
-        >
-            {severity}
-        </span>
-    )
-}
-
-function AngleCard({ angle, index }: { angle: PoliticalAttackVector; index: number }) {
-    const [expanded, setExpanded] = useState(false)
-
-    return (
-        <div
-            style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid #1e2540',
-            }}
-        >
-            <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setExpanded(!expanded)}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        setExpanded(!expanded)
-                    }
-                }}
-                style={{ cursor: 'pointer' }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        marginBottom: '0.25rem',
-                    }}
-                >
-                    <span
-                        style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '50%',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'rgba(16,185,129,0.15)',
-                            color: '#10B981',
-                        }}
-                    >
-                        {index + 1}
-                    </span>
-                    <span style={{ color: '#10B981', fontSize: '0.78rem', fontWeight: 600 }}>
-                        {angle.targetPolitician}
-                    </span>
-                    <span style={{ color: '#4B5563', fontSize: '0.72rem' }}>
-                        {angle.targetHandle}
-                    </span>
-                </div>
-                <p
-                    style={{
-                        color: '#c4cfe8',
-                        fontSize: '0.8rem',
-                        margin: '0.25rem 0',
-                        lineHeight: 1.5,
-                    }}
-                >
-                    <strong style={{ color: '#F87171' }}>Dolor:</strong> {angle.vulnerability}
-                </p>
-                <p
-                    style={{
-                        color: '#c4cfe8',
-                        fontSize: '0.8rem',
-                        margin: '0.15rem 0',
-                        lineHeight: 1.5,
-                    }}
-                >
-                    <strong style={{ color: '#10B981' }}>Propuesta:</strong> {angle.clientStrength}
-                </p>
-                <p style={{ color: '#8b9ec7', fontSize: '0.78rem', margin: '0.15rem 0' }}>
-                    {angle.attackAngle}
-                </p>
-            </div>
-
-            {expanded && (
-                <div
-                    style={{
-                        marginTop: '0.75rem',
-                        paddingTop: '0.75rem',
-                        borderTop: '1px solid #1e2540',
-                    }}
-                >
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                        <OutputBlock
-                            label="Ad Copy"
-                            content={`${angle.outputs.adCopy.headline}\n${angle.outputs.adCopy.body}`}
-                        />
-                        <OutputBlock label="X (Tweet)" content={angle.outputs.xPost.text} />
-                        <OutputBlock
-                            label="LinkedIn"
-                            content={`${angle.outputs.linkedinPost.hook}\n${angle.outputs.linkedinPost.body}`}
-                        />
-                        <OutputBlock
-                            label="TikTok"
-                            content={`${angle.outputs.tiktokScript.hook}\n${angle.outputs.tiktokScript.script}`}
-                        />
-                        <OutputBlock
-                            label="Instagram"
-                            content={`${angle.outputs.instagramPost.visualConcept}\n${angle.outputs.instagramPost.caption}`}
-                        />
-                        <OutputBlock
-                            label="Landing"
-                            content={`${angle.outputs.landingSectionCopy.heroHeadline}\n${angle.outputs.landingSectionCopy.heroSubheadline}`}
-                        />
-                    </div>
-                </div>
-            )}
-        </div>
-    )
-}
-
-function OutputBlock({ label, content }: { label: string; content: string }) {
-    return (
-        <div
-            style={{
-                padding: '0.5rem 0.6rem',
-                borderRadius: '6px',
-                background: 'rgba(0,200,255,0.03)',
-                border: '1px solid rgba(0,200,255,0.06)',
-            }}
-        >
-            <span
-                style={{
-                    color: '#00c8ff',
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                }}
-            >
-                {label}
-            </span>
-            <p
-                style={{
-                    color: '#8b9ec7',
-                    fontSize: '0.72rem',
-                    margin: '0.2rem 0 0',
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: 1.4,
-                }}
-            >
-                {content.length > 200 ? content.slice(0, 200) + '...' : content}
-            </p>
         </div>
     )
 }

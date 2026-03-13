@@ -187,6 +187,7 @@ function parsePlanFeatures(raw: unknown): PlanFeatures {
 
 // ─── Main Function ──────────────────────────────────────
 
+/** Obtiene los permisos completos del usuario: rol, plan, features, límites y uso actual. */
 export async function getUserPermissions(userId: string): Promise<UserPermissions> {
     try {
         const supabase = await createClient()
@@ -333,17 +334,20 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
 
 // ─── Utility Checks ─────────────────────────────────────
 
+/** Verifica si el usuario tiene acceso a un módulo según su plan. */
 export function canAccessModule(perms: UserPermissions, module: AllowedModule): boolean {
     if (perms.isSuperadmin) return true
     return perms.features.modules.includes(module)
 }
 
+/** Verifica si el usuario tiene acceso a una vista de inteligencia específica. */
 export function canAccessIntelView(perms: UserPermissions, view: IntelView): boolean {
     if (perms.isSuperadmin) return true
     if (!perms.features.modules.includes('intelligence')) return false
     return perms.features.intelViews.includes(view)
 }
 
+/** Indica si el usuario alcanzó el límite de un recurso (proyectos, reportes, imágenes, etc.). */
 export function hasReachedLimit(
     perms: UserPermissions,
     resource: 'projects' | 'reports' | 'calendars' | 'images' | 'videos' | 'leads',

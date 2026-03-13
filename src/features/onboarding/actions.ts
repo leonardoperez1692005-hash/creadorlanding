@@ -33,6 +33,7 @@ const onboardingSchema = z.object({
 
 export type OnboardingData = z.infer<typeof onboardingSchema>
 
+/** Guarda la identidad de marca completa del onboarding (upsert por user_id con design_tokens). */
 export async function submitOnboardingAction(data: OnboardingData) {
     try {
         const supabase = await createClient()
@@ -90,6 +91,7 @@ export async function submitOnboardingAction(data: OnboardingData) {
     }
 }
 
+/** Obtiene la identidad de marca del usuario (null si no completó el onboarding). */
 export async function getBrandIdentityAction() {
     try {
         const supabase = await createClient()
@@ -144,6 +146,7 @@ const businessDataSchema = z.object({
 
 export type BusinessData = z.infer<typeof businessDataSchema>
 
+/** Guarda los datos de negocio (servicios, FAQ, testimonios, stats, equipo, diferenciadores). */
 export async function saveBusinessDataAction(data: BusinessData) {
     try {
         const supabase = await createClient()
@@ -180,6 +183,7 @@ export async function saveBusinessDataAction(data: BusinessData) {
     }
 }
 
+/** Obtiene los datos de negocio del usuario (servicios, FAQ, testimonios, stats, equipo). */
 export async function getBusinessDataAction() {
     try {
         const supabase = await createClient()
@@ -216,6 +220,7 @@ export async function getBusinessDataAction() {
     }
 }
 
+/** Sube el logo de la marca a Storage (valida tipo por magic bytes, máx 5MB). */
 export async function uploadLogoAction(formData: FormData) {
     try {
         const file = formData.get('file') as File | null
@@ -274,6 +279,7 @@ export async function uploadLogoAction(formData: FormData) {
     }
 }
 
+/** Extrae paleta de colores (primary, secondary, accent) de un logo usando Gemini Vision. */
 export async function extractColorsFromLogoAction(logoUrl: string) {
     try {
         const apiKey = process.env.GEMINI_API_KEY

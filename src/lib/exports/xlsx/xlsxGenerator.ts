@@ -50,6 +50,7 @@ function autoWidth(ws: ExcelJS.Worksheet) {
 // Leads XLSX
 // =============================================
 
+/** Genera un XLSX con todos los leads de un proyecto (hoja de datos + hoja resumen). */
 export async function generateLeadsXLSX(leads: Lead[], projectName: string): Promise<Buffer> {
     const wb = new ExcelJS.Workbook()
     wb.creator = 'BrandVortix'
@@ -115,6 +116,7 @@ export async function generateLeadsXLSX(leads: Lead[], projectName: string): Pro
 // Social Calendar XLSX
 // =============================================
 
+/** Genera un XLSX del calendario social semanal con colores por plataforma y hoja de tips. */
 export async function generateSocialCalendarXLSX(calendar: SocialMediaCalendar): Promise<Buffer> {
     const wb = new ExcelJS.Workbook()
     wb.creator = 'BrandVortix'
@@ -180,6 +182,7 @@ export async function generateSocialCalendarXLSX(calendar: SocialMediaCalendar):
 // Competitor Matrix XLSX
 // =============================================
 
+/** Genera un XLSX con la matriz de competidores (posicionamiento, fortalezas, debilidades) y vulnerabilidades. */
 export async function generateCompetitorMatrixXLSX(
     competitors: CompetitorAnalysis[],
 ): Promise<Buffer> {

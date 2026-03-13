@@ -99,6 +99,7 @@ function checkPage(doc: typeof PDFDocument.prototype, minSpace = 100) {
 // Attack Plan PDF
 // =============================================
 
+/** Genera un PDF del plan de ataque ZMOT con vectores, contenido multi-plataforma y tareas. */
 export async function generateAttackPlanPDF(
     plan: AttackPlan,
     meta: AttackPlanMeta,
@@ -167,6 +168,7 @@ export async function generateAttackPlanPDF(
 // Intel Report PDF
 // =============================================
 
+/** Genera un PDF del reporte de inteligencia de mercado con competidores, contexto y vectores. */
 export async function generateIntelReportPDF(report: IntelReport): Promise<Buffer> {
     const doc = createDoc()
     const bufferPromise = collectBuffer(doc)
@@ -239,6 +241,7 @@ export async function generateIntelReportPDF(report: IntelReport): Promise<Buffe
 // Political Intelligence PDF
 // =============================================
 
+/** Genera un PDF del reporte de inteligencia política con rankings, insights y acciones recomendadas. */
 export async function generatePoliticalReportPDF(report: PoliticalIntelReport): Promise<Buffer> {
     const doc = createDoc()
     const bufferPromise = collectBuffer(doc)
@@ -317,6 +320,7 @@ export async function generatePoliticalReportPDF(report: PoliticalIntelReport): 
 // Strategy PDF
 // =============================================
 
+/** Genera un PDF de estrategia competitiva con competidores, insights, ángulos de venta y pilares de contenido. */
 export async function generateStrategyPDF(
     data: StrategyData,
     meta?: StrategyMeta,
@@ -389,6 +393,7 @@ export async function generateStrategyPDF(
 // Leads PDF
 // =============================================
 
+/** Genera un PDF tabular con todos los leads capturados de un proyecto. */
 export async function generateLeadsPDF(leads: Lead[], projectName: string): Promise<Buffer> {
     const doc = createDoc()
     const bufferPromise = collectBuffer(doc)

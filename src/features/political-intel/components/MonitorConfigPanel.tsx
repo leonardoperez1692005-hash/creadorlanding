@@ -356,6 +356,7 @@ export function MonitorConfigPanel() {
                                 onClick={() => handleDelete(m.id)}
                                 style={{ ...iconBtnStyle, color: '#F87171' }}
                                 title="Eliminar monitor"
+                                aria-label="Eliminar monitor"
                             >
                                 <Trash2 size={14} />
                             </button>

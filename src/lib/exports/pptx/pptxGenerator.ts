@@ -147,6 +147,7 @@ function footerText(slide: PptxGenJS.Slide) {
 // Attack Plan PPTX
 // =============================================
 
+/** Genera un PPTX del plan de ataque ZMOT con slides por vector, contenido social y calendario. */
 export async function generateAttackPlanPPTX(
     plan: AttackPlan,
     meta: AttackPlanMeta,
@@ -222,6 +223,7 @@ export async function generateAttackPlanPPTX(
 // Strategy PPTX
 // =============================================
 
+/** Genera un PPTX de estrategia competitiva con slides de competidores, insights y ángulos de venta. */
 export async function generateStrategyPPTX(
     data: StrategyData,
     meta?: StrategyMeta,

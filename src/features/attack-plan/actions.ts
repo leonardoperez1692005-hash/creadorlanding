@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/shared/lib/logger'
+import { getUserPermissions, canAccessModule } from '@/lib/permissions'
 import { generateAttackPlan, generateSocialCalendar } from './generator'
 import type { AttackPlan, AttackPlanMeta, BrandProfile, SocialMediaCalendar } from './types'
 import { intelReportSchema } from '@/features/market-intel/schemas'
@@ -70,9 +71,7 @@ function reconstructPlan(attackMatrix: unknown, outputs: Record<string, unknown>
     }
 }
 
-// ================================
-// ACTION: GENERATE ATTACK PLAN
-// ================================
+/** Genera un plan de ataque ZMOT a partir de un reporte de inteligencia y la identidad de marca. */
 export async function generateAttackPlanAction(
     intelReportId: string,
 ): Promise<AttackActionResult<{ plan: AttackPlan; meta: AttackPlanMeta; planId: string }>> {
@@ -82,6 +81,11 @@ export async function generateAttackPlanAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         // Load intel report
         const { data: intelRow, error: intelError } = await supabase
@@ -151,9 +155,7 @@ export async function generateAttackPlanAction(
     }
 }
 
-// ================================
-// ACTION: LOAD ATTACK PLAN
-// ================================
+/** Carga un plan de ataque existente por ID desde la base de datos. */
 export async function loadAttackPlanAction(
     planId: string,
 ): Promise<AttackActionResult<{ plan: AttackPlan; meta: AttackPlanMeta }>> {
@@ -189,9 +191,7 @@ export async function loadAttackPlanAction(
     }
 }
 
-// ================================
-// ACTION: LIST ATTACK PLANS (history)
-// ================================
+/** Lista el historial de planes de ataque del usuario (últimos 10). */
 export async function listAttackPlansAction(): Promise<
     AttackActionResult<
         Array<{ id: string; vectorCount: number; createdAt: string; summary: string }>
@@ -230,9 +230,7 @@ export async function listAttackPlansAction(): Promise<
     }
 }
 
-// ================================
-// ACTION: GENERATE SOCIAL CALENDAR
-// ================================
+/** Genera un calendario de redes sociales basado en un plan de ataque. */
 export async function generateSocialCalendarAction(
     planId: string,
 ): Promise<AttackActionResult<{ calendar: SocialMediaCalendar }>> {
@@ -242,6 +240,11 @@ export async function generateSocialCalendarAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         // Load attack plan
         const { data: planRow, error: planError } = await supabase
@@ -287,9 +290,7 @@ export async function generateSocialCalendarAction(
     }
 }
 
-// ================================
-// ACTION: LOAD SOCIAL CALENDAR
-// ================================
+/** Carga el calendario social guardado en un plan de ataque. */
 export async function loadSocialCalendarAction(
     planId: string,
 ): Promise<AttackActionResult<{ calendar: SocialMediaCalendar | null }>> {
@@ -320,9 +321,7 @@ export async function loadSocialCalendarAction(
     }
 }
 
-// ================================
-// ACTION: SAVE EDITED ATTACK PLAN
-// ================================
+/** Guarda un plan de ataque editado manualmente, preservando el calendario existente. */
 export async function saveAttackPlanAction(
     planId: string,
     plan: AttackPlan,
@@ -333,6 +332,11 @@ export async function saveAttackPlanAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         // Load current outputs to preserve calendar and other data
         const { data: current } = await supabase
@@ -501,6 +505,7 @@ function mergeBrandData(
     return merged
 }
 
+/** Obtiene contenido enriquecido para el wizard de landing desde un plan de ataque (ZMOT + Brand Identity). */
 export async function getAttackPlanLandingDataAction(planId: string): Promise<
     AttackActionResult<{
         content: Record<string, Record<string, unknown>>
@@ -514,6 +519,11 @@ export async function getAttackPlanLandingDataAction(planId: string): Promise<
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         // Load attack plan + brand identity in parallel
         const [planResult, brandResult] = await Promise.all([

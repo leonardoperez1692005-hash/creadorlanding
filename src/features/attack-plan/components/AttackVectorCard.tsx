@@ -125,6 +125,7 @@ export const AttackVectorCard = memo(function AttackVectorCard({ vector, index }
                     className="ml-auto flex items-center gap-1 px-3 py-2 text-xs transition-colors"
                     style={{ color: copied ? '#22c55e' : 'var(--text-muted)' }}
                     title="Copiar contenido"
+                    aria-label="Copiar contenido"
                 >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>

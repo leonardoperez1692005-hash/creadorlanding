@@ -83,6 +83,8 @@ function memRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
 }
 
 // --- Public API ---
+
+/** Evalúa rate limit de forma async (Upstash Redis si disponible, sino fallback en memoria). */
 export async function rateLimitAsync(
     key: string,
     config: RateLimitConfig,
@@ -99,7 +101,7 @@ export async function rateLimitAsync(
     return memRateLimit(key, config)
 }
 
-// Sync wrapper (for server actions that can't easily be async at the call site)
+/** Evalúa rate limit de forma síncrona (solo en memoria, para server actions). */
 export function rateLimit(key: string, config: RateLimitConfig): RateLimitResult {
     return memRateLimit(key, config)
 }
