@@ -46,7 +46,12 @@ export const monitorInputSchema = z.object({
     handle: z
         .string()
         .min(1, 'Handle requerido')
-        .transform((v) => v.replace(/^@/, '')),
+        .transform((v) => {
+            // Accept any format: @usuario, usuario, https://x.com/usuario, https://twitter.com/usuario
+            const urlMatch = v.match(/(?:x\.com|twitter\.com)\/([^/?#\s]+)/)
+            if (urlMatch) return urlMatch[1]
+            return v.replace(/^@/, '').trim()
+        }),
     fullName: z.string().min(2, 'Nombre completo requerido'),
     party: z.string().default(''),
     role: z.string().default(''),

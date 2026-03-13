@@ -16,6 +16,37 @@ const execFileAsync = promisify(execFile)
 // ─── FFmpeg Discovery (Windows winget installs outside PATH) ─
 
 let _ffmpegDir: string | null | undefined // undefined = not searched yet
+let _pythonExe: string | undefined // undefined = not resolved yet
+
+/** Resolve the Python executable name (python / python3 / py / absolute path) */
+async function findPythonExe(): Promise<string> {
+    if (_pythonExe !== undefined) return _pythonExe
+
+    const candidates = [
+        'python',
+        'python3',
+        'py',
+        // Common absolute paths on Windows (fallback when PATH is restricted in server context)
+        'C:\\Python313\\python.exe',
+        'C:\\Python312\\python.exe',
+        'C:\\Python311\\python.exe',
+        'C:\\Python310\\python.exe',
+    ]
+
+    for (const candidate of candidates) {
+        try {
+            await execFileAsync(candidate, ['--version'], { timeout: 5000 })
+            _pythonExe = candidate
+            return candidate
+        } catch {
+            // try next
+        }
+    }
+
+    // None found — return 'python' and let the downstream error surface
+    _pythonExe = 'python'
+    return 'python'
+}
 
 async function findFfmpegDir(): Promise<string | null> {
     if (_ffmpegDir !== undefined) return _ffmpegDir
@@ -127,7 +158,7 @@ export async function getVideoInfo(url: string): Promise<YouTubeVideoInfo> {
     let durationSeconds = 0
     try {
         const args = await ytDlpArgs(['--print', 'duration', '--no-download', '--no-warnings', url])
-        const { stdout } = await execFileAsync('python', args, { timeout: 15000 })
+        const { stdout } = await execFileAsync(await findPythonExe(), args, { timeout: 15000 })
         const parsed = parseInt(stdout.trim(), 10)
         if (!isNaN(parsed)) durationSeconds = parsed
     } catch {
@@ -230,7 +261,7 @@ export async function downloadAudio(url: string): Promise<AudioDownloadResult> {
             outputTemplate,
             url,
         ])
-        await execFileAsync('python', args, { timeout: 120000 }) // 2 min timeout
+        await execFileAsync(await findPythonExe(), args, { timeout: 120000 }) // 2 min timeout
 
         // Check which file was created
         try {
@@ -314,7 +345,7 @@ export async function downloadVideo(url: string): Promise<VideoDownloadResult> {
         outputTemplate,
         url,
     ])
-    await execFileAsync('python', args, { timeout: 300000 }) // 5 min timeout for large videos
+    await execFileAsync(await findPythonExe(), args, { timeout: 300000 }) // 5 min timeout for large videos
 
     // Check which file was created
     for (const ext of ['mp4', 'webm', 'mkv']) {
@@ -372,7 +403,7 @@ export async function downloadVideoSection(
         url,
     ])
 
-    await execFileAsync('python', args, { timeout: 120000 }) // 2 min per clip
+    await execFileAsync(await findPythonExe(), args, { timeout: 120000 }) // 2 min per clip
 
     for (const ext of ['mp4', 'webm', 'mkv']) {
         const filePath = join(tempDir, `${fileId}.${ext}`)

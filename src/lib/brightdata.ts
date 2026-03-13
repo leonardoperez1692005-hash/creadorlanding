@@ -13,7 +13,7 @@ export const BD_COST_PER_REQUEST = 0.0015
 async function fetchWithRetry(
     body: Record<string, unknown>,
     timeoutMs: number,
-    label: string
+    label: string,
 ): Promise<string> {
     let lastError: Error | null = null
 
@@ -30,7 +30,18 @@ async function fetchWithRetry(
             })
 
             if (!res.ok) {
-                throw new Error(`Bright Data HTTP ${res.status} for ${label}`)
+                const body = await res.text().catch(() => '')
+                const hint =
+                    res.status === 401
+                        ? ' (API key inválida o no configurada — revisar BRIGHTDATA_API_KEY en Vercel)'
+                        : res.status === 403
+                          ? ' (zona bloqueada o sin permisos — revisar BRIGHTDATA_ZONE en dashboard)'
+                          : res.status === 429
+                            ? ' (rate limit alcanzado)'
+                            : body
+                              ? ` — ${body.substring(0, 150)}`
+                              : ''
+                throw new Error(`Bright Data HTTP ${res.status}${hint} para ${label}`)
             }
 
             return await res.text()
@@ -51,7 +62,7 @@ async function fetchWithRetry(
  */
 export async function scrapeUrl(
     url: string,
-    options?: { format?: string; dataFormat?: string; maxChars?: number }
+    options?: { format?: string; dataFormat?: string; maxChars?: number },
 ): Promise<string> {
     const text = await fetchWithRetry(
         {
@@ -60,7 +71,7 @@ export async function scrapeUrl(
             ...(options?.dataFormat && { data_format: options.dataFormat }),
         },
         BD_TIMEOUT_MS,
-        url
+        url,
     )
     const max = options?.maxChars ?? 4000
     return text.substring(0, max)
@@ -70,11 +81,7 @@ export async function scrapeUrl(
  * Run a Google SERP search via Bright Data.
  * Retries once on failure with exponential backoff.
  */
-export async function serpSearch(
-    query: string,
-    country = 'ar',
-    maxChars = 2000
-): Promise<string> {
+export async function serpSearch(query: string, country = 'ar', maxChars = 2000): Promise<string> {
     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=es&gl=${country}&num=8`
 
     const text = await fetchWithRetry(
@@ -85,12 +92,12 @@ export async function serpSearch(
             brd_json: 1,
         },
         BD_SERP_TIMEOUT_MS,
-        `SERP: "${query}"`
+        `SERP: "${query}"`,
     )
     return text.substring(0, maxChars)
 }
 
 /** Small delay helper for rate-limiting */
 export function sleep(ms: number): Promise<void> {
-    return new Promise(r => setTimeout(r, ms))
+    return new Promise((r) => setTimeout(r, ms))
 }

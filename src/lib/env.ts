@@ -62,4 +62,12 @@ export const env = {
     get openaiApiKey(): string {
         return process.env.OPENAI_API_KEY ?? ''
     },
+    /** Railway video worker URL — required in production to run yt-dlp (Vercel has no Python) */
+    get videoWorkerUrl(): string {
+        return process.env.VIDEO_WORKER_URL ?? ''
+    },
+    /** Bearer token to authenticate requests to the video worker */
+    get videoWorkerToken(): string {
+        return process.env.VIDEO_WORKER_TOKEN ?? ''
+    },
 }

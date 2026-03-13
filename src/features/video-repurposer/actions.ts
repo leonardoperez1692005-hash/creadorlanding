@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/shared/lib/logger'
+import { getUserPermissions, canAccessModule } from '@/lib/permissions'
 import {
     getVideoInfo,
     getTranscript,
@@ -250,6 +251,7 @@ interface ProcessVideoInput {
     speakerHint?: string
 }
 
+/** Procesa un video de YouTube: extrae transcripción, analiza momentos virales y corrige timestamps. */
 export async function processVideoAction(
     input: ProcessVideoInput,
 ): Promise<ActionResult<VideoAnalysis>> {
@@ -259,6 +261,11 @@ export async function processVideoAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         if (!isValidYouTubeUrl(input.url)) {
             return { success: false, error: 'URL de YouTube inválida' }
@@ -428,6 +435,7 @@ interface GenerateCalendarInput {
     candidateContext?: string
 }
 
+/** Genera un calendario de redes sociales a partir del análisis de momentos virales de un video. */
 export async function generateVideoCalendarAction(
     input: GenerateCalendarInput,
 ): Promise<ActionResult<SocialMediaCalendar>> {
@@ -437,6 +445,11 @@ export async function generateVideoCalendarAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         const calendar = await generateVideoCalendar({
             analysis: input.analysis,
@@ -465,6 +478,7 @@ const PLATFORM_CONSTRAINTS: Record<string, string> = {
     instagram: 'Caption atractivo + concepto visual. Hashtags relevantes.',
 }
 
+/** Reescribe un post de redes sociales con IA, respetando restricciones de plataforma. */
 export async function rewritePostAction(
     input: RewritePostInput,
 ): Promise<ActionResult<SocialPost>> {
@@ -474,6 +488,11 @@ export async function rewritePostAction(
             data: { user },
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
+
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
 
         const { post, instructions } = input
         const constraint = PLATFORM_CONSTRAINTS[post.platform] ?? ''
@@ -534,6 +553,64 @@ Respondé SOLO con JSON válido con esta estructura EXACTA:
     }
 }
 
+// ─── Video Worker (Railway) ───────────────────────────────────
+//
+// In production (Vercel), Python/yt-dlp cannot run — no binaries available.
+// We delegate the download to a Railway worker that runs yt-dlp and uploads
+// directly to Supabase Storage via a signed URL.
+//
+// Set VIDEO_WORKER_URL in env vars to enable (e.g. https://your-worker.railway.app).
+// Set VIDEO_WORKER_TOKEN to secure the worker endpoint.
+// When VIDEO_WORKER_URL is not set, falls back to local yt-dlp (dev only).
+
+async function downloadAndUploadViaWorker(
+    serviceClient: ReturnType<typeof createServiceClient>,
+    videoUrl: string,
+    startSec: number,
+    endSec: number,
+    storagePath: string,
+): Promise<string> {
+    const workerUrl = process.env.VIDEO_WORKER_URL
+    if (!workerUrl) throw new Error('VIDEO_WORKER_URL not configured')
+
+    // 1. Generate a signed upload URL (Vercel → Supabase, no credentials on worker)
+    const { data: signedData, error: signErr } = await serviceClient.storage
+        .from('video-clips')
+        .createSignedUploadUrl(storagePath)
+
+    if (signErr || !signedData?.signedUrl) {
+        throw new Error(`Error generando URL de subida: ${signErr?.message ?? 'unknown'}`)
+    }
+
+    // 2. Call Railway worker — it downloads the section and PUTs to the signed URL
+    const workerToken = process.env.VIDEO_WORKER_TOKEN ?? ''
+    const res = await fetch(`${workerUrl}/clip`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(workerToken && { Authorization: `Bearer ${workerToken}` }),
+        },
+        body: JSON.stringify({
+            youtube_url: videoUrl,
+            start_sec: startSec,
+            end_sec: endSec,
+            upload_url: signedData.signedUrl,
+        }),
+    })
+
+    if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(`Worker error (${res.status}): ${errText.substring(0, 300)}`)
+    }
+
+    // 3. Return public URL
+    const { data: publicUrlData } = serviceClient.storage
+        .from('video-clips')
+        .getPublicUrl(storagePath)
+
+    return publicUrlData.publicUrl
+}
+
 // ─── Clip Cutting with Shotstack ──────────────────────────
 
 interface RequestClipsInput {
@@ -549,15 +626,17 @@ interface ClipsRequestResult {
 /**
  * Download each clip section individually using yt-dlp --download-sections.
  *
- * CRITICAL: The old approach (download full video → trim with Shotstack) had a ~2 min
- * timestamp offset because the downloaded file's timeline didn't match YouTube captions.
- * Now we use --download-sections which uses YouTube player timestamps (= captions),
- * eliminating the offset. Each clip is small (~5-15MB) so no Storage size issues either.
+ * In production (Vercel): delegates to Railway video worker (VIDEO_WORKER_URL).
+ * In development (local): runs yt-dlp directly via downloadVideoSection().
+ *
+ * CRITICAL: --download-sections uses YouTube player timestamps (= captions),
+ * so clip content matches transcript with no offset.
  */
 export async function requestClipsAction(
     input: RequestClipsInput,
 ): Promise<ActionResult<ClipsRequestResult>> {
     const tempFiles: string[] = []
+    const useWorker = !!process.env.VIDEO_WORKER_URL
 
     try {
         const supabase = await createClient()
@@ -566,10 +645,16 @@ export async function requestClipsAction(
         } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'No autenticado' }
 
-        logger.info('video-repurposer', 'Processing clips (per-section download)', {
+        const perms = await getUserPermissions(user.id)
+        if (!canAccessModule(perms, 'intelligence')) {
+            return { success: false, error: 'No tienes acceso a este módulo' }
+        }
+
+        logger.info('video-repurposer', 'Processing clips', {
             videoUrl: input.videoUrl,
             momentCount: input.moments.length,
             userId: user.id,
+            mode: useWorker ? 'worker' : 'local',
         })
 
         const serviceClient = createServiceClient()
@@ -621,43 +706,47 @@ export async function requestClipsAction(
             })
 
             try {
-                // Download ONLY this section (uses YouTube player timestamps = captions)
-                const clipFile = await downloadVideoSection(
-                    input.videoUrl,
-                    startSec,
-                    startSec + duration,
-                )
-                tempFiles.push(clipFile.filePath)
-
-                // Upload trimmed clip to Storage (small file, no size issues)
-                const fileBuffer = await readFile(clipFile.filePath)
                 const storagePath = `clips/${user.id}/${Date.now()}_${index}.mp4`
+                let publicUrl: string
 
-                const { error: uploadError } = await serviceClient.storage
-                    .from('video-clips')
-                    .upload(storagePath, fileBuffer, {
-                        contentType: clipFile.mimeType,
-                        upsert: true,
-                    })
+                if (useWorker) {
+                    // ── Production: Railway worker downloads + uploads to Supabase ──
+                    publicUrl = await downloadAndUploadViaWorker(
+                        serviceClient,
+                        input.videoUrl,
+                        startSec,
+                        startSec + duration,
+                        storagePath,
+                    )
+                } else {
+                    // ── Development: local yt-dlp ──
+                    const clipFile = await downloadVideoSection(
+                        input.videoUrl,
+                        startSec,
+                        startSec + duration,
+                    )
+                    tempFiles.push(clipFile.filePath)
 
-                if (uploadError) {
-                    clips.push({
-                        moment_index: index,
-                        moment,
-                        clip_url: null,
-                        status: 'error',
-                        error: `Error subiendo clip: ${uploadError.message}`,
-                    })
-                    continue
+                    const fileBuffer = await readFile(clipFile.filePath)
+                    const { error: uploadError } = await serviceClient.storage
+                        .from('video-clips')
+                        .upload(storagePath, fileBuffer, {
+                            contentType: clipFile.mimeType,
+                            upsert: true,
+                        })
+
+                    if (uploadError) throw new Error(`Error subiendo clip: ${uploadError.message}`)
+
+                    const { data: publicUrlData } = serviceClient.storage
+                        .from('video-clips')
+                        .getPublicUrl(storagePath)
+
+                    publicUrl = publicUrlData.publicUrl
                 }
-
-                const { data: publicUrlData } = serviceClient.storage
-                    .from('video-clips')
-                    .getPublicUrl(storagePath)
 
                 // Send to Shotstack for 9:16 reformatting (clip is already trimmed)
                 const result = await requestClip({
-                    source_url: publicUrlData.publicUrl,
+                    source_url: publicUrl,
                     trim_start: 0,
                     trim_duration: duration,
                     output_format: '9:16',
@@ -709,6 +798,7 @@ export async function requestClipsAction(
 
 // ─── Poll Clip Status ─────────────────────────────────────
 
+/** Consulta el estado de renderizado de un clip en Shotstack. */
 export async function pollClipStatusAction(
     renderId: string,
 ): Promise<ActionResult<{ status: VideoClip['status']; url: string | null; error?: string }>> {
@@ -752,6 +842,7 @@ interface SaveVideoSessionInput {
     directVideoUrl?: string | null
 }
 
+/** Guarda o actualiza una sesión de video (análisis, calendario, clips). */
 export async function saveVideoSessionAction(
     input: SaveVideoSessionInput,
 ): Promise<ActionResult<{ sessionId: string }>> {
@@ -801,6 +892,7 @@ export async function saveVideoSessionAction(
     }
 }
 
+/** Carga una sesión de video completa por ID (análisis, calendario, clips). */
 export async function loadVideoSessionAction(sessionId: string): Promise<
     ActionResult<{
         session: {
@@ -856,6 +948,7 @@ export async function loadVideoSessionAction(sessionId: string): Promise<
     }
 }
 
+/** Lista el historial de sesiones de video del usuario (últimas 20). */
 export async function listVideoSessionsAction(): Promise<ActionResult<VideoSessionHistoryItem[]>> {
     try {
         const supabase = await createClient()
