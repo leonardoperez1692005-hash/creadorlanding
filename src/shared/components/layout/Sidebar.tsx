@@ -49,15 +49,37 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
     { href: '/admin', label: 'Panel Admin', icon: Shield, adminOnly: true },
 ]
 
+// Map nav href → module name for permission filtering
+const HREF_TO_MODULE: Record<string, string> = {
+    '/dashboard': 'dashboard',
+    '/brand': 'brand',
+    '/templates': 'templates',
+    '/wizard': 'wizard',
+    '/brandvortix': 'brandvortix',
+    '/intelligence': 'intelligence',
+    '/leads': 'leads',
+}
+
 interface SidebarProps {
     user: User
     profile: Profile | null
+    allowedModules?: string[]
 }
 
-export default function Sidebar({ user, profile }: SidebarProps) {
+export default function Sidebar({ user, profile, allowedModules }: SidebarProps) {
     const pathname = usePathname()
     const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin'
+    const isSuperadmin = profile?.role === 'superadmin'
     const [mobileOpen, setMobileOpen] = useState(false)
+
+    // Filter nav items by allowed modules (superadmin sees all)
+    const visibleNavItems =
+        isSuperadmin || !allowedModules
+            ? NAV_ITEMS
+            : NAV_ITEMS.filter((item) => {
+                  const mod = HREF_TO_MODULE[item.href]
+                  return !mod || allowedModules.includes(mod)
+              })
 
     // Close on route change
     useEffect(() => {
@@ -122,7 +144,7 @@ export default function Sidebar({ user, profile }: SidebarProps) {
                 >
                     Principal
                 </p>
-                {NAV_ITEMS.map((item) => {
+                {visibleNavItems.map((item) => {
                     const isActive =
                         pathname === item.href ||
                         pathname.startsWith(item.href + '/') ||

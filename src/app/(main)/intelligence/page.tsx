@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions } from '@/lib/permissions'
 import { PoliticalIntelClient } from '@/features/political-intel/components/PoliticalIntelClient'
 import type { PoliticalMonitor, PoliticalReportHistoryItem } from '@/features/political-intel/types'
 
@@ -17,6 +18,13 @@ export default async function IntelligencePage() {
         data: { user },
     } = await supabase.auth.getUser()
     if (!user) redirect('/login')
+
+    // Permission guard
+    const permissions = await getUserPermissions(user.id)
+    if (!permissions.features.modules.includes('intelligence')) {
+        redirect('/dashboard')
+    }
+    const allowedIntelViews = permissions.features.intelViews
 
     // Load monitors
     let initialMonitors: PoliticalMonitor[] = []
@@ -91,6 +99,10 @@ export default async function IntelligencePage() {
     }
 
     return (
-        <PoliticalIntelClient initialMonitors={initialMonitors} initialHistory={initialHistory} />
+        <PoliticalIntelClient
+            initialMonitors={initialMonitors}
+            initialHistory={initialHistory}
+            allowedIntelViews={allowedIntelViews}
+        />
     )
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions } from '@/lib/permissions'
 import { BrandVortixHub } from '@/features/brandvortix/components/BrandVortixHub'
 
 export const metadata: Metadata = {
@@ -14,6 +15,9 @@ export default async function BrandVortixPage() {
         data: { user },
     } = await supabase.auth.getUser()
     if (!user) redirect('/login')
+
+    const perms = await getUserPermissions(user.id)
+    if (!perms.features.modules.includes('brandvortix')) redirect('/dashboard')
 
     const [intelResult, attackResult] = await Promise.all([
         supabase

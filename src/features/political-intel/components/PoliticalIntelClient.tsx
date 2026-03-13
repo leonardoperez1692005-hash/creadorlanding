@@ -51,12 +51,16 @@ import { ImageStudioView } from '@/features/image-studio/components/ImageStudioV
 interface PoliticalIntelClientProps {
     initialMonitors?: PoliticalMonitor[]
     initialHistory?: PoliticalReportHistoryItem[]
+    allowedIntelViews?: string[]
 }
 
 export function PoliticalIntelClient({
     initialMonitors,
     initialHistory,
+    allowedIntelViews,
 }: PoliticalIntelClientProps) {
+    // If no allowedIntelViews, all views are allowed (superadmin or legacy)
+    const isViewAllowed = (view: string) => !allowedIntelViews || allowedIntelViews.includes(view)
     const {
         currentView,
         setView,
@@ -191,88 +195,106 @@ export function PoliticalIntelClient({
 
                 {/* Nav buttons */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <NavBtn
-                        icon={Shield}
-                        label="Campaña"
-                        active={effectiveView === 'campaign-profile'}
-                        onClick={() => setView('campaign-profile')}
-                        color="#7C3AED"
-                    />
-                    <NavBtn
-                        icon={Users}
-                        label="Monitors"
-                        active={effectiveView === 'monitors'}
-                        onClick={() => setView('monitors')}
-                        color="#00c8ff"
-                        badge={monitors.length > 0 ? String(monitors.length) : undefined}
-                        disabled={profileRequired}
-                    />
-                    <NavBtn
-                        icon={BookOpen}
-                        label="Temas"
-                        active={effectiveView === 'thematic'}
-                        onClick={() => setView('thematic')}
-                        color="#10B981"
-                        disabled={profileRequired}
-                    />
-                    <NavBtn
-                        icon={BarChart3}
-                        label="Dashboard"
-                        active={effectiveView === 'dashboard'}
-                        onClick={() => setView('dashboard')}
-                        color="#34D399"
-                        disabled={profileRequired || !report}
-                    />
-                    <NavBtn
-                        icon={Crosshair}
-                        label="Ataques"
-                        active={effectiveView === 'attack-vectors'}
-                        onClick={() => setView('attack-vectors')}
-                        color="#F87171"
-                        disabled={profileRequired || !report}
-                    />
-                    <NavBtn
-                        icon={CalendarDays}
-                        label="Calendario"
-                        active={effectiveView === 'calendar'}
-                        onClick={() => setView('calendar')}
-                        color="#00c8ff"
-                        disabled={
-                            profileRequired ||
-                            (attackVectors.length === 0 &&
-                                thematicAngles.length === 0 &&
-                                !history.some((h) => h.hasCalendar))
-                        }
-                    />
-                    <NavBtn
-                        icon={Layout}
-                        label="Landing"
-                        active={effectiveView === 'landing'}
-                        onClick={() => setView('landing')}
-                        color="#7C3AED"
-                        disabled={
-                            profileRequired ||
-                            (attackVectors.length === 0 &&
-                                thematicAngles.length === 0 &&
-                                history.length === 0)
-                        }
-                    />
-                    <NavBtn
-                        icon={Video}
-                        label="Video"
-                        active={effectiveView === 'video-repurposer'}
-                        onClick={() => setView('video-repurposer')}
-                        color="#F472B6"
-                        disabled={profileRequired}
-                    />
-                    <NavBtn
-                        icon={ImagePlus}
-                        label="Imágenes"
-                        active={effectiveView === 'image-studio'}
-                        onClick={() => setView('image-studio')}
-                        color="#F59E0B"
-                        disabled={profileRequired}
-                    />
+                    {isViewAllowed('campaign-profile') && (
+                        <NavBtn
+                            icon={Shield}
+                            label="Campaña"
+                            active={effectiveView === 'campaign-profile'}
+                            onClick={() => setView('campaign-profile')}
+                            color="#7C3AED"
+                        />
+                    )}
+                    {isViewAllowed('monitors') && (
+                        <NavBtn
+                            icon={Users}
+                            label="Monitors"
+                            active={effectiveView === 'monitors'}
+                            onClick={() => setView('monitors')}
+                            color="#00c8ff"
+                            badge={monitors.length > 0 ? String(monitors.length) : undefined}
+                            disabled={profileRequired}
+                        />
+                    )}
+                    {isViewAllowed('thematic') && (
+                        <NavBtn
+                            icon={BookOpen}
+                            label="Temas"
+                            active={effectiveView === 'thematic'}
+                            onClick={() => setView('thematic')}
+                            color="#10B981"
+                            disabled={profileRequired}
+                        />
+                    )}
+                    {isViewAllowed('dashboard') && (
+                        <NavBtn
+                            icon={BarChart3}
+                            label="Dashboard"
+                            active={effectiveView === 'dashboard'}
+                            onClick={() => setView('dashboard')}
+                            color="#34D399"
+                            disabled={profileRequired || !report}
+                        />
+                    )}
+                    {isViewAllowed('attack-vectors') && (
+                        <NavBtn
+                            icon={Crosshair}
+                            label="Ataques"
+                            active={effectiveView === 'attack-vectors'}
+                            onClick={() => setView('attack-vectors')}
+                            color="#F87171"
+                            disabled={profileRequired || !report}
+                        />
+                    )}
+                    {isViewAllowed('calendar') && (
+                        <NavBtn
+                            icon={CalendarDays}
+                            label="Calendario"
+                            active={effectiveView === 'calendar'}
+                            onClick={() => setView('calendar')}
+                            color="#00c8ff"
+                            disabled={
+                                profileRequired ||
+                                (attackVectors.length === 0 &&
+                                    thematicAngles.length === 0 &&
+                                    !history.some((h) => h.hasCalendar))
+                            }
+                        />
+                    )}
+                    {isViewAllowed('landing') && (
+                        <NavBtn
+                            icon={Layout}
+                            label="Landing"
+                            active={effectiveView === 'landing'}
+                            onClick={() => setView('landing')}
+                            color="#7C3AED"
+                            disabled={
+                                profileRequired ||
+                                (attackVectors.length === 0 &&
+                                    thematicAngles.length === 0 &&
+                                    history.length === 0)
+                            }
+                        />
+                    )}
+                    {isViewAllowed('video-repurposer') && (
+                        <NavBtn
+                            icon={Video}
+                            label="Video"
+                            active={effectiveView === 'video-repurposer'}
+                            onClick={() => setView('video-repurposer')}
+                            color="#F472B6"
+                            disabled={profileRequired}
+                        />
+                    )}
+                    {isViewAllowed('image-studio') && (
+                        <NavBtn
+                            icon={ImagePlus}
+                            label="Imágenes"
+                            active={effectiveView === 'image-studio'}
+                            onClick={() => setView('image-studio')}
+                            color="#F59E0B"
+                            disabled={profileRequired}
+                        />
+                    )}
                     {profileRequired && (
                         <span
                             style={{

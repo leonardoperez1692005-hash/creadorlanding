@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { logger } from '@/shared/lib/logger'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getUserPermissions, hasReachedLimit } from '@/lib/permissions'
 import { normalizeAndMergeSections } from './config/constants'
 import { compileLandingHtml } from './lib/htmlCompiler'
 import type { WizardSection, DesignColors, TrackingMeta } from './types'
@@ -125,6 +126,17 @@ export async function saveProjectAction(
 
     const contentData = { sections, colors: colors ?? {}, meta: meta ?? {} }
     const slug = await generateUniqueSlug(name, supabase)
+
+    // Enforce project creation limit (only for new projects)
+    if (!projectId) {
+        const perms = await getUserPermissions(user.id)
+        if (hasReachedLimit(perms, 'projects')) {
+            return {
+                success: false,
+                error: `Límite de proyectos alcanzado (${perms.limits.maxProjects}). Contactá al administrador para ampliar tu plan.`,
+            }
+        }
+    }
 
     if (projectId) {
         // UPDATE

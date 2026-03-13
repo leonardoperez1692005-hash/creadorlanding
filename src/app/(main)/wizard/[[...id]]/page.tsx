@@ -1,4 +1,7 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions } from '@/lib/permissions'
 import { WizardClient } from '@/features/wizard/components/WizardClient'
 
 interface WizardPageProps {
@@ -13,6 +16,15 @@ export async function generateMetadata({ params }: WizardPageProps): Promise<Met
 }
 
 export default async function WizardPage({ params }: WizardPageProps) {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) redirect('/login')
+
+    const perms = await getUserPermissions(user.id)
+    if (!perms.features.modules.includes('wizard')) redirect('/dashboard')
+
     const { id } = await params
     const projectId = id?.[0]
 

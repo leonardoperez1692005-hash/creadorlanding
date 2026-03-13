@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions } from '@/lib/permissions'
 import { IntelClient } from '@/features/market-intel/components/IntelClient'
 
 export const metadata: Metadata = {
@@ -14,6 +15,9 @@ export default async function MarketIntelPage() {
         data: { user },
     } = await supabase.auth.getUser()
     if (!user) redirect('/login')
+
+    const perms = await getUserPermissions(user.id)
+    if (!perms.features.modules.includes('brandvortix')) redirect('/dashboard')
 
     return <IntelClient />
 }

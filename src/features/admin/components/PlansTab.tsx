@@ -7,7 +7,6 @@ import {
     ConfirmModal,
     FormField,
     SearchBar,
-    Toast,
     StatusBadge,
     inputClass,
     inputStyle,
@@ -22,6 +21,16 @@ import {
     type PlanInput,
 } from '../actions'
 
+interface PlanFeatures {
+    modules: string[]
+    intelViews: string[]
+    maxReports: number
+    maxCalendars: number
+    maxLandings: number
+    maxImages: number
+    maxVideos: number
+}
+
 interface PlanRecord {
     id: string
     name: string
@@ -30,8 +39,40 @@ interface PlanRecord {
     currency: string
     max_projects: number
     max_leads: number
+    max_ai_analyses: number
+    features: PlanFeatures | null
     status: string
     memberships?: Array<{ id: string; status: string }>
+}
+
+const MODULE_LABELS: Record<string, string> = {
+    wizard: 'Wizard',
+    templates: 'Templates',
+    leads: 'Leads',
+    brandvortix: 'BrandVortix Hub',
+    intelligence: 'Intel Politica',
+}
+
+const INTEL_VIEW_LABELS: Record<string, string> = {
+    'campaign-profile': 'Perfil Campana',
+    monitors: 'Monitores',
+    dashboard: 'Dashboard Intel',
+    thematic: 'Temas',
+    'attack-vectors': 'Vectores Ataque',
+    calendar: 'Calendario',
+    landing: 'Landing',
+    'video-repurposer': 'Video Repurposer',
+    'image-studio': 'Image Studio',
+}
+
+const DEFAULT_FEATURES: PlanFeatures = {
+    modules: [],
+    intelViews: [],
+    maxReports: 0,
+    maxCalendars: 0,
+    maxLandings: 0,
+    maxImages: 0,
+    maxVideos: 0,
 }
 
 interface PlansTabProps {
@@ -165,14 +206,46 @@ export function PlansTab({ currentUserRole, showToast }: PlansTabProps) {
                                     style={{ color: 'var(--text-secondary)' }}
                                 >
                                     <div>
-                                        📁 Hasta <strong>{p.max_projects}</strong> proyectos
+                                        Hasta <strong>{p.max_projects}</strong> proyectos
                                     </div>
                                     <div>
-                                        👥 Hasta <strong>{p.max_leads}</strong> leads
+                                        Hasta <strong>{p.max_leads}</strong> leads
                                     </div>
                                     <div>
-                                        🎫 <strong>{activeCount}</strong> membresías activas
+                                        <strong>{activeCount}</strong> membresías activas
                                     </div>
+                                    {p.features &&
+                                        p.features.modules &&
+                                        p.features.modules.length > 0 && (
+                                            <div
+                                                className="pt-1.5 mt-1.5"
+                                                style={{ borderTop: '1px solid var(--border)' }}
+                                            >
+                                                <span style={{ color: 'var(--text-muted)' }}>
+                                                    Módulos:{' '}
+                                                </span>
+                                                {p.features.modules
+                                                    .map((m) => MODULE_LABELS[m] ?? m)
+                                                    .join(', ')}
+                                            </div>
+                                        )}
+                                    {p.features &&
+                                        (p.features.maxReports > 0 || p.features.maxImages > 0) && (
+                                            <div>
+                                                {p.features.maxReports > 0 && (
+                                                    <span>Reportes: {p.features.maxReports} </span>
+                                                )}
+                                                {p.features.maxCalendars > 0 && (
+                                                    <span>Cal: {p.features.maxCalendars} </span>
+                                                )}
+                                                {p.features.maxImages > 0 && (
+                                                    <span>Imgs: {p.features.maxImages} </span>
+                                                )}
+                                                {p.features.maxVideos > 0 && (
+                                                    <span>Videos: {p.features.maxVideos}</span>
+                                                )}
+                                            </div>
+                                        )}
                                 </div>
                                 {currentUserRole === 'superadmin' && (
                                     <div
@@ -224,6 +297,43 @@ export function PlansTab({ currentUserRole, showToast }: PlansTabProps) {
     )
 }
 
+function CheckboxGrid({
+    label,
+    options,
+    selected,
+    onChange,
+}: {
+    label: string
+    options: Record<string, string>
+    selected: string[]
+    onChange: (next: string[]) => void
+}) {
+    const toggle = (key: string) => {
+        onChange(selected.includes(key) ? selected.filter((s) => s !== key) : [...selected, key])
+    }
+    return (
+        <FormField label={label}>
+            <div className="grid grid-cols-2 gap-1.5">
+                {Object.entries(options).map(([key, lbl]) => (
+                    <label
+                        key={key}
+                        className="flex items-center gap-2 text-xs cursor-pointer py-1 px-2 rounded hover:bg-white/5"
+                        style={{ color: 'var(--text-secondary)' }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={selected.includes(key)}
+                            onChange={() => toggle(key)}
+                            className="accent-cyan-400"
+                        />
+                        {lbl}
+                    </label>
+                ))}
+            </div>
+        </FormField>
+    )
+}
+
 function PlanFormModal({
     title,
     initial,
@@ -235,25 +345,44 @@ function PlanFormModal({
     onSubmit: (data: PlanInput) => void
     onClose: () => void
 }) {
+    const initFeatures = initial?.features ?? DEFAULT_FEATURES
+
     const [form, setForm] = useState({
         name: initial?.name ?? '',
         price: initial?.price ?? 0,
         currency: (initial?.currency ?? 'USD') as 'USD' | 'EUR' | 'ARS' | 'MXN',
         max_projects: initial?.max_projects ?? 5,
         max_leads: initial?.max_leads ?? 500,
+        max_ai_analyses: initial?.max_ai_analyses ?? 0,
         status: (initial?.status ?? 'active') as 'active' | 'inactive',
+    })
+
+    const [features, setFeatures] = useState<PlanFeatures>({
+        modules: initFeatures.modules ?? [],
+        intelViews: initFeatures.intelViews ?? [],
+        maxReports: initFeatures.maxReports ?? 0,
+        maxCalendars: initFeatures.maxCalendars ?? 0,
+        maxLandings: initFeatures.maxLandings ?? 0,
+        maxImages: initFeatures.maxImages ?? 0,
+        maxVideos: initFeatures.maxVideos ?? 0,
     })
 
     const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
         setForm((f) => ({ ...f, [k]: v }))
+
+    const setFeat = <K extends keyof PlanFeatures>(k: K, v: PlanFeatures[K]) =>
+        setFeatures((f) => ({ ...f, [k]: v }))
+
+    const hasIntelligence = features.modules.includes('intelligence')
 
     return (
         <AdminModal title={title} onClose={onClose}>
             <form
                 onSubmit={(e) => {
                     e.preventDefault()
-                    onSubmit(form)
+                    onSubmit({ ...form, features: features as PlanInput['features'] })
                 }}
+                className="max-h-[70vh] overflow-y-auto pr-1"
             >
                 <FormField label="Nombre del Plan">
                     <input
@@ -298,8 +427,8 @@ function PlanFormModal({
                         </select>
                     </FormField>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                    <FormField label="Máx. Proyectos">
+                <div className="grid grid-cols-3 gap-3">
+                    <FormField label="Max. Proyectos">
                         <input
                             type="number"
                             min="1"
@@ -311,7 +440,7 @@ function PlanFormModal({
                             onBlur={blurStyle}
                         />
                     </FormField>
-                    <FormField label="Máx. Leads">
+                    <FormField label="Max. Leads">
                         <input
                             type="number"
                             min="0"
@@ -323,7 +452,123 @@ function PlanFormModal({
                             onBlur={blurStyle}
                         />
                     </FormField>
+                    <FormField label="Max. Analisis IA">
+                        <input
+                            type="number"
+                            min="0"
+                            value={form.max_ai_analyses}
+                            onChange={(e) => set('max_ai_analyses', parseInt(e.target.value))}
+                            className={inputClass}
+                            style={inputStyle}
+                            onFocus={focusStyle}
+                            onBlur={blurStyle}
+                        />
+                    </FormField>
                 </div>
+
+                {/* ── Features: Modules ── */}
+                <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                    <h4 className="text-sm font-semibold text-white mb-2">Modulos Habilitados</h4>
+                    <CheckboxGrid
+                        label=""
+                        options={MODULE_LABELS}
+                        selected={features.modules}
+                        onChange={(mods) => setFeat('modules', mods)}
+                    />
+                </div>
+
+                {/* ── Features: Intel Views (solo si intelligence esta activado) ── */}
+                {hasIntelligence && (
+                    <div className="mt-3">
+                        <h4 className="text-sm font-semibold text-white mb-2">
+                            Vistas Intel Habilitadas
+                        </h4>
+                        <CheckboxGrid
+                            label=""
+                            options={INTEL_VIEW_LABELS}
+                            selected={features.intelViews}
+                            onChange={(views) => setFeat('intelViews', views)}
+                        />
+                    </div>
+                )}
+
+                {/* ── Features: Limits ── */}
+                <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                    <h4 className="text-sm font-semibold text-white mb-2">Limites de Uso</h4>
+                    <div className="grid grid-cols-3 gap-3">
+                        <FormField label="Max. Reportes">
+                            <input
+                                type="number"
+                                min="0"
+                                value={features.maxReports}
+                                onChange={(e) =>
+                                    setFeat('maxReports', parseInt(e.target.value) || 0)
+                                }
+                                className={inputClass}
+                                style={inputStyle}
+                                onFocus={focusStyle}
+                                onBlur={blurStyle}
+                            />
+                        </FormField>
+                        <FormField label="Max. Calendarios">
+                            <input
+                                type="number"
+                                min="0"
+                                value={features.maxCalendars}
+                                onChange={(e) =>
+                                    setFeat('maxCalendars', parseInt(e.target.value) || 0)
+                                }
+                                className={inputClass}
+                                style={inputStyle}
+                                onFocus={focusStyle}
+                                onBlur={blurStyle}
+                            />
+                        </FormField>
+                        <FormField label="Max. Landings">
+                            <input
+                                type="number"
+                                min="0"
+                                value={features.maxLandings}
+                                onChange={(e) =>
+                                    setFeat('maxLandings', parseInt(e.target.value) || 0)
+                                }
+                                className={inputClass}
+                                style={inputStyle}
+                                onFocus={focusStyle}
+                                onBlur={blurStyle}
+                            />
+                        </FormField>
+                        <FormField label="Max. Imagenes">
+                            <input
+                                type="number"
+                                min="0"
+                                value={features.maxImages}
+                                onChange={(e) =>
+                                    setFeat('maxImages', parseInt(e.target.value) || 0)
+                                }
+                                className={inputClass}
+                                style={inputStyle}
+                                onFocus={focusStyle}
+                                onBlur={blurStyle}
+                            />
+                        </FormField>
+                        <FormField label="Max. Videos">
+                            <input
+                                type="number"
+                                min="0"
+                                value={features.maxVideos}
+                                onChange={(e) =>
+                                    setFeat('maxVideos', parseInt(e.target.value) || 0)
+                                }
+                                className={inputClass}
+                                style={inputStyle}
+                                onFocus={focusStyle}
+                                onBlur={blurStyle}
+                            />
+                        </FormField>
+                    </div>
+                </div>
+
                 {initial && (
                     <FormField label="Status">
                         <select

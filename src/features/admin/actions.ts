@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getUserPermissions, type UserPermissions } from '@/lib/permissions'
 import { logAudit } from '@/shared/lib/audit'
 import { logger } from '@/shared/lib/logger'
 
@@ -396,16 +397,69 @@ export async function fetchUserDetailAction(userId: string): Promise<
 }
 
 // =============================================
+// PERMISSIONS (getUserPermissionsAction)
+// =============================================
+export async function getUserPermissionsAction(): Promise<AdminActionResult<UserPermissions>> {
+    try {
+        const supabase = await createClient()
+        const {
+            data: { user },
+        } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'No autenticado' }
+
+        const permissions = await getUserPermissions(user.id)
+        return { success: true, data: permissions }
+    } catch (e: unknown) {
+        return { success: false, error: safeError(e) }
+    }
+}
+
+// =============================================
 // PLANS
 // =============================================
+const planFeaturesSchema = z.object({
+    modules: z
+        .array(z.enum(['wizard', 'templates', 'leads', 'brandvortix', 'intelligence']))
+        .default([]),
+    intelViews: z
+        .array(
+            z.enum([
+                'campaign-profile',
+                'monitors',
+                'dashboard',
+                'thematic',
+                'attack-vectors',
+                'calendar',
+                'landing',
+                'video-repurposer',
+                'image-studio',
+            ]),
+        )
+        .default([]),
+    maxReports: z.number().int().min(0).default(0),
+    maxCalendars: z.number().int().min(0).default(0),
+    maxLandings: z.number().int().min(0).default(0),
+    maxImages: z.number().int().min(0).default(0),
+    maxVideos: z.number().int().min(0).default(0),
+})
+
 const planSchema = z.object({
     name: z.string().min(1).max(60),
     price: z.number().min(0),
     currency: z.enum(['USD', 'EUR', 'ARS', 'MXN']).default('USD'),
     max_projects: z.number().int().min(1),
     max_leads: z.number().int().min(0),
+    max_ai_analyses: z.number().int().min(0).default(0),
     status: z.enum(['active', 'inactive']).default('active'),
-    features: z.record(z.string(), z.unknown()).optional(),
+    features: planFeaturesSchema.default({
+        modules: [],
+        intelViews: [],
+        maxReports: 0,
+        maxCalendars: 0,
+        maxLandings: 0,
+        maxImages: 0,
+        maxVideos: 0,
+    }),
 })
 
 export type PlanInput = z.infer<typeof planSchema>
@@ -415,7 +469,9 @@ export async function fetchAdminPlansAction(): Promise<AdminActionResult<unknown
         const { supabase } = await requireAdmin()
         const { data, error } = await supabase
             .from('plans')
-            .select('*, memberships(id, status)')
+            .select(
+                'id, name, slug, price, currency, max_projects, max_leads, max_ai_analyses, features, status, created_at, updated_at, memberships(id, status)',
+            )
             .order('price')
         if (error) throw error
         return { success: true, data: data ?? [] }
@@ -535,7 +591,7 @@ export async function createMembershipAction(input: {
             plan_id: input.plan_id,
             status: 'active',
             start_date: new Date().toISOString(),
-            expires_at: input.expires_at ?? null,
+            expires_at: input.expires_at || null,
         })
         if (error) throw error
         revalidatePath('/admin')
@@ -554,7 +610,11 @@ export async function updateMembershipAction(
 ): Promise<AdminActionResult> {
     try {
         const { supabase, user } = await requireAdmin()
-        const { error } = await supabase.from('memberships').update(input).eq('id', membershipId)
+        const updateData = { ...input, expires_at: input.expires_at || null }
+        const { error } = await supabase
+            .from('memberships')
+            .update(updateData)
+            .eq('id', membershipId)
         if (error) throw error
         await logAudit({
             actorId: user.id,
@@ -624,7 +684,7 @@ export async function createLicenseAction(input: {
             user_id: input.user_id ?? null,
             domain: input.domain || '',
             status: 'active',
-            expires_at: input.expires_at ?? null,
+            expires_at: input.expires_at || null,
         })
         if (error) throw error
         revalidatePath('/admin')

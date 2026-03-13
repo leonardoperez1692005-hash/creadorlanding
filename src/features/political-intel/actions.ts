@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions, hasReachedLimit } from '@/lib/permissions'
 import { logger } from '@/shared/lib/logger'
 import {
     mapBrandIdentityToCampaignProfile,
@@ -233,6 +234,15 @@ export async function generatePoliticalIntelAction(
         const userId = await getAuthUserId()
         if (!userId) return { success: false, error: 'No autenticado' }
 
+        // Enforce report limit
+        const perms = await getUserPermissions(userId)
+        if (hasReachedLimit(perms, 'reports')) {
+            return {
+                success: false,
+                error: `Límite de reportes alcanzado (${perms.limits.maxReports}). Contactá al administrador para ampliar tu plan.`,
+            }
+        }
+
         const supabase = await createClient()
 
         // Get monitors
@@ -437,9 +447,7 @@ export async function generatePoliticalAttackVectorsAction(
 // LOAD / HISTORY
 // =============================================
 
-export async function loadPoliticalReportAction(
-    reportId: string,
-): Promise<
+export async function loadPoliticalReportAction(reportId: string): Promise<
     ActionResult<{
         report: PoliticalIntelReport
         meta: PoliticalSnapshotMeta | null
@@ -613,6 +621,15 @@ export async function generatePoliticalCalendarAction(
     try {
         const userId = await getAuthUserId()
         if (!userId) return { success: false, error: 'No autenticado' }
+
+        // Enforce calendar limit
+        const perms = await getUserPermissions(userId)
+        if (hasReachedLimit(perms, 'calendars')) {
+            return {
+                success: false,
+                error: `Límite de calendarios alcanzado (${perms.limits.maxCalendars}). Contactá al administrador para ampliar tu plan.`,
+            }
+        }
 
         const supabase = await createClient()
 
@@ -973,6 +990,15 @@ export async function generateThematicReportAction(
 ): Promise<ActionResult<{ report: ThematicReport; reportId: string }>> {
     const userId = await getAuthUserId()
     if (!userId) return { success: false, error: 'No autenticado' }
+
+    // Enforce report limit
+    const perms = await getUserPermissions(userId)
+    if (hasReachedLimit(perms, 'reports')) {
+        return {
+            success: false,
+            error: `Límite de reportes alcanzado (${perms.limits.maxReports}). Contactá al administrador para ampliar tu plan.`,
+        }
+    }
 
     const supabase = await createClient()
 

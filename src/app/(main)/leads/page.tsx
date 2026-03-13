@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getUserPermissions } from '@/lib/permissions'
 import Link from 'next/link'
 import { Users, ArrowRight } from 'lucide-react'
 import Loading from './loading'
@@ -15,6 +17,10 @@ async function LeadsContent() {
 
     // Middleware handles redirect, but guard for safety
     if (!user) return null
+
+    // Module access guard
+    const perms = await getUserPermissions(user.id)
+    if (!perms.features.modules.includes('leads')) redirect('/dashboard')
 
     // Fetch all projects that have at least 1 lead
     const { data: projects } = await supabase

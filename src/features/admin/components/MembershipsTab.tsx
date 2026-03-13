@@ -291,6 +291,7 @@ function MembershipFormModal({
         status: initial?.status ?? 'active',
         expires_at: initial?.expires_at ? initial.expires_at.split('T')[0] : '',
     })
+    const [noExpiry, setNoExpiry] = useState(!initial?.expires_at)
     const set = <K extends keyof typeof form>(k: K, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
     return (
@@ -298,7 +299,7 @@ function MembershipFormModal({
             <form
                 onSubmit={(e) => {
                     e.preventDefault()
-                    onSubmit(form)
+                    onSubmit({ ...form, expires_at: noExpiry ? undefined : form.expires_at })
                 }}
             >
                 {!initial && (
@@ -360,16 +361,33 @@ function MembershipFormModal({
                         </select>
                     </FormField>
                 )}
-                <FormField label="Fecha de Expiración (opcional)">
-                    <input
-                        type="date"
-                        value={form.expires_at}
-                        onChange={(e) => set('expires_at', e.target.value)}
-                        className={inputClass}
-                        style={inputStyle}
-                        onFocus={focusStyle}
-                        onBlur={blurStyle}
-                    />
+                <FormField label="Expiración">
+                    <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={noExpiry}
+                            onChange={(e) => {
+                                setNoExpiry(e.target.checked)
+                                if (e.target.checked) set('expires_at', '')
+                            }}
+                            className="accent-cyan-400"
+                        />
+                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            Sin caducidad (no expira)
+                        </span>
+                    </label>
+                    {!noExpiry && (
+                        <input
+                            type="date"
+                            value={form.expires_at}
+                            onChange={(e) => set('expires_at', e.target.value)}
+                            required
+                            className={inputClass}
+                            style={inputStyle}
+                            onFocus={focusStyle}
+                            onBlur={blurStyle}
+                        />
+                    )}
                 </FormField>
                 <div className="flex justify-end gap-2 mt-5">
                     <button

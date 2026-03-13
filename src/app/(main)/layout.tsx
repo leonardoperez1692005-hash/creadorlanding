@@ -2,12 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/shared/components/layout/Sidebar'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
+import { getUserPermissions } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
     let user = null
     let profile = null
+    let allowedModules: string[] | undefined
 
     try {
         const supabase = await createClient()
@@ -15,12 +17,12 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         user = data.user
 
         if (user) {
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single()
-            profile = profileData
+            const [profileRes, permissions] = await Promise.all([
+                supabase.from('profiles').select('*').eq('id', user.id).single(),
+                getUserPermissions(user.id),
+            ])
+            profile = profileRes.data
+            allowedModules = permissions.features.modules
         }
     } catch {
         // Supabase unavailable
@@ -36,7 +38,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             >
                 Saltar al contenido principal
             </a>
-            <Sidebar user={user} profile={profile} />
+            <Sidebar user={user} profile={profile} allowedModules={allowedModules} />
             <main id="main-content" className="flex-1 overflow-auto">
                 <ErrorBoundary>{children}</ErrorBoundary>
             </main>

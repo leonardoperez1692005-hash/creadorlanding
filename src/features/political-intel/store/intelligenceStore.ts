@@ -48,6 +48,7 @@ export type IntelligenceView =
     | 'landing'
     | 'thematic'
     | 'video-repurposer'
+    | 'image-studio'
 
 // ─── State ──────────────────────────────────────────────
 
