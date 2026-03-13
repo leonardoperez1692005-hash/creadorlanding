@@ -13,6 +13,7 @@ import {
     BookOpen,
     Video,
     Film,
+    ImagePlus,
 } from 'lucide-react'
 import { useIntelligenceStore, type IntelligenceView } from '../store/intelligenceStore'
 import { useVideoRepurposerStore } from '@/features/video-repurposer/store/videoRepurposerStore'
@@ -26,6 +27,7 @@ const VALID_VIEWS = new Set<IntelligenceView>([
     'calendar',
     'landing',
     'video-repurposer',
+    'image-studio',
 ])
 
 // Restore view from URL hash BEFORE first render (module-level, runs once on import)
@@ -44,6 +46,7 @@ import { PoliticalCalendarView } from './PoliticalCalendarView'
 import { PoliticalLandingPanel } from './PoliticalLandingPanel'
 import { ThematicIntelPanel } from './ThematicIntelPanel'
 import { VideoRepurposerView } from '@/features/video-repurposer/components/VideoRepurposerView'
+import { ImageStudioView } from '@/features/image-studio/components/ImageStudioView'
 
 interface PoliticalIntelClientProps {
     initialMonitors?: PoliticalMonitor[]
@@ -114,10 +117,9 @@ export function PoliticalIntelClient({
 
     // If profile loaded and doesn't exist, force campaign-profile form
     // While loading, respect currentView (avoids flash)
+    const profileRequired = campaignProfileLoaded && !campaignProfile
     const effectiveView =
-        campaignProfileLoaded && !campaignProfile && currentView !== 'campaign-profile'
-            ? 'campaign-profile'
-            : currentView
+        profileRequired && currentView !== 'campaign-profile' ? 'campaign-profile' : currentView
 
     const handleHistoryClick = useCallback(
         (item: PoliticalReportHistoryItem & { reportType: string }) => {
@@ -188,7 +190,7 @@ export function PoliticalIntelClient({
                 </div>
 
                 {/* Nav buttons */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <NavBtn
                         icon={Shield}
                         label="Campaña"
@@ -203,6 +205,7 @@ export function PoliticalIntelClient({
                         onClick={() => setView('monitors')}
                         color="#00c8ff"
                         badge={monitors.length > 0 ? String(monitors.length) : undefined}
+                        disabled={profileRequired}
                     />
                     <NavBtn
                         icon={BookOpen}
@@ -210,6 +213,7 @@ export function PoliticalIntelClient({
                         active={effectiveView === 'thematic'}
                         onClick={() => setView('thematic')}
                         color="#10B981"
+                        disabled={profileRequired}
                     />
                     <NavBtn
                         icon={BarChart3}
@@ -217,7 +221,7 @@ export function PoliticalIntelClient({
                         active={effectiveView === 'dashboard'}
                         onClick={() => setView('dashboard')}
                         color="#34D399"
-                        disabled={!report}
+                        disabled={profileRequired || !report}
                     />
                     <NavBtn
                         icon={Crosshair}
@@ -225,7 +229,7 @@ export function PoliticalIntelClient({
                         active={effectiveView === 'attack-vectors'}
                         onClick={() => setView('attack-vectors')}
                         color="#F87171"
-                        disabled={!report}
+                        disabled={profileRequired || !report}
                     />
                     <NavBtn
                         icon={CalendarDays}
@@ -234,9 +238,10 @@ export function PoliticalIntelClient({
                         onClick={() => setView('calendar')}
                         color="#00c8ff"
                         disabled={
-                            attackVectors.length === 0 &&
-                            thematicAngles.length === 0 &&
-                            !history.some((h) => h.hasCalendar)
+                            profileRequired ||
+                            (attackVectors.length === 0 &&
+                                thematicAngles.length === 0 &&
+                                !history.some((h) => h.hasCalendar))
                         }
                     />
                     <NavBtn
@@ -246,9 +251,10 @@ export function PoliticalIntelClient({
                         onClick={() => setView('landing')}
                         color="#7C3AED"
                         disabled={
-                            attackVectors.length === 0 &&
-                            thematicAngles.length === 0 &&
-                            history.length === 0
+                            profileRequired ||
+                            (attackVectors.length === 0 &&
+                                thematicAngles.length === 0 &&
+                                history.length === 0)
                         }
                     />
                     <NavBtn
@@ -257,7 +263,32 @@ export function PoliticalIntelClient({
                         active={effectiveView === 'video-repurposer'}
                         onClick={() => setView('video-repurposer')}
                         color="#F472B6"
+                        disabled={profileRequired}
                     />
+                    <NavBtn
+                        icon={ImagePlus}
+                        label="Imágenes"
+                        active={effectiveView === 'image-studio'}
+                        onClick={() => setView('image-studio')}
+                        color="#F59E0B"
+                        disabled={profileRequired}
+                    />
+                    {profileRequired && (
+                        <span
+                            style={{
+                                fontSize: '0.72rem',
+                                color: '#F59E0B',
+                                marginLeft: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                            }}
+                            aria-label="Completá el perfil de campaña para desbloquear las demás secciones"
+                        >
+                            <Clock size={12} color="#F59E0B" />
+                            Guardá tu perfil para desbloquear
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -290,7 +321,9 @@ export function PoliticalIntelClient({
                                     ? 'Reportes Disponibles'
                                     : effectiveView === 'video-repurposer'
                                       ? 'Videos Analizados'
-                                      : 'Historial de Reportes'}
+                                      : effectiveView === 'image-studio'
+                                        ? 'Imágenes Recientes'
+                                        : 'Historial de Reportes'}
                         </h3>
                     </div>
                     {(() => {
@@ -600,6 +633,11 @@ export function PoliticalIntelClient({
                     {effectiveView === 'calendar' && <PoliticalCalendarView />}
                     {effectiveView === 'landing' && <PoliticalLandingPanel />}
                     {effectiveView === 'video-repurposer' && <VideoRepurposerView />}
+                    {effectiveView === 'image-studio' && (
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
+                            <ImageStudioView />
+                        </div>
+                    )}
                     {effectiveView === 'timeline' && (
                         <div style={{ padding: '1.5rem 2rem' }}>
                             <p style={{ color: '#8b9ec7' }}>Timeline de cambios</p>
