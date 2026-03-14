@@ -83,15 +83,27 @@ ${campaignContext}
 ## RIVALES MONITOREADOS
 ${monitorsContext}
 
-## INSTRUCCIONES
+## REGLAS DE COMPORTAMIENTO (OBLIGATORIAS)
+
+### REGLA #1: ACTUAR SIN PEDIR PERMISO
+NUNCA preguntes "¿Querés que lo haga?", "¿Te sirve?", "¿Lo genero?". Si el usuario pide algo que podés hacer con tus herramientas, HACELO INMEDIATAMENTE. No narres lo que vas a hacer — ejecutalo.
+
+PROHIBIDO: "Puedo generar un reporte sobre Seguridad. ¿Querés que lo haga?"
+CORRECTO: [ejecutar runThematicReport directamente] → "Listo. Generé el reporte sobre Seguridad: [resumen]"
+
+### REGLA #2: RESOLVER PROBLEMAS SOLO
+Si un tema no existe, CREALO con createTopic. Si un nombre no coincide exactamente, usá listTopics para encontrar el correcto y actuá. NUNCA le digas al usuario "los temas deben ser configurados previamente" — vos podés configurarlos.
+
+### REGLA #3: ENCADENAR HERRAMIENTAS
+Si el usuario pide algo que requiere múltiples pasos (crear tema → generar reporte), hacé todos los pasos seguidos sin interrumpir para pedir confirmación.
+
+## INSTRUCCIONES OPERATIVAS
 - Usá las herramientas SIEMPRE que necesites datos concretos — no inventes números
 - Si te preguntan por un rival, buscá primero en el RAG con queryRAG
 - Si te piden contenido (tweets, posts), generalo ajustado al tono de la campaña
 - Sé directo, estratégico, sin rodeos
 - Cuando cites fuentes del RAG, mencioná la fuente original
-- PODÉS ejecutar acciones: generar reportes temáticos (runThematicReport), correr análisis político (runPoliticalIntel), e indexar rivales en el RAG (indexRivalKnowledge)
-- Si el usuario pide generar un reporte o análisis, ejecutá la herramienta DIRECTAMENTE sin pedir confirmación
-- Si una herramienta no encuentra datos exactos (ej: buscás "inseguridad" y el tema se llama "Seguridad"), probá con variantes o usá listTopics para encontrar el nombre correcto — NO le digas al usuario que lo haga él
+- Si una herramienta no encuentra datos exactos (ej: buscás "inseguridad" y el tema se llama "Seguridad"), probá con variantes o usá listTopics para encontrar el nombre correcto
 - Tenés acceso a leads, landings, proyectos — usá las herramientas de plataforma para responder sobre estadísticas y métricas`
 
         const userId = user.id
@@ -292,7 +304,7 @@ ${monitorsContext}
                             .limit(1)
 
                         if (!topics?.length) {
-                            return `No encontré un tema llamado "${topicName}". Usá listTopics para ver los temas disponibles.`
+                            return `No encontré un tema llamado "${topicName}". Usá createTopic para crearlo primero, luego volvé a ejecutar runThematicReport.`
                         }
 
                         const result = await generateThematicReportAction(topics[0].id)
@@ -355,6 +367,63 @@ ${monitorsContext}
                             status: 'Indexación completada',
                             statementsIndexed: result.data!.statementsIndexed,
                             corpusName: result.data!.corpusName,
+                        })
+                    },
+                },
+
+                createTopic: {
+                    description:
+                        'Crea un nuevo tema de monitoreo político. Usalo cuando el usuario quiere un reporte sobre un tema que no existe todavía.',
+                    inputSchema: z.object({
+                        name: z
+                            .string()
+                            .describe('Nombre del tema (ej: "Inseguridad", "Inflación")'),
+                        description: z.string().optional().describe('Descripción breve del tema'),
+                        searchTerms: z
+                            .array(z.string())
+                            .optional()
+                            .describe(
+                                'Términos de búsqueda relacionados (ej: ["crimen", "robo", "delincuencia"])',
+                            ),
+                    }),
+                    execute: async ({ name, description, searchTerms }) => {
+                        const { data: existing } = await supabase
+                            .from('political_topics')
+                            .select('id, name')
+                            .eq('user_id', userId)
+                            .ilike('name', `%${name}%`)
+                            .limit(1)
+
+                        if (existing?.length) {
+                            return JSON.stringify({
+                                status: 'already_exists',
+                                topicId: existing[0].id,
+                                name: existing[0].name,
+                                message: `El tema "${existing[0].name}" ya existe. Podés usarlo directamente.`,
+                            })
+                        }
+
+                        const { data: newTopic, error } = await supabase
+                            .from('political_topics')
+                            .insert({
+                                user_id: userId,
+                                name,
+                                description: description ?? `Monitoreo de ${name}`,
+                                search_terms: searchTerms ?? [name.toLowerCase()],
+                                is_active: true,
+                            })
+                            .select('id, name')
+                            .single()
+
+                        if (error) {
+                            return `Error creando tema: ${error.message}`
+                        }
+
+                        return JSON.stringify({
+                            status: 'created',
+                            topicId: newTopic.id,
+                            name: newTopic.name,
+                            message: `Tema "${newTopic.name}" creado exitosamente.`,
                         })
                     },
                 },
