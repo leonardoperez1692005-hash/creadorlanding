@@ -35,6 +35,42 @@ export async function middleware(request: NextRequest) {
             return supabaseResponse
         }
 
+        const { pathname } = request.nextUrl
+
+        // Early return for public API routes (skip Supabase auth entirely)
+        const isPublicApi =
+            pathname.startsWith('/api/license') ||
+            pathname.startsWith('/api/leads/capture') ||
+            pathname.startsWith('/api/auth/') ||
+            pathname === '/api/health' ||
+            pathname === '/api/test-ai-sdk'
+
+        if (isPublicApi) {
+            return supabaseResponse
+        }
+
+        // Published landing pages: relaxed CSP (compiled HTML uses inline scripts/styles)
+        if (pathname.startsWith('/p/')) {
+            const landingCsp = [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com",
+                "img-src 'self' data: blob: https://img.youtube.com https://www.facebook.com https://*.supabase.co",
+                "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://calendly.com https://www.google.com",
+                "connect-src 'self' https://*.supabase.co https://www.googletagmanager.com https://connect.facebook.net",
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+            ].join('; ')
+            supabaseResponse.headers.set('Content-Security-Policy', landingCsp)
+            return supabaseResponse
+        }
+
+        // Public routes that don't require auth
+        const publicRoutes = ['/login', '/register', '/pricing']
+        const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+
         const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
             cookies: {
                 getAll() {
@@ -58,38 +94,7 @@ export async function middleware(request: NextRequest) {
             data: { user },
         } = await supabase.auth.getUser()
 
-        const { pathname } = request.nextUrl
-
-        // Public routes that don't require auth
-        const publicRoutes = ['/login', '/register', '/pricing', '/p/']
-        const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
-
-        // API routes for WordPress plugin + OAuth callbacks - always public
-        const isPublicApi =
-            pathname.startsWith('/api/license') ||
-            pathname.startsWith('/api/leads/capture') ||
-            pathname.startsWith('/api/auth/') ||
-            pathname === '/api/health'
-
-        // Published landing pages: relaxed CSP (compiled HTML uses inline scripts/styles)
-        if (pathname.startsWith('/p/')) {
-            const landingCsp = [
-                "default-src 'self'",
-                "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net",
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-                "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com",
-                "img-src 'self' data: blob: https://img.youtube.com https://www.facebook.com https://*.supabase.co",
-                "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://calendly.com https://www.google.com",
-                "connect-src 'self' https://*.supabase.co https://www.googletagmanager.com https://connect.facebook.net",
-                "object-src 'none'",
-                "base-uri 'self'",
-                "form-action 'self'",
-            ].join('; ')
-            supabaseResponse.headers.set('Content-Security-Policy', landingCsp)
-            return supabaseResponse
-        }
-
-        if (isPublicRoute || isPublicApi) {
+        if (isPublicRoute) {
             return supabaseResponse
         }
 

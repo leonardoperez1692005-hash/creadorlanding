@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/shared/components/layout/Sidebar'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { getUserPermissions } from '@/lib/permissions'
+import { StrategicChat } from '@/features/political-intel/components/StrategicChat'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +43,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             <main id="main-content" className="flex-1 overflow-auto">
                 <ErrorBoundary>{children}</ErrorBoundary>
             </main>
+            <StrategicChat />
         </div>
     )
 }

@@ -5,12 +5,15 @@
 // sentiment analysis, topics, thematic reports.
 // Uses Vercel AI SDK v6 stopWhen for automatic tool loop.
 
-import { streamText, stepCountIs } from 'ai'
+import { streamText, stepCountIs, convertToModelMessages } from 'ai'
 import { z } from 'zod'
 import { getModel, NO_CENSURA_SYSTEM } from '@/lib/ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { queryPoliticianStatements } from '@/features/political-intel/knowledgeIndexer'
+import { generateThematicReportAction } from '@/features/political-intel/actions/thematic'
+import { generatePoliticalIntelAction } from '@/features/political-intel/actions/intel'
+import { indexPoliticianKnowledgeAction } from '@/features/political-intel/actions/knowledge'
 import { logger } from '@/shared/lib/logger'
 import { NextRequest } from 'next/server'
 
@@ -71,9 +74,9 @@ Líneas rojas: ${JSON.stringify(campaign.red_lines ?? [])}
 
         const systemPrompt = `${NO_CENSURA_SYSTEM}
 
-Eres un asesor de inteligencia política de élite. Tienes acceso a herramientas para buscar información en la base de conocimiento RAG, consultar perfiles de rivales, y generar contenido estratégico.
+Sos el asistente de inteligencia integral de la plataforma. Tenés acceso a TODA la información del proyecto: inteligencia política, leads capturados, landings publicadas, estadísticas de campaña, y más.
 
-SIEMPRE responde en español (castellano argentino).
+SIEMPRE respondé en español (castellano argentino).
 
 ${campaignContext}
 
@@ -81,17 +84,23 @@ ${campaignContext}
 ${monitorsContext}
 
 ## INSTRUCCIONES
-- Usá las herramientas cuando necesites datos concretos antes de opinar
-- Si te preguntan por un rival específico, buscá primero en el RAG
+- Usá las herramientas SIEMPRE que necesites datos concretos — no inventes números
+- Si te preguntan por un rival, buscá primero en el RAG con queryRAG
 - Si te piden contenido (tweets, posts), generalo ajustado al tono de la campaña
 - Sé directo, estratégico, sin rodeos
-- Cuando cites fuentes del RAG, mencioná la fuente original`
+- Cuando cites fuentes del RAG, mencioná la fuente original
+- PODÉS ejecutar acciones: generar reportes temáticos (runThematicReport), correr análisis político (runPoliticalIntel), e indexar rivales en el RAG (indexRivalKnowledge)
+- Si el usuario pide generar un reporte o análisis, ejecutá la herramienta DIRECTAMENTE sin pedir confirmación
+- Si una herramienta no encuentra datos exactos (ej: buscás "inseguridad" y el tema se llama "Seguridad"), probá con variantes o usá listTopics para encontrar el nombre correcto — NO le digas al usuario que lo haga él
+- Tenés acceso a leads, landings, proyectos — usá las herramientas de plataforma para responder sobre estadísticas y métricas`
 
         const userId = user.id
 
+        const modelMessages = await convertToModelMessages(messages)
+
         const result = streamText({
             model: getModel(),
-            messages,
+            messages: modelMessages,
             system: systemPrompt,
             stopWhen: stepCountIs(5),
             tools: {
@@ -246,7 +255,7 @@ ${monitorsContext}
                             .limit(1)
 
                         if (!reports?.length) {
-                            return `No hay reportes temáticos sobre "${topicName}". El usuario debe ejecutar una investigación temática primero.`
+                            return `No hay reportes temáticos sobre "${topicName}". Podés usar la herramienta runThematicReport para generar uno nuevo.`
                         }
 
                         const r = reports[0]
@@ -259,6 +268,228 @@ ${monitorsContext}
                             mediaNarrative: r.media_narrative,
                             citizenVoices: r.citizen_voices,
                             generatedAt: r.created_at,
+                        })
+                    },
+                },
+
+                // ─── ACTION TOOLS ────────────────────────────────
+
+                runThematicReport: {
+                    description:
+                        'Genera un nuevo reporte temático sobre un tema configurado. Ejecuta scraping + análisis con IA. Tarda ~15-30 segundos.',
+                    inputSchema: z.object({
+                        topicName: z
+                            .string()
+                            .describe('Nombre del tema sobre el que generar el reporte'),
+                    }),
+                    execute: async ({ topicName }) => {
+                        // Find the topic ID
+                        const { data: topics } = await supabase
+                            .from('political_topics')
+                            .select('id, name')
+                            .eq('user_id', userId)
+                            .ilike('name', `%${topicName}%`)
+                            .limit(1)
+
+                        if (!topics?.length) {
+                            return `No encontré un tema llamado "${topicName}". Usá listTopics para ver los temas disponibles.`
+                        }
+
+                        const result = await generateThematicReportAction(topics[0].id)
+                        if (!result.success) {
+                            return `Error generando reporte: ${result.error}`
+                        }
+
+                        const r = result.data!.report
+                        return JSON.stringify({
+                            status: 'Reporte generado exitosamente',
+                            topicName: r.topic_name,
+                            executiveSummary: r.executive_summary,
+                            publicSentiment: r.public_sentiment,
+                            painPoints: r.pain_points,
+                            trends: r.trends,
+                        })
+                    },
+                },
+
+                runPoliticalIntel: {
+                    description:
+                        'Ejecuta un análisis de inteligencia política completo sobre los rivales monitoreados. Scraping de perfiles + generación de reporte con vectores de ataque. Tarda ~20-40 segundos.',
+                    inputSchema: z.object({}),
+                    execute: async () => {
+                        const result = await generatePoliticalIntelAction()
+                        if (!result.success) {
+                            return `Error en análisis político: ${result.error}`
+                        }
+
+                        const r = result.data!.report
+                        return JSON.stringify({
+                            status: 'Análisis político generado',
+                            executiveSummary: r.executive_summary,
+                            rivalsAnalyzed: r.rivals?.length ?? 0,
+                            attackVectors: r.attack_vectors?.slice(0, 3) ?? [],
+                            reportId: result.data!.reportId,
+                        })
+                    },
+                },
+
+                indexRivalKnowledge: {
+                    description:
+                        'Indexa declaraciones de un rival político en la base de conocimiento RAG. Scrapea Google News + Twitter y almacena en la base vectorial.',
+                    inputSchema: z.object({
+                        politicianHandle: z.string().describe('Handle del rival (sin @)'),
+                        politicianName: z.string().describe('Nombre completo del rival'),
+                        topics: z.array(z.string()).describe('Lista de temas a scrapear'),
+                    }),
+                    execute: async ({ politicianHandle, politicianName, topics }) => {
+                        const result = await indexPoliticianKnowledgeAction(
+                            politicianHandle,
+                            politicianName,
+                            topics,
+                        )
+                        if (!result.success) {
+                            return `Error indexando: ${result.error}`
+                        }
+
+                        return JSON.stringify({
+                            status: 'Indexación completada',
+                            statementsIndexed: result.data!.statementsIndexed,
+                            corpusName: result.data!.corpusName,
+                        })
+                    },
+                },
+
+                // ─── PLATFORM TOOLS ────────────────────────────────
+
+                getLeadsStats: {
+                    description:
+                        'Obtiene estadísticas de leads capturados: total, por landing, últimos leads, etc.',
+                    inputSchema: z.object({
+                        landingSlug: z
+                            .string()
+                            .optional()
+                            .describe('Filtrar por slug de landing (opcional)'),
+                    }),
+                    execute: async ({ landingSlug }) => {
+                        let query = supabase
+                            .from('leads')
+                            .select('*, projects!inner(name, slug)')
+                            .eq('projects.user_id', userId)
+                            .order('created_at', { ascending: false })
+
+                        if (landingSlug) {
+                            query = query.eq('projects.slug', landingSlug)
+                        }
+
+                        const { data: leads } = await query.limit(50)
+
+                        if (!leads?.length) {
+                            return 'No hay leads capturados todavía.'
+                        }
+
+                        // Group by project
+                        const byProject: Record<string, number> = {}
+                        for (const lead of leads) {
+                            const name = (lead.projects as { name: string })?.name ?? 'Sin proyecto'
+                            byProject[name] = (byProject[name] || 0) + 1
+                        }
+
+                        return JSON.stringify({
+                            totalLeads: leads.length,
+                            leadsByLanding: byProject,
+                            recentLeads: leads.slice(0, 5).map((l) => ({
+                                email: l.email,
+                                name: l.name,
+                                landing: (l.projects as { name: string })?.name,
+                                date: l.created_at,
+                            })),
+                        })
+                    },
+                },
+
+                getLandingsStats: {
+                    description:
+                        'Lista todas las landing pages del usuario con su estado (borrador/publicada), fecha, y tipo.',
+                    inputSchema: z.object({}),
+                    execute: async () => {
+                        const { data: projects } = await supabase
+                            .from('projects')
+                            .select(
+                                'id, name, slug, status, structure_type, created_at, updated_at',
+                            )
+                            .eq('user_id', userId)
+                            .order('updated_at', { ascending: false })
+
+                        if (!projects?.length) {
+                            return 'No hay landing pages creadas.'
+                        }
+
+                        const published = projects.filter((p) => p.status === 'published').length
+                        const draft = projects.filter((p) => p.status !== 'published').length
+
+                        return JSON.stringify({
+                            total: projects.length,
+                            published,
+                            draft,
+                            landings: projects.map((p) => ({
+                                name: p.name,
+                                slug: p.slug,
+                                status: p.status,
+                                type: p.structure_type,
+                                updatedAt: p.updated_at,
+                            })),
+                        })
+                    },
+                },
+
+                getPlatformOverview: {
+                    description:
+                        'Resumen general de la plataforma: cantidad de landings, leads, monitores políticos, reportes generados.',
+                    inputSchema: z.object({}),
+                    execute: async () => {
+                        const [projectsRes, leadsRes, monitorsRes, reportsRes, topicsRes] =
+                            await Promise.all([
+                                supabase
+                                    .from('projects')
+                                    .select('status', { count: 'exact' })
+                                    .eq('user_id', userId),
+                                supabase
+                                    .from('leads')
+                                    .select('id', { count: 'exact' })
+                                    .eq(
+                                        'project_id',
+                                        supabase
+                                            .from('projects')
+                                            .select('id')
+                                            .eq('user_id', userId),
+                                    ),
+                                supabase
+                                    .from('political_monitors')
+                                    .select('id', { count: 'exact' })
+                                    .eq('user_id', userId)
+                                    .eq('is_active', true),
+                                supabase
+                                    .from('thematic_reports')
+                                    .select('id', { count: 'exact' })
+                                    .eq('user_id', userId),
+                                supabase
+                                    .from('political_topics')
+                                    .select('id', { count: 'exact' })
+                                    .eq('user_id', userId)
+                                    .eq('is_active', true),
+                            ])
+
+                        return JSON.stringify({
+                            landings: {
+                                total: projectsRes.count ?? 0,
+                                published:
+                                    projectsRes.data?.filter((p) => p.status === 'published')
+                                        .length ?? 0,
+                            },
+                            leads: leadsRes.count ?? 0,
+                            politicalMonitors: monitorsRes.count ?? 0,
+                            thematicReports: reportsRes.count ?? 0,
+                            activeTopics: topicsRes.count ?? 0,
                         })
                     },
                 },
