@@ -15,6 +15,7 @@ import { queryPoliticianStatements } from '@/features/political-intel/knowledgeI
 import { generateThematicReportAction } from '@/features/political-intel/actions/thematic'
 import { generatePoliticalIntelAction } from '@/features/political-intel/actions/intel'
 import { indexPoliticianKnowledgeAction } from '@/features/political-intel/actions/knowledge'
+import { loadCampaignBrain, buildBrainSystemPrompt } from '@/features/political-intel/brain'
 import { logger } from '@/shared/lib/logger'
 import { NextRequest } from 'next/server'
 
@@ -39,39 +40,9 @@ export async function POST(req: NextRequest) {
 
         const { messages } = await req.json()
 
-        // Load user's campaign profile for context
-        const { data: campaign } = await supabase
-            .from('political_campaign_profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .single()
-
-        const campaignContext = campaign
-            ? `
-## CAMPAÑA ACTIVA
-Candidato: ${campaign.candidate_name} (${campaign.party})
-Campaña: ${campaign.campaign_name}
-Espectro: ${campaign.ideology_spectrum}
-Estilo: ${campaign.communication_style}
-Propuestas: ${JSON.stringify(campaign.key_proposals ?? [])}
-Posiciones: ${JSON.stringify(campaign.core_positions ?? [])}
-Líneas rojas: ${JSON.stringify(campaign.red_lines ?? [])}
-`
-            : 'Sin campaña configurada.'
-
-        // Load monitors for context
-        const { data: monitors } = await supabase
-            .from('political_monitors')
-            .select('handle, full_name, party, role')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .limit(20)
-
-        const monitorsContext = monitors?.length
-            ? monitors
-                  .map((m) => `- @${m.handle} (${m.full_name}, ${m.party}, ${m.role})`)
-                  .join('\n')
-            : 'Sin monitores configurados.'
+        // Load the complete Campaign Brain (6 parallel queries)
+        const brain = await loadCampaignBrain(supabase, user.id)
+        const brainContext = buildBrainSystemPrompt(brain)
 
         const systemPrompt = `${NO_CENSURA_SYSTEM}
 
@@ -79,10 +50,7 @@ Sos el asistente de inteligencia integral de la plataforma. Tenés acceso a TODA
 
 SIEMPRE respondé en español (castellano argentino).
 
-${campaignContext}
-
-## RIVALES MONITOREADOS
-${monitorsContext}
+${brainContext}
 
 ## REGLAS DE COMPORTAMIENTO (OBLIGATORIAS)
 
@@ -565,6 +533,172 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                             thematicReports: reportsRes.count ?? 0,
                             activeTopics: topicsRes.count ?? 0,
                         })
+                    },
+                },
+
+                // ─── BRAIN TOOLS ────────────────────────────────
+
+                getBrainSummary: {
+                    description:
+                        'Reporta el estado del cerebro de campaña: qué tiene configurado, qué falta, score de completitud.',
+                    inputSchema: z.object({}),
+                    execute: async () => {
+                        return JSON.stringify({
+                            completeness: brain.completeness,
+                            hasCampaign: !!brain.campaign,
+                            hasVisualIdentity: !!brain.visual,
+                            hasImageStyle: !!brain.visual?.imageStyle,
+                            monitorsCount: brain.monitors.length,
+                            topicsCount: brain.topics.length,
+                            recentReportsCount: brain.recentReports.length,
+                            sentimentCount: brain.sentiment.length,
+                            missing: [
+                                !brain.campaign &&
+                                    'Perfil de campaña (candidato, partido, propuestas)',
+                                !brain.visual && 'Identidad visual (colores, marca)',
+                                !brain.visual?.imageStyle && 'Estilo de imagen (paleta, mood)',
+                                brain.monitors.length === 0 && 'Monitores de rivales',
+                                brain.topics.length === 0 && 'Temas de investigación',
+                                brain.sentiment.length === 0 && 'Análisis de sentimiento',
+                            ].filter(Boolean),
+                        })
+                    },
+                },
+
+                generateCampaignImage: {
+                    description:
+                        'Genera una imagen de campaña con contexto automático (colores, estilo, tono del candidato). Usa OpenAI gpt-image-1.',
+                    inputSchema: z.object({
+                        description: z
+                            .string()
+                            .describe(
+                                'Descripción de la imagen a generar (ej: "afiche sobre seguridad", "banner para redes")',
+                            ),
+                        platform: z
+                            .enum(['instagram', 'x', 'tiktok', 'linkedin', 'facebook', 'general'])
+                            .optional()
+                            .describe('Plataforma destino (afecta tamaño y estilo)'),
+                    }),
+                    execute: async ({ description, platform }) => {
+                        const { generateImage: genImg } = await import('@/lib/ai/imageGenerator')
+                        const { buildBrainCompactContext: compact } =
+                            await import('@/features/political-intel/brain')
+
+                        const brainHint = brain.campaign ? compact(brain) : ''
+                        const fullPrompt = brainHint
+                            ? `${brainHint}\n\nGenerar imagen de campaña política: ${description}`
+                            : `Imagen de campaña política: ${description}`
+
+                        const size =
+                            platform === 'instagram' || platform === 'tiktok'
+                                ? ('1024x1536' as const)
+                                : ('1024x1024' as const)
+
+                        try {
+                            const result = await genImg(fullPrompt, size, 'low')
+                            // Save to storage
+                            const { createServiceClient: createSvc } =
+                                await import('@/lib/supabase/server')
+                            const svc = createSvc()
+                            const storagePath = `images/${userId}/${Date.now()}.png`
+                            const imageBuffer = Buffer.from(result.b64Data, 'base64')
+                            await svc.storage
+                                .from('generated-images')
+                                .upload(storagePath, imageBuffer, {
+                                    contentType: 'image/png',
+                                })
+
+                            const { data: publicUrlData } = svc.storage
+                                .from('generated-images')
+                                .getPublicUrl(storagePath)
+
+                            await svc.from('generated_images').insert({
+                                user_id: userId,
+                                storage_url: publicUrlData.publicUrl,
+                                storage_path: storagePath,
+                                prompt: fullPrompt,
+                                revised_prompt: result.revisedPrompt,
+                                platform: platform ?? 'general',
+                                size,
+                                quality: 'low',
+                                tags: ['campaign', 'agent-generated'],
+                                is_favorite: false,
+                            })
+
+                            return JSON.stringify({
+                                status: 'Imagen generada',
+                                url: publicUrlData.publicUrl,
+                                revisedPrompt: result.revisedPrompt,
+                            })
+                        } catch (imgErr) {
+                            return `Error generando imagen: ${(imgErr as Error).message}`
+                        }
+                    },
+                },
+
+                generateSocialPost: {
+                    description:
+                        'Genera un post para una plataforma específica con el tono y estilo de la campaña.',
+                    inputSchema: z.object({
+                        platform: z
+                            .enum(['x', 'instagram', 'tiktok', 'linkedin', 'facebook'])
+                            .describe('Plataforma para la que generar el post'),
+                        topic: z.string().describe('Tema del post'),
+                        contentType: z
+                            .enum(['text', 'carousel', 'reel', 'story'])
+                            .optional()
+                            .describe('Tipo de contenido'),
+                    }),
+                    execute: async ({ platform, topic, contentType }) => {
+                        const { callGemini: gemini } = await import('@/lib/gemini')
+                        const { buildBrainCompactContext: compact } =
+                            await import('@/features/political-intel/brain')
+
+                        const brainHint = brain.campaign ? compact(brain) : ''
+                        const platformConstraints: Record<string, string> = {
+                            x: 'Max 280 caracteres. Tono directo, impactante. Incluir hashtags.',
+                            linkedin:
+                                '150-300 palabras. Tono profesional. Incluir hashtags al final.',
+                            tiktok: 'Hook de 3 seg + script corto. Tono viral.',
+                            instagram:
+                                'Caption atractivo + concepto visual + hashtags. Max 2200 chars.',
+                            facebook:
+                                'Tono cercano, 100-200 palabras. Incluir CTA y emojis moderados.',
+                        }
+
+                        const prompt = `IDIOMA: TODO en ESPAÑOL (castellano argentino).
+${brainHint ? `\nContexto de campaña: ${brainHint}` : ''}
+
+Generá un post para ${platform} (formato: ${contentType ?? 'text'}) sobre: ${topic}
+
+Restricciones de plataforma: ${platformConstraints[platform] ?? ''}
+
+Respondé SOLO con JSON:
+{
+  "text": "...",
+  "hook": "..." (o null),
+  "hashtags": ["..."],
+  "visualConcept": "..." (o null),
+  "cta": "..." (o null)
+}`
+
+                        const raw = await gemini(prompt, {
+                            temperature: 0.7,
+                            maxTokens: 1500,
+                        })
+
+                        try {
+                            const jsonStr = raw.replace(/```json?\n?/g, '').replace(/```/g, '')
+                            const parsed = JSON.parse(jsonStr)
+                            return JSON.stringify({
+                                status: 'Post generado',
+                                platform,
+                                topic,
+                                ...parsed,
+                            })
+                        } catch {
+                            return raw
+                        }
                     },
                 },
             },

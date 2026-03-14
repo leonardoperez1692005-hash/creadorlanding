@@ -14,11 +14,13 @@ import {
     Video,
     Film,
     ImagePlus,
+    Brain,
 } from 'lucide-react'
 import { useIntelligenceStore, type IntelligenceView } from '../store/intelligenceStore'
 import { useVideoRepurposerStore } from '@/features/video-repurposer/store/videoRepurposerStore'
 
 const VALID_VIEWS = new Set<IntelligenceView>([
+    'command-center',
     'campaign-profile',
     'monitors',
     'thematic',
@@ -47,6 +49,7 @@ import { PoliticalLandingPanel } from './PoliticalLandingPanel'
 import { ThematicIntelPanel } from './ThematicIntelPanel'
 import { VideoRepurposerView } from '@/features/video-repurposer/components/VideoRepurposerView'
 import { ImageStudioView } from '@/features/image-studio/components/ImageStudioView'
+import { CommandCenter } from './CommandCenter'
 
 interface PoliticalIntelClientProps {
     initialMonitors?: PoliticalMonitor[]
@@ -195,6 +198,13 @@ export function PoliticalIntelClient({
 
                 {/* Nav buttons */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <NavBtn
+                        icon={Brain}
+                        label="Centro"
+                        active={effectiveView === 'command-center'}
+                        onClick={() => setView('command-center')}
+                        color="#00c8ff"
+                    />
                     {isViewAllowed('campaign-profile') && (
                         <NavBtn
                             icon={Shield}
@@ -634,6 +644,7 @@ export function PoliticalIntelClient({
                         overflow: 'hidden',
                     }}
                 >
+                    {effectiveView === 'command-center' && <CommandCenter />}
                     {effectiveView === 'campaign-profile' && <CampaignProfileForm />}
                     {effectiveView === 'monitors' && <MonitorConfigPanel />}
                     {effectiveView === 'dashboard' &&

@@ -9,6 +9,7 @@ import { normalizeAndMergeSections } from './config/constants'
 import { compileLandingHtml } from './lib/htmlCompiler'
 import type { WizardSection, DesignColors, TrackingMeta } from './types'
 import { headers } from 'next/headers'
+import { loadCampaignBrain } from '@/features/political-intel/brain'
 
 // === Schemas ===
 const saveProjectSchema = z.object({
@@ -197,6 +198,41 @@ export async function fetchBrandColorsAction(): Promise<Record<string, string>> 
     if (!data) return {}
     const tokens = data.design_tokens as Record<string, unknown>
     return (tokens['colors'] as Record<string, string>) ?? {}
+}
+
+/** Obtiene defaults de campaña del brain para pre-popular el wizard (colores + candidato + estilo). */
+export async function fetchCampaignDefaultsAction(): Promise<{
+    colors: Record<string, string>
+    candidateName: string
+    brandName: string
+    tagline: string
+    party: string
+    communicationStyle: string
+} | null> {
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const brain = await loadCampaignBrain(supabase, user.id)
+    if (!brain.campaign && !brain.visual) return null
+
+    const colors: Record<string, string> = {}
+    if (brain.visual) {
+        if (brain.visual.primaryColor) colors.primary = brain.visual.primaryColor
+        if (brain.visual.secondaryColor) colors.secondary = brain.visual.secondaryColor
+        if (brain.visual.accentColor) colors.accent = brain.visual.accentColor
+    }
+
+    return {
+        colors,
+        candidateName: brain.campaign?.candidateName ?? '',
+        brandName: brain.visual?.brandName ?? '',
+        tagline: brain.visual?.tagline ?? '',
+        party: brain.campaign?.party ?? '',
+        communicationStyle: brain.campaign?.communicationStyle ?? '',
+    }
 }
 
 /** Guarda y publica un proyecto: compila HTML standalone y revalida rutas públicas. */

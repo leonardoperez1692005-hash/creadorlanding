@@ -2,7 +2,13 @@
 // Template Catalog — Static definitions for all available templates
 // ============================================================
 
-export type TemplateCategory = 'landing' | 'business' | 'portfolio' | 'personal' | 'event'
+export type TemplateCategory =
+    | 'landing'
+    | 'business'
+    | 'portfolio'
+    | 'personal'
+    | 'event'
+    | 'political'
 
 export interface TemplateSectionDef {
     id: string
@@ -22,6 +28,7 @@ export interface TemplateDef {
 }
 
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string; icon: string }[] = [
+    { id: 'political', label: 'Campaña Política', icon: 'Shield' },
     { id: 'landing', label: 'Landings de Venta', icon: 'Rocket' },
     { id: 'business', label: 'Negocios', icon: 'Briefcase' },
     { id: 'portfolio', label: 'Portfolio', icon: 'Image' },
@@ -701,10 +708,127 @@ const TPL_PRODUCT_LAUNCH: TemplateDef = {
 }
 
 // ============================================================
+// POLITICAL TEMPLATES
+// ============================================================
+
+const TPL_POLITICAL_CAMPAIGN: TemplateDef = {
+    id: 'political_campaign',
+    name: 'Campaña Política',
+    description:
+        'Landing de campaña electoral con secciones para propuestas, equipo, calendario de eventos y donaciones. Se pre-popula automáticamente con el Cerebro de Campaña.',
+    category: 'political',
+    tags: ['política', 'campaña', 'elecciones', 'candidato', 'propuestas'],
+    thumbnail: '/templates/previews/political-campaign.png',
+    recommendedFor: ['campañas electorales', 'candidatos', 'partidos políticos'],
+    sections: [
+        { id: 'hero', label: 'Hero del Candidato' },
+        { id: 'proposals', label: 'Propuestas Clave' },
+        { id: 'biography', label: 'Biografía / Trayectoria' },
+        { id: 'team', label: 'Equipo de Campaña' },
+        { id: 'events', label: 'Calendario de Eventos' },
+        { id: 'testimonials', label: 'Testimonios / Apoyo' },
+        { id: 'contact', label: 'Contacto / Voluntarios' },
+        { id: 'donate', label: 'Donaciones' },
+    ],
+    defaultContent: {
+        hero: {
+            headline: 'Tu Candidato, Tu Futuro',
+            subheadline: 'Juntos construimos el cambio que necesitamos',
+            cta_text: 'SUMATE',
+            background_style: 'gradient',
+        },
+        proposals: {
+            title: 'Nuestras Propuestas',
+            subtitle: 'Un plan concreto para cada problema',
+            items: [],
+        },
+        biography: {
+            title: 'Trayectoria',
+            text: '',
+        },
+        team: {
+            title: 'Nuestro Equipo',
+            members: [],
+        },
+        events: {
+            title: 'Agenda de Campaña',
+            events: [],
+        },
+        testimonials: {
+            title: 'Nos Apoyan',
+            items: [],
+        },
+        contact: {
+            title: 'Sumate como Voluntario',
+            subtitle: 'Tu participación hace la diferencia',
+            cta_text: 'QUIERO PARTICIPAR',
+            success_message: '¡Gracias! Te contactaremos pronto.',
+        },
+        donate: {
+            title: 'Apoyá la Campaña',
+            subtitle: 'Cada aporte cuenta',
+            cta_text: 'DONAR AHORA',
+        },
+    },
+}
+
+const TPL_POLITICAL_ISSUE: TemplateDef = {
+    id: 'political_issue',
+    name: 'Tema de Campaña',
+    description:
+        'Landing enfocada en un tema específico (seguridad, economía, educación). Ideal para generar desde reportes temáticos del Cerebro.',
+    category: 'political',
+    tags: ['política', 'tema', 'propuesta', 'problema social'],
+    thumbnail: '/templates/previews/political-issue.png',
+    recommendedFor: ['propuestas específicas', 'temas sociales', 'problemas ciudadanos'],
+    sections: [
+        { id: 'hero', label: 'Hero del Tema' },
+        { id: 'problem', label: 'El Problema' },
+        { id: 'proposal', label: 'Nuestra Propuesta' },
+        { id: 'data', label: 'Datos y Evidencia' },
+        { id: 'testimonials', label: 'Voces Ciudadanas' },
+        { id: 'contact', label: 'Sumate / Contacto' },
+    ],
+    defaultContent: {
+        hero: {
+            headline: 'Es Hora de Resolver Esto',
+            subheadline: 'Un plan concreto para un problema real',
+            cta_text: 'VER PROPUESTA',
+        },
+        problem: {
+            title: 'El Problema',
+            text: '',
+            stats: [],
+        },
+        proposal: {
+            title: 'Nuestra Propuesta',
+            text: '',
+            steps: [],
+        },
+        data: {
+            title: 'Los Datos Hablan',
+            items: [],
+        },
+        testimonials: {
+            title: 'Lo Que Dice la Gente',
+            items: [],
+        },
+        contact: {
+            title: 'Sumate al Cambio',
+            cta_text: 'QUIERO PARTICIPAR',
+            success_message: '¡Gracias por sumarte!',
+        },
+    },
+}
+
+// ============================================================
 // FULL CATALOG
 // ============================================================
 
 export const TEMPLATE_CATALOG: TemplateDef[] = [
+    // Political (first when brain is active)
+    TPL_POLITICAL_CAMPAIGN,
+    TPL_POLITICAL_ISSUE,
     // Landings
     TPL_VSL,
     TPL_WEBINAR,

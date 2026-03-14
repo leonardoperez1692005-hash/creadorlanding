@@ -39,6 +39,7 @@ export type IntelligencePhase =
     | 'error'
 
 export type IntelligenceView =
+    | 'command-center'
     | 'dashboard'
     | 'campaign-profile'
     | 'monitors'

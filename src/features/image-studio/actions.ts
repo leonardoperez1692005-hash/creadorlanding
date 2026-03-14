@@ -7,6 +7,7 @@ import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { generateImage } from '@/lib/ai/imageGenerator'
 import { generateImageInputSchema, brandStyleInputSchema, imageFiltersSchema } from './schemas'
 import type { ActionResult, BrandImageStyle, GeneratedImage, ImageHistoryItem } from './types'
+import { loadCampaignBrain, buildBrainCompactContext } from '@/features/political-intel/brain'
 
 const FEATURE = 'image-studio'
 
@@ -26,7 +27,7 @@ async function getUser() {
 /** Genera una imagen con IA (OpenAI gpt-image-1), la sube a Storage y guarda el registro. */
 export async function generateImageAction(input: unknown): Promise<ActionResult<GeneratedImage>> {
     try {
-        const { user } = await getUser()
+        const { supabase, user } = await getUser()
         const serviceClient = createServiceClient()
 
         // Validate input
@@ -55,8 +56,15 @@ export async function generateImageAction(input: unknown): Promise<ActionResult<
             }
         }
 
+        // Enrich prompt with campaign brain context (colors, style, tone)
+        const brain = await loadCampaignBrain(supabase, user.id)
+        const brainContext = brain.campaign ? buildBrainCompactContext(brain) : ''
+        const enrichedPrompt = brainContext
+            ? `${brainContext}\n\nImagen solicitada: ${prompt}`
+            : prompt
+
         // Generate image via OpenAI
-        const result = await generateImage(prompt, size, quality)
+        const result = await generateImage(enrichedPrompt, size, quality)
 
         // Upload to Supabase Storage
         const timestamp = Date.now()
@@ -348,7 +356,7 @@ export async function suggestPromptAction(input: {
     platform?: string
 }): Promise<ActionResult<{ prompt: string }>> {
     try {
-        const { user } = await getUser()
+        const { supabase, user } = await getUser()
 
         // Rate limit: 20 suggestions per hour
         const rl = await rateLimitAsync(`img-suggest:${user.id}`, { limit: 20, windowSec: 3600 })
@@ -358,9 +366,14 @@ export async function suggestPromptAction(input: {
 
         const { callGemini } = await import('@/lib/gemini')
 
+        // Load brain for campaign style context
+        const brain = await loadCampaignBrain(supabase, user.id)
+        const brainHint = brain.campaign ? buildBrainCompactContext(brain) : ''
+
         const systemPrompt = `Sos un experto en prompts para generación de imágenes con IA.
 Dado el siguiente prompt base y contexto, mejoralo para obtener una imagen de alta calidad.
 Mantené la intención original pero agregá detalles visuales, estilo, composición y técnica.
+${brainHint ? `Contexto de campaña (usá colores y estilo si aplica): ${brainHint}` : ''}
 Respondé SOLO con el prompt mejorado, sin explicaciones. Máximo 500 caracteres.`
 
         const userMsg = [

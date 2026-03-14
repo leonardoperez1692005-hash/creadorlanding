@@ -34,6 +34,7 @@ import type { SocialMediaCalendar, SocialPost } from '@/features/attack-plan/typ
 import type { TranscriptSegment } from '@/lib/video/youtube'
 import { env } from '@/lib/env'
 import { transcribeWithWhisper, findTimestampsForText, type WhisperWord } from '@/lib/video/whisper'
+import { loadCampaignBrain, buildBrainCompactContext } from '@/features/political-intel/brain'
 
 function msToTimestamp(ms: number): string {
     const totalSeconds = Math.floor(ms / 1000)
@@ -271,6 +272,14 @@ export async function processVideoAction(
             return { success: false, error: 'URL de YouTube inválida' }
         }
 
+        // Auto-derive candidate context from brain if not provided
+        if (!input.candidateContext) {
+            const brain = await loadCampaignBrain(supabase, user.id)
+            if (brain.campaign) {
+                input.candidateContext = buildBrainCompactContext(brain)
+            }
+        }
+
         // 1. Get video info (title, channel, duration)
         const info = await getVideoInfo(input.url)
 
@@ -449,6 +458,16 @@ export async function generateVideoCalendarAction(
         const perms = await getUserPermissions(user.id)
         if (!canAccessModule(perms, 'intelligence')) {
             return { success: false, error: 'No tienes acceso a este módulo' }
+        }
+
+        // Auto-derive candidate info from brain if not provided
+        if (!input.candidateName || !input.candidateContext) {
+            const brain = await loadCampaignBrain(supabase, user.id)
+            if (brain.campaign) {
+                if (!input.candidateName) input.candidateName = brain.campaign.candidateName
+                if (!input.candidateContext)
+                    input.candidateContext = buildBrainCompactContext(brain)
+            }
         }
 
         const calendar = await generateVideoCalendar({
