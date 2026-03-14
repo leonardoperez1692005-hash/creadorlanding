@@ -8,6 +8,7 @@
 import { streamText, stepCountIs, convertToModelMessages } from 'ai'
 import { z } from 'zod'
 import { getModel, NO_CENSURA_SYSTEM } from '@/lib/ai/sdk'
+import { env } from '@/lib/env'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { queryPoliticianStatements } from '@/features/political-intel/knowledgeIndexer'
@@ -110,8 +111,12 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
 
         const modelMessages = await convertToModelMessages(messages)
 
+        // Use Claude for the agent — much better at following system prompt rules
+        // and executing tools without asking permission. Gemini tends to narrate
+        // instead of acting. Falls back to default provider if Claude unavailable.
+        const chatProvider = env.claudeApiKey ? 'claude' : undefined
         const result = streamText({
-            model: getModel(),
+            model: getModel(chatProvider),
             messages: modelMessages,
             system: systemPrompt,
             stopWhen: stepCountIs(5),
@@ -373,20 +378,20 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
 
                 createTopic: {
                     description:
-                        'Crea un nuevo tema de monitoreo político. Usalo cuando el usuario quiere un reporte sobre un tema que no existe todavía.',
+                        'Crea un nuevo tema de monitoreo político. Usalo SIEMPRE que el usuario pida un reporte sobre un tema que no existe — NO pidas permiso, crealo directamente.',
                     inputSchema: z.object({
                         name: z
                             .string()
                             .describe('Nombre del tema (ej: "Inseguridad", "Inflación")'),
                         description: z.string().optional().describe('Descripción breve del tema'),
-                        searchTerms: z
+                        serpQueries: z
                             .array(z.string())
                             .optional()
                             .describe(
-                                'Términos de búsqueda relacionados (ej: ["crimen", "robo", "delincuencia"])',
+                                'Queries SERP para buscar noticias (ej: ["crimen argentina", "inseguridad delitos"])',
                             ),
                     }),
-                    execute: async ({ name, description, searchTerms }) => {
+                    execute: async ({ name, description, serpQueries }) => {
                         const { data: existing } = await supabase
                             .from('political_topics')
                             .select('id, name')
@@ -399,7 +404,7 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                                 status: 'already_exists',
                                 topicId: existing[0].id,
                                 name: existing[0].name,
-                                message: `El tema "${existing[0].name}" ya existe. Podés usarlo directamente.`,
+                                message: `El tema "${existing[0].name}" ya existe. Usá runThematicReport con este nombre.`,
                             })
                         }
 
@@ -409,7 +414,7 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                                 user_id: userId,
                                 name,
                                 description: description ?? `Monitoreo de ${name}`,
-                                search_terms: searchTerms ?? [name.toLowerCase()],
+                                serp_queries: serpQueries ?? [`${name.toLowerCase()} argentina`],
                                 is_active: true,
                             })
                             .select('id, name')
@@ -423,7 +428,7 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                             status: 'created',
                             topicId: newTopic.id,
                             name: newTopic.name,
-                            message: `Tema "${newTopic.name}" creado exitosamente.`,
+                            message: `Tema "${newTopic.name}" creado. Ahora ejecutá runThematicReport con este nombre.`,
                         })
                     },
                 },
