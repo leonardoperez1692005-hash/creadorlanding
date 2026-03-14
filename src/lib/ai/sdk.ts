@@ -4,7 +4,8 @@
 // Drop-in replacement for callGemini/callClaude using Vercel AI SDK.
 // Adds: generateObject (typed), streamText, multi-provider with fallback.
 
-import { generateText, generateObject, streamText, stepCountIs, type CoreMessage } from 'ai'
+import { generateText, generateObject, streamText, stepCountIs } from 'ai'
+import type { ModelMessage } from '@ai-sdk/provider-utils'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
@@ -127,7 +128,7 @@ export async function aiGenerateObject<T>(
  * Use with `useChat()` on the client or `toDataStreamResponse()` in API routes.
  */
 export function aiStreamText(
-    messages: CoreMessage[],
+    messages: ModelMessage[],
     options?: AISDKOptions & {
         tools?: Parameters<typeof streamText>[0]['tools']
         /** Max tool loop steps (default: no tools loop) */

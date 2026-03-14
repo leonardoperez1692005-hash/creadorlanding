@@ -5,7 +5,7 @@
 // sentiment analysis, topics, thematic reports.
 // Uses Vercel AI SDK v6 stopWhen for automatic tool loop.
 
-import { streamText, tool, stepCountIs } from 'ai'
+import { streamText, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { getModel, NO_CENSURA_SYSTEM } from '@/lib/ai/sdk'
 import { createClient } from '@/lib/supabase/server'
@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
         }
 
         // Rate limit: 30 messages/hour
-        const rl = await rateLimitAsync(`intel-chat:${user.id}`, 30, '1h')
-        if (!rl.success) {
+        const rl = await rateLimitAsync(`intel-chat:${user.id}`, { limit: 30, windowSec: 3600 })
+        if (!rl.allowed) {
             return new Response('Rate limit exceeded', { status: 429 })
         }
 
@@ -87,43 +87,33 @@ ${monitorsContext}
 - Sé directo, estratégico, sin rodeos
 - Cuando cites fuentes del RAG, mencioná la fuente original`
 
+        const userId = user.id
+
         const result = streamText({
             model: getModel(),
             messages,
             system: systemPrompt,
             stopWhen: stepCountIs(5),
             tools: {
-                queryRAG: tool({
+                queryRAG: {
                     description:
                         'Busca declaraciones documentadas de un político sobre un tema en la base de conocimiento RAG.',
-                    parameters: z.object({
+                    inputSchema: z.object({
                         politicianHandle: z.string().describe('Handle del político (sin @)'),
                         query: z.string().describe('Tema o pregunta para buscar'),
-                        topK: z.number().optional().default(5).describe('Cantidad de resultados'),
+                        topK: z.number().describe('Cantidad de resultados (default 5)'),
                     }),
-                    execute: async ({
-                        politicianHandle,
-                        query,
-                        topK,
-                    }: {
-                        politicianHandle: string
-                        query: string
-                        topK: number
-                    }) => {
+                    execute: async ({ politicianHandle, query, topK }) => {
                         const chunks = await queryPoliticianStatements(
-                            user.id,
+                            userId,
                             politicianHandle,
                             query,
-                            topK,
+                            topK || 5,
                         )
                         if (chunks.length === 0) {
-                            return {
-                                found: false as const,
-                                message: `No hay declaraciones indexadas de @${politicianHandle} sobre "${query}".`,
-                            }
+                            return `No hay declaraciones indexadas de @${politicianHandle} sobre "${query}". Sugerí al usuario que use la Base RAG para indexar primero.`
                         }
-                        return {
-                            found: true as const,
+                        return JSON.stringify({
                             count: chunks.length,
                             statements: chunks.map((c) => ({
                                 text: c.text,
@@ -132,164 +122,150 @@ ${monitorsContext}
                                 date: String(c.metadata.date),
                                 platform: String(c.metadata.platform),
                             })),
-                        }
+                        })
                     },
-                }),
+                },
 
-                getRivalProfile: tool({
+                getRivalProfile: {
                     description:
                         'Obtiene datos del perfil de un rival monitoreado (handle, nombre, partido, última snapshot).',
-                    parameters: z.object({
+                    inputSchema: z.object({
                         handle: z.string().describe('Handle del rival (sin @)'),
                     }),
-                    execute: async ({ handle }: { handle: string }) => {
+                    execute: async ({ handle }) => {
                         const cleanHandle = handle.replace(/^@/, '').toLowerCase()
 
                         const { data: monitor } = await supabase
                             .from('political_monitors')
                             .select('*')
-                            .eq('user_id', user.id)
+                            .eq('user_id', userId)
                             .eq('handle', cleanHandle)
                             .single()
 
                         if (!monitor) {
-                            return {
-                                found: false as const,
-                                message: `@${handle} no está en los monitores.`,
-                            }
+                            return `@${handle} no está en los monitores del usuario.`
                         }
 
                         const { data: snapshot } = await supabase
                             .from('twitter_profile_snapshots')
                             .select('*')
-                            .eq('user_id', user.id)
+                            .eq('user_id', userId)
                             .eq('handle', cleanHandle)
                             .order('scraped_at', { ascending: false })
                             .limit(1)
                             .single()
 
-                        return {
-                            found: true as const,
+                        return JSON.stringify({
                             monitor: {
-                                handle: monitor.handle as string,
-                                fullName: monitor.full_name as string,
-                                party: monitor.party as string,
-                                role: monitor.role as string,
-                                country: monitor.country as string,
+                                handle: monitor.handle,
+                                fullName: monitor.full_name,
+                                party: monitor.party,
+                                role: monitor.role,
+                                country: monitor.country,
                             },
                             latestSnapshot: snapshot
                                 ? {
-                                      displayName: snapshot.display_name as string,
-                                      bio: snapshot.bio as string,
-                                      followers: snapshot.followers_count as number,
-                                      following: snapshot.following_count as number,
-                                      tweets: snapshot.tweets_count as number,
-                                      location: snapshot.location as string,
-                                      scrapedAt: snapshot.scraped_at as string,
+                                      displayName: snapshot.display_name,
+                                      bio: snapshot.bio,
+                                      followers: snapshot.followers_count,
+                                      following: snapshot.following_count,
+                                      tweets: snapshot.tweets_count,
+                                      location: snapshot.location,
+                                      scrapedAt: snapshot.scraped_at,
                                   }
                                 : null,
-                        }
+                        })
                     },
-                }),
+                },
 
-                getSentiment: tool({
+                getSentiment: {
                     description: 'Obtiene el último termómetro de sentimiento público.',
-                    parameters: z.object({
-                        limit: z.number().optional().default(3).describe('Cantidad de snapshots'),
+                    inputSchema: z.object({
+                        limit: z.number().describe('Cantidad de snapshots (default 3)'),
                     }),
-                    execute: async ({ limit }: { limit: number }) => {
+                    execute: async ({ limit }) => {
                         const { data: snapshots } = await supabase
                             .from('sentiment_snapshots')
                             .select('*')
-                            .eq('user_id', user.id)
+                            .eq('user_id', userId)
                             .order('created_at', { ascending: false })
-                            .limit(limit)
+                            .limit(limit || 3)
 
                         if (!snapshots?.length) {
-                            return {
-                                found: false as const,
-                                message: 'No hay snapshots de sentimiento.',
-                            }
+                            return 'No hay snapshots de sentimiento. El usuario debe ejecutar un análisis de sentimiento primero.'
                         }
 
-                        return {
-                            found: true as const,
-                            snapshots: snapshots.map((s) => ({
-                                overallSentiment: s.overall_sentiment as string,
-                                positivePct: s.positive_pct as number,
-                                negativePct: s.negative_pct as number,
-                                neutralPct: s.neutral_pct as number,
-                                topTopics: s.top_topics as string[],
-                                sampleComments: s.sample_comments as unknown[],
-                                botInflationPct: s.bot_inflation_pct as number,
-                                coordinatedCampaign: s.coordinated_campaign as boolean,
-                                createdAt: s.created_at as string,
+                        return JSON.stringify(
+                            snapshots.map((s) => ({
+                                overallSentiment: s.overall_sentiment,
+                                positivePct: s.positive_pct,
+                                negativePct: s.negative_pct,
+                                neutralPct: s.neutral_pct,
+                                topTopics: s.top_topics,
+                                sampleComments: s.sample_comments,
+                                botInflationPct: s.bot_inflation_pct,
+                                coordinatedCampaign: s.coordinated_campaign,
+                                createdAt: s.created_at,
                             })),
-                        }
+                        )
                     },
-                }),
+                },
 
-                listTopics: tool({
+                listTopics: {
                     description: 'Lista los temas de investigación temática configurados.',
-                    parameters: z.object({}),
+                    inputSchema: z.object({}),
                     execute: async () => {
                         const { data: topics } = await supabase
                             .from('political_topics')
                             .select('name, description, is_active')
-                            .eq('user_id', user.id)
+                            .eq('user_id', userId)
                             .order('created_at', { ascending: false })
 
-                        return {
-                            topics: (topics ?? []).map((t) => ({
-                                name: t.name as string,
-                                description: t.description as string,
-                                active: t.is_active as boolean,
+                        return JSON.stringify(
+                            (topics ?? []).map((t) => ({
+                                name: t.name,
+                                description: t.description,
+                                active: t.is_active,
                             })),
-                        }
+                        )
                     },
-                }),
+                },
 
-                getThematicReport: tool({
+                getThematicReport: {
                     description: 'Obtiene el último reporte temático sobre un tema específico.',
-                    parameters: z.object({
+                    inputSchema: z.object({
                         topicName: z.string().describe('Nombre del tema'),
                     }),
-                    execute: async ({ topicName }: { topicName: string }) => {
+                    execute: async ({ topicName }) => {
                         const { data: reports } = await supabase
                             .from('thematic_reports')
                             .select('*')
-                            .eq('user_id', user.id)
+                            .eq('user_id', userId)
                             .ilike('topic_name', `%${topicName}%`)
                             .order('created_at', { ascending: false })
                             .limit(1)
 
                         if (!reports?.length) {
-                            return {
-                                found: false as const,
-                                message: `No hay reportes sobre "${topicName}".`,
-                            }
+                            return `No hay reportes temáticos sobre "${topicName}". El usuario debe ejecutar una investigación temática primero.`
                         }
 
                         const r = reports[0]
-                        return {
-                            found: true as const,
-                            report: {
-                                topicName: r.topic_name as string,
-                                executiveSummary: r.executive_summary as string,
-                                publicSentiment: r.public_sentiment as unknown,
-                                painPoints: r.pain_points as unknown[],
-                                trends: r.trends as unknown[],
-                                mediaNarrative: r.media_narrative as string,
-                                citizenVoices: r.citizen_voices as string[],
-                                generatedAt: r.created_at as string,
-                            },
-                        }
+                        return JSON.stringify({
+                            topicName: r.topic_name,
+                            executiveSummary: r.executive_summary,
+                            publicSentiment: r.public_sentiment,
+                            painPoints: r.pain_points,
+                            trends: r.trends,
+                            mediaNarrative: r.media_narrative,
+                            citizenVoices: r.citizen_voices,
+                            generatedAt: r.created_at,
+                        })
                     },
-                }),
+                },
             },
         })
 
-        return result.toDataStreamResponse()
+        return result.toUIMessageStreamResponse()
     } catch (err) {
         logger.error('intel-chat', 'Agent chat failed', err)
         return new Response('Internal Server Error', { status: 500 })

@@ -3,33 +3,53 @@
 // =============================================
 // Strategic Chat — AI-powered political advisor
 // =============================================
-// Uses Vercel AI SDK useChat() hook for streaming conversation
+// Uses Vercel AI SDK v6 useChat() hook for streaming conversation
 // with multi-step agent (RAG, profiles, sentiment, topics).
 
-import { useChat } from 'ai/react'
-import { useState, useRef, useEffect } from 'react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport, type UIMessage } from 'ai'
+import { useState, useRef, useEffect, useMemo, type FormEvent } from 'react'
 
 export function StrategicChat() {
     const [isExpanded, setIsExpanded] = useState(false)
+    const [inputValue, setInputValue] = useState('')
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    const { messages, input, handleInputChange, handleSubmit, isLoading, error, reload, stop } =
-        useChat({
-            api: '/api/intelligence/chat',
-            initialMessages: [
-                {
-                    id: 'welcome',
-                    role: 'assistant',
-                    content:
-                        '¡Hola! Soy tu asesor estratégico de campaña. Puedo consultar la base RAG de rivales, analizar sentimiento público, revisar reportes temáticos y generar contenido. ¿En qué te ayudo?',
-                },
-            ],
-        })
+    const transport = useMemo(() => new DefaultChatTransport({ api: '/api/intelligence/chat' }), [])
+
+    const { messages, sendMessage, status, error, regenerate, stop, setMessages } = useChat({
+        transport,
+        messages: [
+            {
+                id: 'welcome',
+                role: 'assistant',
+                parts: [
+                    {
+                        type: 'text',
+                        text: '¡Hola! Soy tu asesor estratégico de campaña. Puedo consultar la base RAG de rivales, analizar sentimiento público, revisar reportes temáticos y generar contenido. ¿En qué te ayudo?',
+                    },
+                ],
+            },
+        ] as UIMessage[],
+    })
+
+    const isLoading = status === 'submitted' || status === 'streaming'
 
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault()
+        if (!inputValue.trim() || isLoading) return
+        sendMessage({ text: inputValue })
+        setInputValue('')
+    }
+
+    const sendQuickAction = (text: string) => {
+        sendMessage({ text })
+    }
 
     const quickActions = [
         { label: '¿Qué dijo el rival sobre seguridad?', icon: '🔍' },
@@ -103,25 +123,38 @@ export function StrategicChat() {
                                     : 'bg-white/5 text-gray-200 border border-white/5'
                             }`}
                         >
-                            {/* Show tool invocations */}
-                            {message.toolInvocations?.map((ti, idx) => (
-                                <div
-                                    key={idx}
-                                    className="mb-2 flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-2.5 py-1.5 text-xs text-indigo-300"
-                                >
-                                    <svg
-                                        className="h-3 w-3 animate-spin"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
+                            {/* Show tool invocations from message parts */}
+                            {message.parts
+                                .filter((p) => p.type === 'tool-invocation')
+                                .map((p, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="mb-2 flex items-center gap-1.5 rounded-lg bg-indigo-500/10 px-2.5 py-1.5 text-xs text-indigo-300"
                                     >
-                                        <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
-                                    </svg>
-                                    {getToolLabel(ti.toolName)}
-                                </div>
-                            ))}
-                            <div className="whitespace-pre-wrap">{message.content}</div>
+                                        <svg
+                                            className="h-3 w-3 animate-spin"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                                        </svg>
+                                        {getToolLabel(
+                                            'toolName' in p
+                                                ? (p as { toolName: string }).toolName
+                                                : '',
+                                        )}
+                                    </div>
+                                ))}
+                            {/* Render text parts */}
+                            {message.parts
+                                .filter((p) => p.type === 'text')
+                                .map((p, idx) => (
+                                    <div key={idx} className="whitespace-pre-wrap">
+                                        {p.type === 'text' ? p.text : ''}
+                                    </div>
+                                ))}
                         </div>
                     </div>
                 ))}
@@ -148,23 +181,7 @@ export function StrategicChat() {
                         {quickActions.map((action) => (
                             <button
                                 key={action.label}
-                                onClick={() => {
-                                    handleSubmit(undefined, {
-                                        data: { content: action.label },
-                                    })
-                                    // Manually set input
-                                    const fakeEvent = {
-                                        target: { value: action.label },
-                                    } as React.ChangeEvent<HTMLInputElement>
-                                    handleInputChange(fakeEvent)
-                                    // Then submit
-                                    setTimeout(() => {
-                                        const form = document.getElementById(
-                                            'strategic-chat-form',
-                                        ) as HTMLFormElement
-                                        form?.requestSubmit()
-                                    }, 50)
-                                }}
+                                onClick={() => sendQuickAction(action.label)}
                                 className="rounded-lg bg-white/5 px-2.5 py-2 text-left text-xs text-gray-300 hover:bg-white/10 transition-colors"
                             >
                                 <span className="mr-1">{action.icon}</span>
@@ -179,22 +196,18 @@ export function StrategicChat() {
             {error && (
                 <div className="mx-4 mb-2 flex items-center justify-between rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
                     <span>Error: {error.message}</span>
-                    <button onClick={() => reload()} className="underline hover:text-red-300">
+                    <button onClick={() => regenerate()} className="underline hover:text-red-300">
                         Reintentar
                     </button>
                 </div>
             )}
 
             {/* Input */}
-            <form
-                id="strategic-chat-form"
-                onSubmit={handleSubmit}
-                className="border-t border-white/10 px-3 py-3"
-            >
+            <form onSubmit={handleSubmit} className="border-t border-white/10 px-3 py-3">
                 <div className="flex items-center gap-2">
                     <input
-                        value={input}
-                        onChange={handleInputChange}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Preguntá sobre tus rivales, temas, estrategia..."
                         className="flex-1 rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none ring-1 ring-white/10 focus:ring-purple-500/50 transition-all"
                         disabled={isLoading}
@@ -202,7 +215,7 @@ export function StrategicChat() {
                     {isLoading ? (
                         <button
                             type="button"
-                            onClick={stop}
+                            onClick={() => stop()}
                             className="rounded-xl bg-red-500/20 p-2.5 text-red-400 hover:bg-red-500/30 transition-colors"
                         >
                             <svg
@@ -218,7 +231,7 @@ export function StrategicChat() {
                     ) : (
                         <button
                             type="submit"
-                            disabled={!input.trim()}
+                            disabled={!inputValue.trim()}
                             className="rounded-xl bg-purple-600 p-2.5 text-white transition-colors hover:bg-purple-500 disabled:opacity-30 disabled:hover:bg-purple-600"
                         >
                             <svg
