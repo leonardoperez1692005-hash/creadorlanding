@@ -59,9 +59,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json(result)
     } catch (err) {
-        logger.error('video-repurposer', 'Clip endpoint failed', err)
+        logger.error('video-clip', 'Clip endpoint failed', err)
         return NextResponse.json(
-            { error: `Error creando clip: ${(err as Error).message}` },
+            { error: 'Error creando clip. Intentá de nuevo.' },
             { status: 500 },
         )
     }
@@ -87,9 +87,9 @@ export async function GET(req: Request) {
         const result = await checkClipStatus(renderId)
         return NextResponse.json(result)
     } catch (err) {
-        logger.error('video-repurposer', 'Clip status check failed', err)
+        logger.error('video-clip', 'Clip status check failed', err)
         return NextResponse.json(
-            { error: `Error verificando clip: ${(err as Error).message}` },
+            { error: 'Error verificando clip. Intentá de nuevo.' },
             { status: 500 },
         )
     }

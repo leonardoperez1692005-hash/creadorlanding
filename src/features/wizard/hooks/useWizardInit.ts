@@ -308,7 +308,24 @@ function applyBrandDefaults(
 ) {
     const merged: DesignColors = {}
     if (branding.colors && typeof branding.colors === 'object') {
-        Object.assign(merged, branding.colors)
+        const SAFE_COLOR_KEYS = new Set([
+            'primary',
+            'secondary',
+            'accent',
+            'background',
+            'text',
+            'heading',
+            'muted',
+            'border',
+            'fontHeading',
+            'fontBody',
+            'borderRadius',
+        ])
+        for (const [k, v] of Object.entries(branding.colors as Record<string, unknown>)) {
+            if (SAFE_COLOR_KEYS.has(k) && typeof v === 'string') {
+                ;(merged as Record<string, string>)[k] = v
+            }
+        }
     }
     const typo = branding.typography as { headings?: string; body?: string } | null
     if (typo?.headings) merged.fontHeading = typo.headings

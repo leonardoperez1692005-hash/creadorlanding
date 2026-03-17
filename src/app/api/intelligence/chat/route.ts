@@ -844,7 +844,8 @@ Respondé SOLO con un JSON válido: { "sectionId": { ...campos }, ... }`
                                 message: `La landing "${name}" fue creada con ${sections.length} secciones. El usuario puede verla y editarla en la sección Proyectos del panel.`,
                             })
                         } catch (err) {
-                            return `Error creando landing: ${(err as Error).message}`
+                            logger.error('chat-landing', 'Error creating landing from chat', err)
+                            return 'Error creando landing. Intentá de nuevo.'
                         }
                     },
                 },

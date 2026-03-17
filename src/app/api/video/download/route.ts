@@ -69,9 +69,9 @@ export async function POST(req: Request) {
             hasTranscript: false,
         })
     } catch (err) {
-        logger.error('video-repurposer', 'Video info/transcript failed', err)
+        logger.error('video-download', 'Video info/transcript failed', err)
         return NextResponse.json(
-            { error: `Error obteniendo video: ${(err as Error).message}` },
+            { error: 'Error obteniendo video. Intentá de nuevo.' },
             { status: 500 },
         )
     }

@@ -8,6 +8,7 @@
 import { aiGenerateText, aiGenerateObject, getModel } from '@/lib/ai/sdk'
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/shared/lib/logger'
 
 export const maxDuration = 30
 
@@ -70,10 +71,11 @@ export async function POST(req: NextRequest) {
             text,
         })
     } catch (err) {
+        logger.error('test-ai-sdk', 'Test generation failed', err)
         return NextResponse.json(
             {
                 success: false,
-                error: (err as Error).message,
+                error: 'Error en test AI SDK',
             },
             { status: 500 },
         )

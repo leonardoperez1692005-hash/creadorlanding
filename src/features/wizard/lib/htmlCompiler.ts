@@ -619,7 +619,9 @@ ${
   document.querySelectorAll('.video-wrap[data-yt]').forEach(function(wrap){
     wrap.addEventListener('click',function(){
       var id=wrap.getAttribute('data-yt');
-      wrap.innerHTML='<iframe src="https://www.youtube.com/embed/'+id+'?autoplay=1&rel=0" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen style="width:100%;height:100%;border:0;border-radius:22px"></iframe>';
+      if(!id||!/^[a-zA-Z0-9_-]{11}$/.test(id))return;
+      var f=document.createElement('iframe');f.src='https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0';f.frameBorder='0';f.allow='accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture';f.allowFullscreen=true;f.style.cssText='width:100%;height:100%;border:0;border-radius:22px';
+      wrap.textContent='';wrap.appendChild(f);
       wrap.style.cursor='default';
     });
   });

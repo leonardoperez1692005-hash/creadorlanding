@@ -62,10 +62,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ analysis })
     } catch (err) {
-        logger.error('video-repurposer', 'Analysis endpoint failed', err)
-        return NextResponse.json(
-            { error: `Error en análisis: ${(err as Error).message}` },
-            { status: 500 },
-        )
+        logger.error('video-analyze', 'Analysis endpoint failed', err)
+        return NextResponse.json({ error: 'Error en análisis. Intentá de nuevo.' }, { status: 500 })
     }
 }

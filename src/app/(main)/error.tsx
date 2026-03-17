@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { AlertTriangle, RotateCcw } from 'lucide-react'
+import { logger } from '@/shared/lib/logger'
 
 export default function MainError({
     error,
@@ -11,7 +12,7 @@ export default function MainError({
     reset: () => void
 }) {
     useEffect(() => {
-        console.error('[MainError]', error.digest, error.message)
+        logger.error('MainError', `digest=${error.digest ?? 'none'} message=${error.message}`)
     }, [error])
 
     return (

@@ -15,13 +15,7 @@ import type { SentimentImpulse } from '../brain'
 import { collectAllSources, preSelectSamples, extractAllItems } from '../sentimentCollectors'
 import type { ExtractedItem } from '../sentimentCollectors'
 
-async function getAuthUserId(): Promise<string | null> {
-    const supabase = await createClient()
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-    return user?.id ?? null
-}
+import { getAuthUserId } from './auth'
 
 export type SentimentActionResult<T = null> =
     | { success: true; data: T }
@@ -382,9 +376,14 @@ export async function analyzeSentimentAction(
         try {
             counts = await classifyItemsInBatches(allItems, politicianName, searchTopic)
         } catch (batchErr) {
-            const msg = (batchErr as Error).message?.substring(0, 200) ?? 'unknown'
-            logger.error('sentiment-action', `Batch classification failed [${sourceLog}]: ${msg}`)
-            return { success: false, error: `Error clasificando [${sourceLog}]: ${msg}` }
+            logger.error(
+                'sentiment-action',
+                `Batch classification failed [${sourceLog}]: ${(batchErr as Error).message}`,
+            )
+            return {
+                success: false,
+                error: 'Error durante la clasificación. Intentá de nuevo en unos momentos.',
+            }
         }
 
         // PASO 3: Calcular porcentajes PROGRAMÁTICAMENTE

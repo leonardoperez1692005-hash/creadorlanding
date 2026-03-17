@@ -116,6 +116,6 @@ export async function GET(request: Request) {
         })
     } catch (e) {
         logger.error('political-intel-cron', 'Cron failed', e)
-        return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+        return NextResponse.json({ error: 'Error interno' }, { status: 500 })
     }
 }

@@ -16,9 +16,18 @@ const leadSchema = z.object({
     message: z.string().max(2000).default(''),
 })
 
+/** Allowed origins for lead capture — public landings hosted on Vercel or custom domains */
+const ALLOWED_ORIGINS = new Set(['https://brandvortix.com', 'https://www.brandvortix.com'])
+
 function getCorsHeaders(origin?: string | null) {
+    // Allow Vercel preview URLs and configured domains
+    const isAllowed =
+        origin &&
+        (ALLOWED_ORIGINS.has(origin) ||
+            origin.endsWith('.vercel.app') ||
+            origin.startsWith('http://localhost:'))
     return {
-        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Origin': isAllowed ? origin! : 'https://brandvortix.com',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
     }
