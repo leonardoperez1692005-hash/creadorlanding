@@ -10,12 +10,10 @@ import Image from 'next/image'
 import {
     LayoutDashboard,
     MonitorPlay,
-    Brain,
     Shield,
     LogOut,
     ChevronRight,
     Users,
-    Palette,
     LayoutGrid,
     Menu,
     X,
@@ -32,15 +30,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/brand', label: 'Identidad de Marca', icon: Palette },
     { href: '/templates', label: 'Plantillas', icon: LayoutGrid },
     { href: '/wizard', label: 'Nueva Landing', icon: MonitorPlay },
-    {
-        href: '/brandvortix',
-        label: 'BrandVortix',
-        icon: Brain,
-        matchPaths: ['/market-intel', '/attack-plan'],
-    },
     { href: '/intelligence', label: 'Intel Política', icon: Radar },
     { href: '/leads', label: 'Leads Globales', icon: Users },
 ]
@@ -52,10 +43,8 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
 // Map nav href → module name for permission filtering
 const HREF_TO_MODULE: Record<string, string> = {
     '/dashboard': 'dashboard',
-    '/brand': 'brand',
     '/templates': 'templates',
     '/wizard': 'wizard',
-    '/brandvortix': 'brandvortix',
     '/intelligence': 'intelligence',
     '/leads': 'leads',
 }

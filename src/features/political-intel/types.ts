@@ -230,6 +230,14 @@ export interface PoliticalSnapshotMeta {
     estimatedCost: string
     serpQueriesRun: number
     changesDetected: number
+    /** Total sources across all platforms (SERP + Reddit + YouTube + tweets) */
+    totalSources?: number
+    /** Number of tweets scraped via SocialData */
+    twitterSources?: number
+    /** Number of Reddit posts + comments scraped */
+    redditSources?: number
+    /** Number of YouTube comments scraped */
+    youtubeSources?: number
 }
 
 // --- Report History ---
@@ -327,6 +335,25 @@ export interface ThematicReport {
     existingProposals: ThematicExistingProposal[]
     mediaNarrative: string
     citizenVoices: string[]
+    /** Multi-source metadata — populated after Gemini analysis */
+    sourceMeta?: {
+        total: number
+        breakdown: {
+            serp: number
+            reddit: number
+            youtube: number
+            trends: number
+            twitter: number
+        }
+        sources: Array<{
+            text: string
+            sourceUrl: string
+            sourceTitle: string
+            date: string
+            sourceType: string
+            platform: string
+        }>
+    }
 }
 
 /** Thematic angles reuse PoliticalAttackVector — same structure, different semantics:

@@ -8,11 +8,9 @@ import {
     extractColorsFromLogoAction,
     getBrandIdentityAction,
 } from '../actions'
-import { Loader2, Palette, Box, Target, Database } from 'lucide-react'
-import { BusinessDataSection } from './BusinessDataSection'
+import { Loader2, Palette, Box } from 'lucide-react'
 import { getGoogleFontsUrl, type ThemePreset } from '@/features/wizard/config/themes'
 import { VisualIdentityTab } from './VisualIdentityTab'
-import { StrategyTab } from './StrategyTab'
 import { OnboardingPreview } from './OnboardingPreview'
 import type { OnboardingFormData } from './onboarding-constants'
 
@@ -26,7 +24,7 @@ export function OnboardingFlow() {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [previewTheme, setPreviewTheme] = useState<'light' | 'dark'>('light')
-    const [activeTab, setActiveTab] = useState<'visual' | 'strategy' | 'business'>('visual')
+    const [activeTab] = useState<'visual'>('visual')
 
     const [formData, setFormData] = useState<OnboardingFormData>({
         brand_name: '',
@@ -230,26 +228,11 @@ export function OnboardingFlow() {
                         </div>
                     )}
 
-                    {/* ── Tabs ── */}
+                    {/* ── Header ── */}
                     <div className="flex mb-4 bg-[#111827]/50 border border-[#1F2937] rounded-xl p-1">
-                        <button
-                            onClick={() => setActiveTab('visual')}
-                            className={`flex-1 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'visual' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'text-gray-500 hover:text-gray-300 border border-transparent'}`}
-                        >
+                        <div className="flex-1 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
                             <Palette className="w-3.5 h-3.5" /> Identidad Visual
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('strategy')}
-                            className={`flex-1 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'strategy' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'text-gray-500 hover:text-gray-300 border border-transparent'}`}
-                        >
-                            <Target className="w-3.5 h-3.5" /> Estrategia
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('business')}
-                            className={`flex-1 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-all ${activeTab === 'business' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'text-gray-500 hover:text-gray-300 border border-transparent'}`}
-                        >
-                            <Database className="w-3.5 h-3.5" /> Datos del Negocio
-                        </button>
+                        </div>
                     </div>
 
                     {/* ── Scrollable content ── */}
@@ -270,16 +253,8 @@ export function OnboardingFlow() {
                             />
                         )}
 
-                        {/* ═══════ TAB: ESTRATEGIA ═══════ */}
-                        {activeTab === 'strategy' && (
-                            <StrategyTab formData={formData} setFormData={setFormData} />
-                        )}
-
-                        {/* ═══════ TAB: DATOS DEL NEGOCIO ═══════ */}
-                        {activeTab === 'business' && <BusinessDataSection />}
-
-                        {/* ── Save Button (visible on visual & strategy tabs) ── */}
-                        {activeTab !== 'business' && (
+                        {/* ── Save Button ── */}
+                        {
                             <div className="pt-2 pb-4">
                                 <button
                                     onClick={handleSubmit}
@@ -294,7 +269,7 @@ export function OnboardingFlow() {
                                     Guardar cambios
                                 </button>
                             </div>
-                        )}
+                        }
                     </div>
                     {/* end scrollable */}
                 </div>

@@ -8,7 +8,41 @@
 
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
-import { useState, useRef, useEffect, useMemo, type FormEvent } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, type FormEvent } from 'react'
+
+const CHAT_STORAGE_KEY = 'strategic-chat-messages'
+
+const WELCOME_MESSAGE: UIMessage = {
+    id: 'welcome',
+    role: 'assistant',
+    parts: [
+        {
+            type: 'text',
+            text: '¡Hola! Soy tu asesor estratégico de campaña. Puedo consultar la base RAG de rivales, analizar sentimiento público, revisar reportes temáticos y generar contenido. ¿En qué te ayudo?',
+        },
+    ],
+}
+
+function loadPersistedMessages(): UIMessage[] {
+    try {
+        const stored = localStorage.getItem(CHAT_STORAGE_KEY)
+        if (stored) {
+            const parsed = JSON.parse(stored) as UIMessage[]
+            if (parsed.length > 0) return parsed
+        }
+    } catch {
+        /* ignore */
+    }
+    return [WELCOME_MESSAGE]
+}
+
+function persistMessages(messages: UIMessage[]) {
+    try {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages))
+    } catch {
+        /* ignore quota errors */
+    }
+}
 
 export function StrategicChat() {
     const [isExpanded, setIsExpanded] = useState(false)
@@ -17,28 +51,31 @@ export function StrategicChat() {
 
     const transport = useMemo(() => new DefaultChatTransport({ api: '/api/intelligence/chat' }), [])
 
+    const initialMessages = useMemo(() => loadPersistedMessages(), [])
+
     const { messages, sendMessage, status, error, regenerate, stop, setMessages } = useChat({
         transport,
-        messages: [
-            {
-                id: 'welcome',
-                role: 'assistant',
-                parts: [
-                    {
-                        type: 'text',
-                        text: '¡Hola! Soy tu asesor estratégico de campaña. Puedo consultar la base RAG de rivales, analizar sentimiento público, revisar reportes temáticos y generar contenido. ¿En qué te ayudo?',
-                    },
-                ],
-            },
-        ] as UIMessage[],
+        messages: initialMessages,
     })
 
     const isLoading = status === 'submitted' || status === 'streaming'
+
+    // Persist messages to localStorage on every change
+    useEffect(() => {
+        if (messages.length > 0) {
+            persistMessages(messages)
+        }
+    }, [messages])
 
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [messages])
+
+    const handleClearChat = useCallback(() => {
+        setMessages([WELCOME_MESSAGE])
+        localStorage.removeItem(CHAT_STORAGE_KEY)
+    }, [setMessages])
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault()
@@ -90,23 +127,48 @@ export function StrategicChat() {
                     <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-sm font-semibold text-white">Asesor Estratégico IA</span>
                 </div>
-                <button
-                    onClick={() => setIsExpanded(false)}
-                    className="rounded-lg p-1 text-gray-400 hover:bg-white/10 hover:text-white"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                <div className="flex items-center gap-1">
+                    {messages.length > 1 && (
+                        <button
+                            onClick={handleClearChat}
+                            className="rounded-lg p-1 text-gray-400 hover:bg-white/10 hover:text-white"
+                            title="Nueva conversación"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4h8v2" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                            </svg>
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setIsExpanded(false)}
+                        className="rounded-lg p-1 text-gray-400 hover:bg-white/10 hover:text-white"
                     >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </button>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Messages */}

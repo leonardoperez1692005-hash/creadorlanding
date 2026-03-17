@@ -3,7 +3,12 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getUserPermissions } from '@/lib/permissions'
 import { LazyPoliticalIntelClient } from '@/shared/components/ClientOnly'
-import type { PoliticalMonitor, PoliticalReportHistoryItem } from '@/features/political-intel/types'
+import type {
+    PoliticalMonitor,
+    PoliticalReportHistoryItem,
+    PoliticalIntelReport,
+    PoliticalSnapshotMeta,
+} from '@/features/political-intel/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,10 +103,41 @@ export default async function IntelligencePage() {
         })
     }
 
+    // Load most recent monitoring report so dashboard is immediately available (no flash)
+    let initialReport: {
+        report: PoliticalIntelReport
+        meta: PoliticalSnapshotMeta | null
+        reportId: string
+    } | null = null
+    const latestMonitoring = initialHistory.find((h) => h.reportType === 'report')
+    if (latestMonitoring) {
+        const { data: reportRow } = await supabase
+            .from('political_intel_reports')
+            .select('id, content, attack_vectors')
+            .eq('id', latestMonitoring.id)
+            .single()
+
+        if (reportRow?.content) {
+            const rawContent = reportRow.content as Record<string, unknown>
+            const embeddedMeta = (rawContent.__meta as PoliticalSnapshotMeta) ?? null
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { __meta: _metaExtracted, ...reportData } = rawContent as Record<
+                string,
+                unknown
+            > & { __meta?: unknown }
+            initialReport = {
+                report: reportData as unknown as PoliticalIntelReport,
+                meta: embeddedMeta,
+                reportId: reportRow.id,
+            }
+        }
+    }
+
     return (
         <LazyPoliticalIntelClient
             initialMonitors={initialMonitors}
             initialHistory={initialHistory}
+            initialReport={initialReport}
             allowedIntelViews={allowedIntelViews}
         />
     )

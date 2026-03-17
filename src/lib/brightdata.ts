@@ -80,9 +80,16 @@ export async function scrapeUrl(
 /**
  * Run a Google SERP search via Bright Data.
  * Retries once on failure with exponential backoff.
+ * @param timeRange — 'w' = última semana (default), 'm' = último mes, '' = sin filtro
  */
-export async function serpSearch(query: string, country = 'ar', maxChars = 2000): Promise<string> {
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=es&gl=${country}&num=8`
+export async function serpSearch(
+    query: string,
+    country = 'ar',
+    maxChars = 2000,
+    timeRange = 'w',
+): Promise<string> {
+    const tbsParam = timeRange ? `&tbs=qdr:${timeRange}` : ''
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=es&gl=${country}&num=10${tbsParam}`
 
     const text = await fetchWithRetry(
         {

@@ -5,8 +5,22 @@ import { getUserPermissions, hasReachedLimit } from '@/lib/permissions'
 import { logger } from '@/shared/lib/logger'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { generateImage } from '@/lib/ai/imageGenerator'
-import { generateImageInputSchema, brandStyleInputSchema, imageFiltersSchema } from './schemas'
-import type { ActionResult, BrandImageStyle, GeneratedImage, ImageHistoryItem } from './types'
+import {
+    generateImageInputSchema,
+    brandStyleInputSchema,
+    imageFiltersSchema,
+    suggestCompositionTextSchema,
+    compositionDataSchema,
+    candidatePhotoLabelSchema,
+} from './schemas'
+import type {
+    ActionResult,
+    BrandImageStyle,
+    CandidatePhoto,
+    CompositionTextSuggestion,
+    GeneratedImage,
+    ImageHistoryItem,
+} from './types'
 import { loadCampaignBrain, buildBrainCompactContext } from '@/features/political-intel/brain'
 
 const FEATURE = 'image-studio'
@@ -221,7 +235,9 @@ export async function listImagesAction(
 
         let query = serviceClient
             .from('generated_images')
-            .select('id, platform, prompt, storage_url, tags, is_favorite, created_at')
+            .select(
+                'id, platform, prompt, storage_url, tags, is_favorite, generation_mode, created_at',
+            )
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(f.limit ?? 50)
@@ -251,6 +267,7 @@ export async function listImagesAction(
                     storageUrl: row.storage_url,
                     tags: (row.tags as string[]) ?? [],
                     isFavorite: row.is_favorite,
+                    generationMode: row.generation_mode ?? 'ai',
                     createdAt: row.created_at,
                 }),
             ),
@@ -403,6 +420,391 @@ Respondé SOLO con el prompt mejorado, sin explicaciones. Máximo 500 caracteres
     }
 }
 
+// ─── 8. Upload Candidate Photo ────────────────────────
+
+/** Sube una foto real del candidato a Storage (valida magic bytes PNG/JPG/WebP, máx 10MB). */
+export async function uploadCandidatePhotoAction(
+    formData: FormData,
+): Promise<ActionResult<CandidatePhoto>> {
+    try {
+        const { user } = await getUser()
+        const serviceClient = createServiceClient()
+
+        const file = formData.get('file') as File | null
+        if (!file) return { success: false, error: 'No se subió archivo.' }
+
+        // 1. Validate size (10MB)
+        const maxSize = 10 * 1024 * 1024
+        if (file.size > maxSize) {
+            return { success: false, error: 'La foto no puede pesar más de 10MB.' }
+        }
+
+        // 2. Validate file type via magic bytes
+        const header = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+        const isPNG =
+            header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47
+        const isJPEG = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff
+        const isWebP =
+            header[0] === 0x52 &&
+            header[1] === 0x49 &&
+            header[2] === 0x46 &&
+            header[3] === 0x46 &&
+            header[8] === 0x57 &&
+            header[9] === 0x45 &&
+            header[10] === 0x42 &&
+            header[11] === 0x50
+        if (!isPNG && !isJPEG && !isWebP) {
+            return { success: false, error: 'Formato no soportado. Usá PNG, JPG o WebP.' }
+        }
+
+        // 3. Parse optional label/tags
+        const labelRaw = formData.get('label') as string | null
+        const tagsRaw = formData.get('tags') as string | null
+        const parsed = candidatePhotoLabelSchema.safeParse({
+            label: labelRaw ?? '',
+            tags: tagsRaw ? JSON.parse(tagsRaw) : [],
+        })
+        const label = parsed.success ? parsed.data.label : ''
+        const tags = parsed.success ? parsed.data.tags : []
+
+        // 4. Width/height from form (sent by client after image load)
+        const width = parseInt(formData.get('width') as string) || 0
+        const height = parseInt(formData.get('height') as string) || 0
+
+        // 5. Upload to Storage
+        const ext = file.name.split('.').pop() ?? 'jpg'
+        const storagePath = `${user.id}/${Date.now()}.${ext}`
+
+        const { error: uploadError } = await serviceClient.storage
+            .from('candidate-photos')
+            .upload(storagePath, file, {
+                contentType: file.type || 'image/jpeg',
+                upsert: false,
+            })
+
+        if (uploadError) {
+            logger.error(FEATURE, 'Candidate photo upload failed', uploadError)
+            return { success: false, error: `Error subiendo foto: ${uploadError.message}` }
+        }
+
+        const { data: publicUrlData } = serviceClient.storage
+            .from('candidate-photos')
+            .getPublicUrl(storagePath)
+
+        // 6. Save record
+        const { data: record, error: dbError } = await serviceClient
+            .from('candidate_photos')
+            .insert({
+                user_id: user.id,
+                storage_url: publicUrlData.publicUrl,
+                storage_path: storagePath,
+                label,
+                tags,
+                width,
+                height,
+            })
+            .select('*')
+            .single()
+
+        if (dbError) {
+            logger.error(FEATURE, 'Candidate photo DB insert failed', dbError)
+            return { success: false, error: 'Error guardando registro de foto' }
+        }
+
+        logger.info(FEATURE, 'Candidate photo uploaded', { photoId: record.id })
+        return { success: true, data: mapCandidatePhoto(record) }
+    } catch (e) {
+        logger.error(FEATURE, 'uploadCandidatePhotoAction failed', e)
+        return { success: false, error: (e as Error).message }
+    }
+}
+
+// ─── 9. List Candidate Photos ─────────────────────────
+
+/** Lista las fotos reales del candidato (ordenadas por fecha, más reciente primero). */
+export async function listCandidatePhotosAction(): Promise<ActionResult<CandidatePhoto[]>> {
+    try {
+        const { user } = await getUser()
+        const serviceClient = createServiceClient()
+
+        const { data, error } = await serviceClient
+            .from('candidate_photos')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+
+        if (error) {
+            logger.error(FEATURE, 'listCandidatePhotos failed', error)
+            return { success: false, error: 'Error listando fotos del candidato' }
+        }
+
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        return { success: true, data: ((data ?? []) as any[]).map(mapCandidatePhoto) }
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+    } catch (e) {
+        logger.error(FEATURE, 'listCandidatePhotosAction failed', e)
+        return { success: false, error: (e as Error).message }
+    }
+}
+
+// ─── 10. Delete Candidate Photo ───────────────────────
+
+/** Elimina una foto del candidato de Storage y DB. */
+export async function deleteCandidatePhotoAction(
+    photoId: string,
+): Promise<ActionResult<undefined>> {
+    try {
+        const { user } = await getUser()
+        const serviceClient = createServiceClient()
+
+        const { data: photo, error: fetchError } = await serviceClient
+            .from('candidate_photos')
+            .select('storage_path')
+            .eq('id', photoId)
+            .eq('user_id', user.id)
+            .single()
+
+        if (fetchError || !photo) {
+            return { success: false, error: 'Foto no encontrada' }
+        }
+
+        await serviceClient.storage.from('candidate-photos').remove([photo.storage_path])
+
+        const { error: deleteError } = await serviceClient
+            .from('candidate_photos')
+            .delete()
+            .eq('id', photoId)
+            .eq('user_id', user.id)
+
+        if (deleteError) {
+            logger.error(FEATURE, 'deleteCandidatePhoto DB failed', deleteError)
+            return { success: false, error: 'Error eliminando foto' }
+        }
+
+        logger.info(FEATURE, 'Candidate photo deleted', { photoId })
+        return { success: true, data: undefined }
+    } catch (e) {
+        logger.error(FEATURE, 'deleteCandidatePhotoAction failed', e)
+        return { success: false, error: (e as Error).message }
+    }
+}
+
+// ─── 11. Set Primary Photo ────────────────────────────
+
+/** Marca una foto como la principal del candidato (desmarca las demás). */
+export async function setPrimaryPhotoAction(
+    photoId: string,
+): Promise<ActionResult<{ id: string }>> {
+    try {
+        const { user } = await getUser()
+        const serviceClient = createServiceClient()
+
+        // Reset all photos for this user
+        await serviceClient
+            .from('candidate_photos')
+            .update({ is_primary: false })
+            .eq('user_id', user.id)
+
+        // Set the selected one as primary
+        const { error } = await serviceClient
+            .from('candidate_photos')
+            .update({ is_primary: true })
+            .eq('id', photoId)
+            .eq('user_id', user.id)
+
+        if (error) {
+            logger.error(FEATURE, 'setPrimaryPhoto failed', error)
+            return { success: false, error: 'Error marcando foto como principal' }
+        }
+
+        return { success: true, data: { id: photoId } }
+    } catch (e) {
+        logger.error(FEATURE, 'setPrimaryPhotoAction failed', e)
+        return { success: false, error: (e as Error).message }
+    }
+}
+
+// ─── 12. Suggest Composition Text ─────────────────────
+
+/** Usa Gemini para sugerir textos (headline, subtitle, slogan) basados en el contexto de campaña. */
+export async function suggestCompositionTextAction(
+    input: unknown,
+): Promise<ActionResult<CompositionTextSuggestion>> {
+    try {
+        const { supabase, user } = await getUser()
+
+        const parsed = suggestCompositionTextSchema.safeParse(input)
+        if (!parsed.success) {
+            return { success: false, error: parsed.error.issues[0]?.message ?? 'Input inválido' }
+        }
+
+        const { intent, templateId, platform } = parsed.data
+
+        // Rate limit: 20 suggestions per hour
+        const rl = await rateLimitAsync(`comp-text:${user.id}`, { limit: 20, windowSec: 3600 })
+        if (!rl.allowed) {
+            return { success: false, error: 'Límite de sugerencias alcanzado. Intentá más tarde.' }
+        }
+
+        const { callGemini } = await import('@/lib/gemini')
+
+        // Load brain for campaign context
+        const brain = await loadCampaignBrain(supabase, user.id)
+        const brainHint = brain.campaign ? buildBrainCompactContext(brain) : ''
+
+        const systemPrompt = `Sos un experto en comunicación política y diseño gráfico.
+Generá textos para una composición de imagen de campaña.
+Template: ${templateId}
+Plataforma: ${platform}
+${brainHint ? `Contexto de campaña: ${brainHint}` : ''}
+
+Respondé SOLO con un JSON válido con esta estructura exacta:
+{"headline":"...", "subtitle":"...", "attribution":"...", "slogan":"..."}
+
+Reglas:
+- headline: máximo 60 caracteres, impactante y directo
+- subtitle: máximo 120 caracteres, complementa el headline
+- attribution: máximo 60 caracteres, nombre del candidato o partido
+- slogan: máximo 40 caracteres, frase de campaña
+- Usá el tono y estilo de la campaña si hay contexto disponible`
+
+        const result = await callGemini(`${systemPrompt}\n\nIntención del usuario: ${intent}`, {
+            maxTokens: 300,
+            temperature: 0.7,
+        })
+
+        // Parse JSON from response (depth-counting to avoid greedy regex issues)
+        const jsonStart = result.indexOf('{')
+        if (jsonStart === -1) {
+            return { success: false, error: 'Error parseando respuesta de IA' }
+        }
+        let depth = 0
+        let jsonEnd = -1
+        for (let i = jsonStart; i < result.length; i++) {
+            if (result[i] === '{') depth++
+            else if (result[i] === '}') {
+                depth--
+                if (depth === 0) {
+                    jsonEnd = i
+                    break
+                }
+            }
+        }
+        if (jsonEnd === -1) {
+            return { success: false, error: 'Error parseando respuesta de IA' }
+        }
+
+        const suggestion = JSON.parse(
+            result.slice(jsonStart, jsonEnd + 1),
+        ) as CompositionTextSuggestion
+
+        return {
+            success: true,
+            data: {
+                headline: (suggestion.headline ?? '').slice(0, 200),
+                subtitle: (suggestion.subtitle ?? '').slice(0, 500),
+                attribution: (suggestion.attribution ?? '').slice(0, 200),
+                slogan: (suggestion.slogan ?? '').slice(0, 200),
+            },
+        }
+    } catch (e) {
+        logger.error(FEATURE, 'suggestCompositionTextAction failed', e)
+        return { success: false, error: (e as Error).message }
+    }
+}
+
+// ─── 13. Save Composed Image ──────────────────────────
+
+/** Guarda una imagen compuesta (PNG del canvas) en Storage con generation_mode:'composition'. */
+export async function saveComposedImageAction(
+    formData: FormData,
+): Promise<ActionResult<GeneratedImage>> {
+    try {
+        const { user } = await getUser()
+        const serviceClient = createServiceClient()
+
+        const file = formData.get('file') as File | null
+        if (!file) return { success: false, error: 'No se recibió la imagen compuesta.' }
+
+        // Validate size (20MB max for composed images — retina 2x can be large)
+        if (file.size > 20 * 1024 * 1024) {
+            return { success: false, error: 'La imagen compuesta es demasiado grande (máx 20MB).' }
+        }
+
+        // Parse composition data
+        const compositionRaw = formData.get('compositionData') as string | null
+        if (!compositionRaw) {
+            return { success: false, error: 'Faltan datos de composición.' }
+        }
+
+        const parsedComp = compositionDataSchema.safeParse(JSON.parse(compositionRaw))
+        if (!parsedComp.success) {
+            return {
+                success: false,
+                error: parsedComp.error.issues[0]?.message ?? 'Datos de composición inválidos',
+            }
+        }
+
+        const compData = parsedComp.data
+
+        // Upload to generated-images bucket (same as AI images)
+        const timestamp = Date.now()
+        const storagePath = `images/${user.id}/comp_${timestamp}.png`
+
+        const { error: uploadError } = await serviceClient.storage
+            .from('generated-images')
+            .upload(storagePath, file, {
+                contentType: 'image/png',
+                upsert: false,
+            })
+
+        if (uploadError) {
+            logger.error(FEATURE, 'Composed image upload failed', uploadError)
+            return { success: false, error: `Error subiendo imagen: ${uploadError.message}` }
+        }
+
+        const { data: publicUrlData } = serviceClient.storage
+            .from('generated-images')
+            .getPublicUrl(storagePath)
+
+        // Save record with composition metadata
+        const { data: record, error: dbError } = await serviceClient
+            .from('generated_images')
+            .insert({
+                user_id: user.id,
+                storage_url: publicUrlData.publicUrl,
+                storage_path: storagePath,
+                prompt: `[Composición] ${compData.headline}`,
+                revised_prompt: null,
+                platform: compData.platform,
+                size: `${compData.canvasWidth}x${compData.canvasHeight}`,
+                quality: 'high',
+                post_reference: null,
+                tags: ['composición', compData.templateId],
+                is_favorite: false,
+                generation_mode: 'composition',
+                composition_data: compData,
+            })
+            .select('*')
+            .single()
+
+        if (dbError) {
+            logger.error(FEATURE, 'Composed image DB insert failed', dbError)
+            return { success: false, error: 'Error guardando registro de imagen compuesta' }
+        }
+
+        logger.info(FEATURE, 'Composed image saved', {
+            imageId: record.id,
+            template: compData.templateId,
+        })
+
+        return { success: true, data: mapGeneratedImage(record) }
+    } catch (e) {
+        logger.error(FEATURE, 'saveComposedImageAction failed', e)
+        return { success: false, error: (e as Error).message }
+    }
+}
+
 // ─── Mappers ───────────────────────────────────────────
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -421,6 +823,8 @@ function mapGeneratedImage(row: any): GeneratedImage {
         brandStyleId: row.brand_style_id,
         tags: (row.tags as string[]) ?? [],
         isFavorite: row.is_favorite,
+        generationMode: row.generation_mode ?? 'ai',
+        compositionData: row.composition_data ?? null,
         createdAt: row.created_at,
     }
 }
@@ -440,6 +844,22 @@ function mapBrandStyle(row: any): BrandImageStyle {
         backgroundStyle: row.background_style ?? 'minimal',
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+    }
+}
+
+function mapCandidatePhoto(row: any): CandidatePhoto {
+    return {
+        id: row.id,
+        userId: row.user_id,
+        storageUrl: row.storage_url,
+        storagePath: row.storage_path,
+        label: row.label ?? '',
+        description: row.description ?? '',
+        tags: (row.tags as string[]) ?? [],
+        isPrimary: row.is_primary ?? false,
+        width: row.width ?? 0,
+        height: row.height ?? 0,
+        createdAt: row.created_at,
     }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

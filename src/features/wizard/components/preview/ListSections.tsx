@@ -1,4 +1,5 @@
 import { MessageSquare, Star } from 'lucide-react'
+import { sanitizeHtml } from '@/shared/lib/sanitize'
 import type { SectionPreviewProps, ContentItem } from './types'
 
 export function FaqPreview({ content, m }: SectionPreviewProps) {
@@ -274,9 +275,10 @@ export function TargetPreview({ content, m }: SectionPreviewProps) {
                               </h3>
                               <p
                                   className={`opacity-80 ${m ? 'text-sm' : 'text-lg'} leading-relaxed`}
-                              >
-                                  {item.description}
-                              </p>
+                                  dangerouslySetInnerHTML={{
+                                      __html: sanitizeHtml(item.description || ''),
+                                  }}
+                              />
                           </div>
                       ))
                     : [1, 2].map((i) => (
@@ -341,9 +343,10 @@ export function TimelinePreview({ content, m, title }: SectionPreviewProps & { t
                               {item.description ? (
                                   <p
                                       className={`opacity-60 ${m ? 'text-sm mt-1' : 'text-lg mt-3'} leading-relaxed`}
-                                  >
-                                      {item.description}
-                                  </p>
+                                      dangerouslySetInnerHTML={{
+                                          __html: sanitizeHtml(item.description),
+                                      }}
+                                  />
                               ) : null}
                           </div>
                       ))
@@ -368,52 +371,68 @@ export function TimelinePreview({ content, m, title }: SectionPreviewProps & { t
 
 export function AgendaPreview({ content, m }: SectionPreviewProps) {
     const items: ContentItem[] = Array.isArray(content.items) ? content.items : []
+    const title = (content.title as string) || 'Agenda'
+    const subtitle = content.subtitle as string | undefined
+    const bgColor = content.bg_color as string | undefined
     return (
-        <section className={`${m ? 'py-12 px-4' : 'py-24 px-6'} max-w-4xl mx-auto`}>
-            <h2 className={`${m ? 'text-2xl mb-8' : 'text-4xl mb-16'} font-bold text-center`}>
-                Agenda
-            </h2>
-            <div className={`${m ? 'space-y-3' : 'space-y-6'}`}>
-                {items.length > 0
-                    ? items.map((item, i) => (
-                          <div
-                              key={i}
-                              className={`flex ${m ? 'gap-3 p-4 rounded-xl' : 'gap-6 p-6 rounded-2xl'} border transition-all hover:shadow-lg glass items-center`}
-                              style={{
-                                  backgroundColor: 'var(--preview-card-bg)',
-                                  borderColor: 'var(--preview-muted)',
-                              }}
-                          >
+        <section
+            className={`${m ? 'py-12 px-4' : 'py-24 px-6'}`}
+            style={bgColor ? { backgroundColor: bgColor } : undefined}
+        >
+            <div className="max-w-4xl mx-auto">
+                <h2 className={`${m ? 'text-2xl mb-3' : 'text-4xl mb-4'} font-bold text-center`}>
+                    {title}
+                </h2>
+                {subtitle && (
+                    <p className={`text-center opacity-60 ${m ? 'text-sm mb-8' : 'text-lg mb-14'}`}>
+                        {subtitle}
+                    </p>
+                )}
+                {!subtitle && <div className={m ? 'mb-8' : 'mb-16'} />}
+                <div className={`${m ? 'space-y-3' : 'space-y-6'}`}>
+                    {items.length > 0
+                        ? items.map((item, i) => (
                               <div
-                                  className={`${m ? 'text-sm min-w-[60px]' : 'text-base min-w-[80px]'} font-black flex-shrink-0`}
-                                  style={{ color: 'var(--preview-primary)' }}
+                                  key={i}
+                                  className={`flex ${m ? 'gap-3 p-4 rounded-xl' : 'gap-6 p-6 rounded-2xl'} border transition-all hover:shadow-lg glass items-center`}
+                                  style={{
+                                      backgroundColor: 'var(--preview-card-bg)',
+                                      borderColor: 'var(--preview-muted)',
+                                  }}
                               >
-                                  {item.time || '00:00'}
+                                  <div
+                                      className={`${m ? 'text-sm min-w-[60px]' : 'text-base min-w-[80px]'} font-black flex-shrink-0`}
+                                      style={{ color: 'var(--preview-primary)' }}
+                                  >
+                                      {item.time || '00:00'}
+                                  </div>
+                                  <div className="flex-1">
+                                      <h3 className={`font-bold ${m ? 'text-base' : 'text-lg'}`}>
+                                          {item.title || 'Sesión'}
+                                      </h3>
+                                      {item.speaker ? (
+                                          <p
+                                              className={`opacity-50 ${m ? 'text-xs' : 'text-sm'} mt-1`}
+                                          >
+                                              por {item.speaker}
+                                          </p>
+                                      ) : null}
+                                  </div>
                               </div>
-                              <div className="flex-1">
-                                  <h3 className={`font-bold ${m ? 'text-base' : 'text-lg'}`}>
-                                      {item.title || 'Sesión'}
-                                  </h3>
-                                  {item.speaker ? (
-                                      <p className={`opacity-50 ${m ? 'text-xs' : 'text-sm'} mt-1`}>
-                                          por {item.speaker}
-                                      </p>
-                                  ) : null}
+                          ))
+                        : [1, 2, 3].map((i) => (
+                              <div
+                                  key={i}
+                                  className={`${m ? 'p-4 rounded-xl' : 'p-6 rounded-2xl'} border opacity-20 glass`}
+                                  style={{
+                                      backgroundColor: 'var(--preview-card-bg)',
+                                      borderColor: 'var(--preview-muted)',
+                                  }}
+                              >
+                                  <div className="h-5 w-full rounded bg-current opacity-15" />
                               </div>
-                          </div>
-                      ))
-                    : [1, 2, 3].map((i) => (
-                          <div
-                              key={i}
-                              className={`${m ? 'p-4 rounded-xl' : 'p-6 rounded-2xl'} border opacity-20 glass`}
-                              style={{
-                                  backgroundColor: 'var(--preview-card-bg)',
-                                  borderColor: 'var(--preview-muted)',
-                              }}
-                          >
-                              <div className="h-5 w-full rounded bg-current opacity-15" />
-                          </div>
-                      ))}
+                          ))}
+                </div>
             </div>
         </section>
     )

@@ -12,10 +12,20 @@ import { env } from '@/lib/env'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { queryPoliticianStatements } from '@/features/political-intel/knowledgeIndexer'
-import { generateThematicReportAction } from '@/features/political-intel/actions/thematic'
+import {
+    generateThematicReportAction,
+    generateThematicAnglesAction,
+} from '@/features/political-intel/actions/thematic'
+import { generatePoliticalCalendarAction } from '@/features/political-intel/actions/calendar'
 import { generatePoliticalIntelAction } from '@/features/political-intel/actions/intel'
 import { indexPoliticianKnowledgeAction } from '@/features/political-intel/actions/knowledge'
-import { loadCampaignBrain, buildBrainSystemPrompt } from '@/features/political-intel/brain'
+import {
+    loadCampaignBrain,
+    buildBrainSystemPrompt,
+    buildContentImpulse,
+    buildContentPromptBlock,
+    buildTacticalImpulse,
+} from '@/features/political-intel/brain'
 import { logger } from '@/shared/lib/logger'
 import { NextRequest } from 'next/server'
 
@@ -66,6 +76,27 @@ Si un tema no existe, CREALO con createTopic. Si un nombre no coincide exactamen
 ### REGLA #3: ENCADENAR HERRAMIENTAS
 Si el usuario pide algo que requiere múltiples pasos (crear tema → generar reporte), hacé todos los pasos seguidos sin interrumpir para pedir confirmación.
 
+### REGLA #4: CREAR ARTEFACTOS REALES — NO TEXTO EN EL CHAT
+Cuando el usuario pida un calendario, ángulos de ataque, o cualquier contenido que pueda ser CREADO en el sistema, USÁ LA HERRAMIENTA CORRESPONDIENTE. NUNCA generes el contenido como texto en el chat si existe una herramienta que lo crea en la base de datos.
+
+PROHIBIDO: Escribir un calendario como texto markdown en el chat
+CORRECTO: Ejecutar generateCalendar → "Listo. Generé el calendario de 7 días. Podés verlo en la sección Calendario."
+
+PROHIBIDO: Escribir ángulos de comunicación como texto en el chat
+CORRECTO: Ejecutar generateAngles → "Generé 4 ángulos de ataque. Podés verlos en la sección Ataques."
+
+PROHIBIDO: Describir una landing o escribir su contenido como texto en el chat
+CORRECTO: Ejecutar createLanding → "Listo. Creé la landing. Podés editarla en Proyectos."
+
+### FLUJO TÍPICO DE INVESTIGACIÓN
+Cuando el usuario pide investigar un tema O generar un calendario, ejecutá la cadena completa:
+1. Si el tema no existe → createTopic
+2. runThematicReport (genera reporte con SERP + IA)
+3. generateAngles (extrae ángulos de comunicación del reporte)
+4. generateCalendar (arma calendario de 7 días basado en los ángulos)
+Ejecutá todos los pasos sin interrumpir. El usuario quiere resultados, no pasos intermedios.
+Si algún paso falla, informá cuáles se completaron y cuál falló.
+
 ## INSTRUCCIONES OPERATIVAS
 - Usá las herramientas SIEMPRE que necesites datos concretos — no inventes números
 - Si te preguntan por un rival, buscá primero en el RAG con queryRAG
@@ -87,7 +118,7 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
             model: getModel(chatProvider),
             messages: modelMessages,
             system: systemPrompt,
-            stopWhen: stepCountIs(5),
+            stopWhen: stepCountIs(8),
             tools: {
                 queryRAG: {
                     description:
@@ -288,10 +319,11 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                         const r = result.data!.report
                         return JSON.stringify({
                             status: 'Reporte generado exitosamente',
-                            topicName: r.topic_name,
-                            executiveSummary: r.executive_summary,
-                            publicSentiment: r.public_sentiment,
-                            painPoints: r.pain_points,
+                            reportId: result.data!.reportId,
+                            topicName: r.topicName,
+                            executiveSummary: r.executiveSummary,
+                            publicSentiment: r.publicSentiment,
+                            painPoints: r.painPoints,
                             trends: r.trends,
                         })
                     },
@@ -310,9 +342,9 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                         const r = result.data!.report
                         return JSON.stringify({
                             status: 'Análisis político generado',
-                            executiveSummary: r.executive_summary,
-                            rivalsAnalyzed: r.rivals?.length ?? 0,
-                            attackVectors: r.attack_vectors?.slice(0, 3) ?? [],
+                            executiveSummary: r.executiveSummary,
+                            comparisons: r.comparativeAnalysis?.length ?? 0,
+                            vulnerabilities: r.strategicInsights?.vulnerabilities?.length ?? 0,
                             reportId: result.data!.reportId,
                         })
                     },
@@ -457,7 +489,7 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                         const { data: projects } = await supabase
                             .from('projects')
                             .select(
-                                'id, name, slug, status, structure_type, created_at, updated_at',
+                                'id, name, slug, html_output, structure_type, created_at, updated_at',
                             )
                             .eq('user_id', userId)
                             .order('updated_at', { ascending: false })
@@ -466,8 +498,8 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                             return 'No hay landing pages creadas.'
                         }
 
-                        const published = projects.filter((p) => p.status === 'published').length
-                        const draft = projects.filter((p) => p.status !== 'published').length
+                        const published = projects.filter((p) => !!p.html_output).length
+                        const draft = projects.filter((p) => !p.html_output).length
 
                         return JSON.stringify({
                             total: projects.length,
@@ -476,7 +508,7 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                             landings: projects.map((p) => ({
                                 name: p.name,
                                 slug: p.slug,
-                                status: p.status,
+                                status: p.html_output ? 'published' : 'draft',
                                 type: p.structure_type,
                                 updatedAt: p.updated_at,
                             })),
@@ -493,17 +525,19 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                             await Promise.all([
                                 supabase
                                     .from('projects')
-                                    .select('status', { count: 'exact' })
+                                    .select('id, html_output')
                                     .eq('user_id', userId),
                                 supabase
                                     .from('leads')
                                     .select('id', { count: 'exact' })
-                                    .eq(
+                                    .in(
                                         'project_id',
-                                        supabase
-                                            .from('projects')
-                                            .select('id')
-                                            .eq('user_id', userId),
+                                        (
+                                            await supabase
+                                                .from('projects')
+                                                .select('id')
+                                                .eq('user_id', userId)
+                                        ).data?.map((p) => p.id) ?? [],
                                     ),
                                 supabase
                                     .from('political_monitors')
@@ -521,12 +555,11 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                                     .eq('is_active', true),
                             ])
 
+                        const projects = projectsRes.data ?? []
                         return JSON.stringify({
                             landings: {
-                                total: projectsRes.count ?? 0,
-                                published:
-                                    projectsRes.data?.filter((p) => p.status === 'published')
-                                        .length ?? 0,
+                                total: projects.length,
+                                published: projects.filter((p) => !!p.html_output).length,
                             },
                             leads: leadsRes.count ?? 0,
                             politicalMonitors: monitorsRes.count ?? 0,
@@ -636,6 +669,186 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                     },
                 },
 
+                listCandidatePhotos: {
+                    description:
+                        'Lista las fotos reales del candidato subidas al sistema. Úsala cuando el usuario pida usar "las fotos que subimos" o "fotos del candidato".',
+                    inputSchema: z.object({}),
+                    execute: async () => {
+                        const { listCandidatePhotosAction } =
+                            await import('@/features/image-studio/actions')
+                        const result = await listCandidatePhotosAction()
+                        if (!result.success) return `Error: ${result.error}`
+                        if (result.data.length === 0)
+                            return 'No hay fotos del candidato subidas. El usuario puede subir fotos desde Image Studio > pestaña "Fotos".'
+                        return JSON.stringify({
+                            count: result.data.length,
+                            photos: result.data.map((p) => ({
+                                id: p.id,
+                                url: p.storageUrl,
+                                label: p.label,
+                                isPrimary: p.isPrimary,
+                                dimensions: `${p.width}x${p.height}`,
+                            })),
+                            hint: 'Para componer una imagen con estas fotos, el usuario debe ir a Image Studio > Generar > Composición con Foto. El chat no puede componer imágenes directamente, pero puede generar imágenes con IA usando generateCampaignImage.',
+                        })
+                    },
+                },
+
+                createLanding: {
+                    description:
+                        'Crea una landing page completa en el sistema con contenido generado por IA. El usuario puede editarla después en el builder de Proyectos.',
+                    inputSchema: z.object({
+                        name: z
+                            .string()
+                            .describe(
+                                'Nombre de la landing (ej: "Seguridad 2027", "Campaña Patricia Bullrich")',
+                            ),
+                        topic: z
+                            .string()
+                            .describe(
+                                'Tema o propósito de la landing (ej: "propuesta de seguridad ciudadana")',
+                            ),
+                        templateType: z
+                            .enum(['political_campaign', 'political_issue', 'vsl', 'consultancy'])
+                            .optional()
+                            .describe(
+                                'Tipo de template. Default: political_issue para temas específicos, political_campaign para campañas generales',
+                            ),
+                    }),
+                    execute: async ({ name, topic, templateType }) => {
+                        try {
+                            const { saveProjectAction } = await import('@/features/wizard/actions')
+                            const { getTemplateById } =
+                                await import('@/features/templates/config/catalog')
+                            const { callGemini: gemini } = await import('@/lib/gemini')
+
+                            // 1. Sinapsis: usar impulso de contenido del cerebro (NO defaults parciales)
+                            const contentImpulse = buildContentImpulse(brain)
+                            const candidateName = contentImpulse?.candidateName ?? ''
+                            const party = contentImpulse?.party ?? ''
+                            const colors: Record<string, string> = contentImpulse?.visual
+                                ? {
+                                      primary: contentImpulse.visual.primaryColor,
+                                      secondary: contentImpulse.visual.secondaryColor,
+                                      accent: contentImpulse.visual.accentColor,
+                                  }
+                                : {}
+                            const contentBlock = contentImpulse
+                                ? buildContentPromptBlock(contentImpulse)
+                                : ''
+
+                            // 2. Select template
+                            const selectedTemplate = templateType ?? 'political_issue'
+                            const template = getTemplateById(selectedTemplate)
+                            if (!template) {
+                                return `Error: template "${selectedTemplate}" no encontrado.`
+                            }
+
+                            // 3. Generate content for each section with Gemini + brain context
+                            const sectionIds = template.sections.map((s) => s.id)
+                            const defaultContent = template.defaultContent
+
+                            const prompt = `IDIOMA: TODO en ESPAÑOL (castellano argentino).
+${contentBlock}
+
+Sos un experto en comunicación política y copywriting de alto impacto.
+Generá el contenido completo para una landing page de campaña política.
+
+Candidato: ${candidateName || 'El candidato'}
+Partido: ${party || 'Sin especificar'}
+Tema de la landing: ${topic}
+Nombre de la landing: ${name}
+
+Secciones que necesito (generá contenido para CADA una):
+${sectionIds.map((id) => `- "${id}": campos tipo ${JSON.stringify(Object.keys(defaultContent[id] ?? {}))}`).join('\n')}
+
+IMPORTANTE sobre la estructura de cada sección:
+- "hero": { "headline": "...", "subheadline": "...", "cta_text": "...", "eyebrow": "..." }
+- "problem" o "proposal": { "title": "...", "text": "párrafo explicativo" }
+- "benefits" o "data": { "title": "...", "items": [{"title": "...", "description": "..."}] } (mínimo 3 items)
+- "testimonials": { "title": "...", "items": [{"name": "...", "role": "...", "bio": "..."}] } (mínimo 3)
+- "contact" o "lead_capture": { "title": "...", "subtitle": "...", "cta_text": "...", "success_message": "..." }
+- "events": { "title": "...", "items": [{"title": "...", "description": "...", "time": "..."}] }
+- "donate": { "title": "...", "subtitle": "...", "cta_text": "..." }
+- "proposals": { "title": "...", "items": [{"title": "...", "description": "..."}] }
+- "biography": { "title": "...", "text": "..." }
+- "team": { "title": "...", "items": [{"name": "...", "role": "...", "bio": "..."}] }
+- Para cualquier otra: usá { "title": "...", "text": "..." } como base
+
+Reglas:
+- Headlines cortos e impactantes (máx 60 caracteres)
+- Subheadlines que complementen (máx 120 caracteres)
+- CTAs con verbos de acción directa en español
+- Textos persuasivos y emotivos, sin ser genéricos
+- NO uses placeholders como "Lorem ipsum" — todo debe ser contenido real y relevante
+
+Respondé SOLO con un JSON válido: { "sectionId": { ...campos }, ... }`
+
+                            const raw = await gemini(prompt, {
+                                temperature: 0.7,
+                                maxTokens: 3000,
+                            })
+
+                            // 4. Parse AI-generated content
+                            const jsonMatch = raw.match(/\{[\s\S]*\}/)
+                            let generatedContent: Record<string, Record<string, unknown>> = {}
+                            if (jsonMatch) {
+                                try {
+                                    generatedContent = JSON.parse(jsonMatch[0])
+                                } catch {
+                                    // Use default content if parsing fails
+                                    generatedContent = {}
+                                }
+                            }
+
+                            // 5. Build sections array merging AI content with defaults
+                            const sections = [
+                                {
+                                    id: 'header',
+                                    type: 'header',
+                                    content: {},
+                                    isVisible: true,
+                                    order: 0,
+                                },
+                                ...sectionIds.map((sId, i) => ({
+                                    id: sId,
+                                    type: sId,
+                                    content: {
+                                        ...(defaultContent[sId] ?? {}),
+                                        ...(generatedContent[sId] ?? {}),
+                                    },
+                                    isVisible: true,
+                                    order: i + 1,
+                                })),
+                            ]
+
+                            // 6. Save project
+                            const result = await saveProjectAction({
+                                name,
+                                structureType: selectedTemplate,
+                                visualModel: 'dark',
+                                sections,
+                                colors,
+                            })
+
+                            if (!result.success) {
+                                return `Error creando la landing: ${result.error}`
+                            }
+
+                            return JSON.stringify({
+                                status: 'Landing creada exitosamente',
+                                projectId: result.data?.id,
+                                name,
+                                template: selectedTemplate,
+                                sectionsCount: sections.length,
+                                message: `La landing "${name}" fue creada con ${sections.length} secciones. El usuario puede verla y editarla en la sección Proyectos del panel.`,
+                            })
+                        } catch (err) {
+                            return `Error creando landing: ${(err as Error).message}`
+                        }
+                    },
+                },
+
                 generateSocialPost: {
                     description:
                         'Genera un post para una plataforma específica con el tono y estilo de la campaña.',
@@ -651,10 +864,12 @@ Si el usuario pide algo que requiere múltiples pasos (crear tema → generar re
                     }),
                     execute: async ({ platform, topic, contentType }) => {
                         const { callGemini: gemini } = await import('@/lib/gemini')
-                        const { buildBrainCompactContext: compact } =
-                            await import('@/features/political-intel/brain')
 
-                        const brainHint = brain.campaign ? compact(brain) : ''
+                        // Sinapsis: usar impulso de contenido completo (no compact)
+                        const socialImpulse = buildContentImpulse(brain)
+                        const brainHint = socialImpulse
+                            ? buildContentPromptBlock(socialImpulse)
+                            : ''
                         const platformConstraints: Record<string, string> = {
                             x: 'Max 280 caracteres. Tono directo, impactante. Incluir hashtags.',
                             linkedin:
@@ -699,6 +914,163 @@ Respondé SOLO con JSON:
                         } catch {
                             return raw
                         }
+                    },
+                },
+
+                // ─── EXECUTION TOOLS (create real artifacts in DB) ──────
+
+                generateAngles: {
+                    description:
+                        'Genera ángulos de comunicación (vectores de ataque temáticos) a partir del último reporte sobre un tema. Los guarda en la base de datos — visibles en la sección Ataques.',
+                    inputSchema: z.object({
+                        topicName: z
+                            .string()
+                            .describe(
+                                'Nombre del tema sobre el que generar ángulos (ej: "Seguridad", "Inflación")',
+                            ),
+                    }),
+                    execute: async ({ topicName }) => {
+                        // Sinapsis: validar que el cerebro tiene datos tácticos
+                        const tacticalImpulse = buildTacticalImpulse(brain)
+                        if (!tacticalImpulse) {
+                            return 'El cerebro de campaña no tiene perfil configurado. Configurá el perfil en CAMPAÑA antes de generar ángulos.'
+                        }
+
+                        // Find the most recent thematic report for this topic
+                        const { data: reports } = await supabase
+                            .from('political_intel_reports')
+                            .select('id, topic_id')
+                            .eq('user_id', userId)
+                            .eq('report_type', 'thematic')
+                            .order('created_at', { ascending: false })
+                            .limit(10)
+
+                        if (!reports?.length) {
+                            return `No hay reportes temáticos. Ejecutá runThematicReport("${topicName}") primero.`
+                        }
+
+                        // Match by topic name
+                        const { data: topics } = await supabase
+                            .from('political_topics')
+                            .select('id, name')
+                            .eq('user_id', userId)
+                            .ilike('name', `%${topicName}%`)
+                            .limit(1)
+
+                        const topicId = topics?.[0]?.id
+                        const matchedReport = topicId
+                            ? reports.find((r) => r.topic_id === topicId)
+                            : reports[0]
+
+                        if (!matchedReport) {
+                            return `No hay reporte sobre "${topicName}". Ejecutá runThematicReport("${topicName}") primero.`
+                        }
+
+                        const result = await generateThematicAnglesAction(matchedReport.id)
+                        if (!result.success) {
+                            return `Error generando ángulos: ${result.error}`
+                        }
+
+                        const angles = result.data!.angles
+                        return JSON.stringify({
+                            status: 'Ángulos generados y guardados',
+                            count: angles.length,
+                            brainContext: `Generados para ${tacticalImpulse.candidateName} (${tacticalImpulse.party})`,
+                            summary: angles.map((a) => ({
+                                vulnerability: a.vulnerability,
+                                clientStrength: a.clientStrength,
+                            })),
+                            hint: 'Los ángulos están disponibles en la sección Ataques del panel de Intel Política.',
+                        })
+                    },
+                },
+
+                generateCalendar: {
+                    description:
+                        'Genera un calendario de redes sociales de 7 días basado en los ángulos de comunicación de un tema. Lo guarda en la base de datos — visible en la sección Calendario.',
+                    inputSchema: z.object({
+                        topicName: z
+                            .string()
+                            .optional()
+                            .describe(
+                                'Nombre del tema (opcional — si no se pasa, usa el último reporte disponible)',
+                            ),
+                    }),
+                    execute: async ({ topicName }) => {
+                        // Sinapsis: validar que el cerebro tiene datos tácticos
+                        const calTactical = buildTacticalImpulse(brain)
+                        if (!calTactical) {
+                            return 'El cerebro de campaña no tiene perfil configurado. Configurá el perfil en CAMPAÑA antes de generar calendarios.'
+                        }
+
+                        // Find the best report to use
+                        let reportId: string | null = null
+                        let reportVectors: unknown[] = []
+
+                        if (topicName) {
+                            // Find topic
+                            const { data: topics } = await supabase
+                                .from('political_topics')
+                                .select('id')
+                                .eq('user_id', userId)
+                                .ilike('name', `%${topicName}%`)
+                                .limit(1)
+
+                            const topicId = topics?.[0]?.id
+
+                            if (topicId) {
+                                const { data: reports } = await supabase
+                                    .from('political_intel_reports')
+                                    .select('id, attack_vectors')
+                                    .eq('user_id', userId)
+                                    .eq('report_type', 'thematic')
+                                    .eq('topic_id', topicId)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+
+                                if (reports?.length) {
+                                    reportId = reports[0].id
+                                    reportVectors = (reports[0].attack_vectors ?? []) as unknown[]
+                                }
+                            }
+                        }
+
+                        // Fallback: use any recent report with vectors
+                        if (!reportId) {
+                            const { data: reports } = await supabase
+                                .from('political_intel_reports')
+                                .select('id, attack_vectors')
+                                .eq('user_id', userId)
+                                .not('attack_vectors', 'is', null)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+
+                            if (reports?.length) {
+                                reportId = reports[0].id
+                                reportVectors = (reports[0].attack_vectors ?? []) as unknown[]
+                            }
+                        }
+
+                        if (!reportId || reportVectors.length === 0) {
+                            return `No hay reportes con ángulos de ataque. Ejecutá primero runThematicReport y luego generateAngles.`
+                        }
+
+                        const result = await generatePoliticalCalendarAction(reportId)
+                        if (!result.success) {
+                            return `Error generando calendario: ${result.error}`
+                        }
+
+                        const cal = result.data!.calendar
+                        const totalPosts =
+                            cal.days?.reduce((sum, d) => sum + (d.posts?.length ?? 0), 0) ?? 0
+
+                        return JSON.stringify({
+                            status: 'Calendario generado y guardado',
+                            days: cal.days?.length ?? 7,
+                            totalPosts,
+                            brainContext: `Calendario para ${calTactical.candidateName} (${calTactical.party}), estilo: ${calTactical.consciousness.communicationStyle}`,
+                            hint: 'El calendario está disponible en la sección Calendario del panel de Intel Política.',
+                        })
                     },
                 },
             },

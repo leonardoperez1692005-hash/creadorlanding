@@ -15,7 +15,9 @@ import {
     Loader2,
 } from 'lucide-react'
 import { SentimentBadge, SeverityBadge, AngleCard } from './ThematicSubComponents'
-import type { ThematicReport, PoliticalAttackVector, PoliticalTopic } from '../types'
+import { AnalysisReliability } from './AnalysisReliability'
+import { SourceCitations } from './SourceCitations'
+import type { ThematicReport, PoliticalAttackVector } from '../types'
 
 export interface ThematicReportDisplayProps {
     thematicReport: ThematicReport
@@ -24,7 +26,6 @@ export interface ThematicReportDisplayProps {
     isGeneratingAngles: boolean
     isGeneratingLanding: boolean
     landingError: string | null
-    topics: PoliticalTopic[]
     onGenerateAngles: () => void
     onGenerateCalendar: (topicName: string) => void
     onGenerateLanding: () => void
@@ -37,7 +38,6 @@ export function ThematicReportDisplay({
     isGeneratingAngles,
     isGeneratingLanding,
     landingError,
-    topics,
     onGenerateAngles,
     onGenerateCalendar,
     onGenerateLanding,
@@ -75,6 +75,23 @@ export function ThematicReportDisplay({
                     {thematicReport.executiveSummary}
                 </p>
             </div>
+
+            {/* Analysis Reliability Badge */}
+            {thematicReport.sourceMeta && (
+                <AnalysisReliability
+                    totalSources={thematicReport.sourceMeta.total}
+                    breakdown={{
+                        news: thematicReport.sourceMeta.breakdown.serp,
+                        reddit: thematicReport.sourceMeta.breakdown.reddit,
+                        youtube: thematicReport.sourceMeta.breakdown.youtube,
+                        tweets: thematicReport.sourceMeta.breakdown.twitter,
+                        trends: thematicReport.sourceMeta.breakdown.trends,
+                    }}
+                    daysRange={7}
+                    generatedAt={thematicReport.generatedAt}
+                    countLabel="fuentes"
+                />
+            )}
 
             {/* Public Sentiment */}
             <div
@@ -334,6 +351,11 @@ export function ThematicReportDisplay({
                         ))}
                     </div>
                 </div>
+            )}
+
+            {/* Source Citations */}
+            {thematicReport.sourceMeta && thematicReport.sourceMeta.sources.length > 0 && (
+                <SourceCitations sources={thematicReport.sourceMeta.sources} />
             )}
 
             {/* Generate Angles Button */}

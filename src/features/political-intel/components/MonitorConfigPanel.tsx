@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Users, Plus, Trash2, Play, Loader2, Search } from 'lucide-react'
+import { Users, Plus, Trash2, Play, Loader2, Search, CheckSquare, Square } from 'lucide-react'
 import { addMonitorAction, deleteMonitorAction } from '../actions'
 import { useIntelligenceStore } from '../store/intelligenceStore'
 import type { PoliticalMonitorInput, MonitorPlatform } from '../types'
@@ -22,6 +22,8 @@ export function MonitorConfigPanel() {
     const [showForm, setShowForm] = useState(false)
     const [adding, setAdding] = useState(false)
     const [formError, setFormError] = useState<string | null>(null)
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [analyzingSingleId, setAnalyzingSingleId] = useState<string | null>(null)
 
     // Form fields
     const [handle, setHandle] = useState('')
@@ -91,14 +93,41 @@ export function MonitorConfigPanel() {
         [removeMonitor],
     )
 
-    const handleGenerate = useCallback(() => {
-        const activeIds = monitors.filter((m) => m.isActive).map((m) => m.id)
-        generate(activeIds.length > 0 ? activeIds : undefined)
-    }, [monitors, generate])
+    const toggleSelect = useCallback((id: string) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }, [])
 
-    // Cost estimate
+    const toggleSelectAll = useCallback(() => {
+        const activeIds = monitors.filter((m) => m.isActive).map((m) => m.id)
+        setSelectedIds((prev) => (prev.size === activeIds.length ? new Set() : new Set(activeIds)))
+    }, [monitors])
+
+    const handleGenerateSelected = useCallback(() => {
+        const ids =
+            selectedIds.size > 0
+                ? Array.from(selectedIds)
+                : monitors.filter((m) => m.isActive).map((m) => m.id)
+        generate(ids.length > 0 ? ids : undefined)
+    }, [selectedIds, monitors, generate])
+
+    const handleGenerateSingle = useCallback(
+        (id: string) => {
+            setAnalyzingSingleId(id)
+            generate([id]).finally(() => setAnalyzingSingleId(null))
+        },
+        [generate],
+    )
+
+    // Cost estimate — based on selected or all active
     const activeMonitors = monitors.filter((m) => m.isActive)
-    const estimatedRequests = activeMonitors.length + activeMonitors.length * 2 // scrape + SERP queries
+    const targetMonitors =
+        selectedIds.size > 0 ? activeMonitors.filter((m) => selectedIds.has(m.id)) : activeMonitors
+    const estimatedRequests = targetMonitors.length + targetMonitors.length * 2 // scrape + SERP queries
     const estimatedCost = (estimatedRequests * BD_COST_PER_REQUEST).toFixed(3)
 
     const phases = [
@@ -295,74 +324,190 @@ export function MonitorConfigPanel() {
                     </p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {monitors.map((m) => (
+                <>
+                    {/* Select all header */}
+                    {activeMonitors.length > 1 && (
                         <div
-                            key={m.id}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '0.75rem 1rem',
-                                borderRadius: '8px',
-                                background: '#0A0E1A',
-                                border: '1px solid #1e2540',
+                                gap: '0.5rem',
+                                marginBottom: '0.4rem',
+                                padding: '0.3rem 0',
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <span
+                            <button
+                                onClick={toggleSelectAll}
+                                style={{
+                                    ...iconBtnStyle,
+                                    color:
+                                        selectedIds.size === activeMonitors.length
+                                            ? '#00c8ff'
+                                            : '#6B7280',
+                                }}
+                                aria-label="Seleccionar todos los monitores"
+                            >
+                                {selectedIds.size === activeMonitors.length ? (
+                                    <CheckSquare size={16} />
+                                ) : (
+                                    <Square size={16} />
+                                )}
+                            </button>
+                            <span style={{ color: '#8b9ec7', fontSize: '0.75rem' }}>
+                                {selectedIds.size > 0
+                                    ? `${selectedIds.size} seleccionado${selectedIds.size > 1 ? 's' : ''}`
+                                    : 'Seleccionar para análisis'}
+                            </span>
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {monitors.map((m) => {
+                            const isSelected = selectedIds.has(m.id)
+                            const isSingleAnalyzing = analyzingSingleId === m.id
+                            return (
+                                <div
+                                    key={m.id}
                                     style={{
-                                        padding: '0.15rem 0.5rem',
-                                        borderRadius: '4px',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        background: platformColor(m.platform).bg,
-                                        color: platformColor(m.platform).text,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '8px',
+                                        background: isSelected ? 'rgba(0,200,255,0.04)' : '#0A0E1A',
+                                        border: `1px solid ${isSelected ? 'rgba(0,200,255,0.2)' : '#1e2540'}`,
+                                        opacity: m.isActive ? 1 : 0.4,
+                                        transition: 'all 0.15s ease',
                                     }}
                                 >
-                                    {m.platform}
-                                </span>
-                                <div>
                                     <div
                                         style={{
-                                            color: '#fff',
-                                            fontSize: '0.9rem',
-                                            fontWeight: 600,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.75rem',
                                         }}
                                     >
-                                        @{m.handle}
+                                        {/* Checkbox */}
+                                        {m.isActive && (
+                                            <button
+                                                onClick={() => toggleSelect(m.id)}
+                                                style={{
+                                                    ...iconBtnStyle,
+                                                    color: isSelected ? '#00c8ff' : '#4B5563',
+                                                }}
+                                                aria-label={`Seleccionar ${m.fullName}`}
+                                            >
+                                                {isSelected ? (
+                                                    <CheckSquare size={16} />
+                                                ) : (
+                                                    <Square size={16} />
+                                                )}
+                                            </button>
+                                        )}
                                         <span
                                             style={{
-                                                color: '#8b9ec7',
-                                                fontWeight: 400,
-                                                marginLeft: '0.5rem',
+                                                padding: '0.15rem 0.5rem',
+                                                borderRadius: '4px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                background: platformColor(m.platform).bg,
+                                                color: platformColor(m.platform).text,
                                             }}
                                         >
-                                            {m.fullName}
+                                            {m.platform}
                                         </span>
+                                        <div>
+                                            <div
+                                                style={{
+                                                    color: '#fff',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                @{m.handle}
+                                                <span
+                                                    style={{
+                                                        color: '#8b9ec7',
+                                                        fontWeight: 400,
+                                                        marginLeft: '0.5rem',
+                                                    }}
+                                                >
+                                                    {m.fullName}
+                                                </span>
+                                                {!m.isActive && (
+                                                    <span
+                                                        style={{
+                                                            color: '#6B7280',
+                                                            fontSize: '0.7rem',
+                                                            marginLeft: '0.5rem',
+                                                        }}
+                                                    >
+                                                        (inactivo)
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div style={{ color: '#6B7280', fontSize: '0.75rem' }}>
+                                                {[
+                                                    m.party,
+                                                    m.role,
+                                                    COUNTRIES[m.country as keyof typeof COUNTRIES]
+                                                        ?.name,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ color: '#6B7280', fontSize: '0.75rem' }}>
-                                        {[
-                                            m.party,
-                                            m.role,
-                                            COUNTRIES[m.country as keyof typeof COUNTRIES]?.name,
-                                        ]
-                                            .filter(Boolean)
-                                            .join(' · ')}
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.35rem',
+                                        }}
+                                    >
+                                        {/* Individual analyze button */}
+                                        {m.isActive && (
+                                            <button
+                                                onClick={() => handleGenerateSingle(m.id)}
+                                                disabled={isGenerating}
+                                                style={{
+                                                    ...iconBtnStyle,
+                                                    color: isSingleAnalyzing
+                                                        ? '#00c8ff'
+                                                        : '#7C3AED',
+                                                    opacity: isGenerating ? 0.4 : 1,
+                                                    cursor: isGenerating
+                                                        ? 'not-allowed'
+                                                        : 'pointer',
+                                                }}
+                                                title={`Analizar solo a ${m.fullName}`}
+                                                aria-label={`Analizar solo a ${m.fullName}`}
+                                            >
+                                                {isSingleAnalyzing ? (
+                                                    <Loader2
+                                                        size={14}
+                                                        style={{
+                                                            animation: 'spin 1s linear infinite',
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <Play size={14} />
+                                                )}
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(m.id)}
+                                            style={{ ...iconBtnStyle, color: '#F87171' }}
+                                            title="Eliminar monitor"
+                                            aria-label="Eliminar monitor"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                            <button
-                                onClick={() => handleDelete(m.id)}
-                                style={{ ...iconBtnStyle, color: '#F87171' }}
-                                title="Eliminar monitor"
-                                aria-label="Eliminar monitor"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                            )
+                        })}
+                    </div>
+                </>
             )}
 
             {/* Cost estimate + Generate */}
@@ -385,14 +530,14 @@ export function MonitorConfigPanel() {
                     >
                         <div>
                             <p style={{ color: '#8b9ec7', fontSize: '0.8rem', margin: 0 }}>
-                                {activeMonitors.length} monitor
-                                {activeMonitors.length > 1 ? 'es' : ''} activo
-                                {activeMonitors.length > 1 ? 's' : ''} · ~{estimatedRequests}{' '}
-                                requests Bright Data · Costo est: ~${estimatedCost} USD
+                                {selectedIds.size > 0
+                                    ? `${selectedIds.size} de ${activeMonitors.length} seleccionado${selectedIds.size > 1 ? 's' : ''}`
+                                    : `${activeMonitors.length} monitor${activeMonitors.length > 1 ? 'es' : ''} activo${activeMonitors.length > 1 ? 's' : ''}`}{' '}
+                                · ~{estimatedRequests} requests · Costo est: ~${estimatedCost} USD
                             </p>
                         </div>
                         <button
-                            onClick={handleGenerate}
+                            onClick={handleGenerateSelected}
                             disabled={isGenerating}
                             style={{
                                 ...primaryBtnStyle,
@@ -415,7 +560,10 @@ export function MonitorConfigPanel() {
                                 </>
                             ) : (
                                 <>
-                                    <Play size={16} /> Generar Análisis
+                                    <Play size={16} />{' '}
+                                    {selectedIds.size > 0
+                                        ? `Analizar ${selectedIds.size} seleccionado${selectedIds.size > 1 ? 's' : ''}`
+                                        : 'Analizar todos'}
                                 </>
                             )}
                         </button>

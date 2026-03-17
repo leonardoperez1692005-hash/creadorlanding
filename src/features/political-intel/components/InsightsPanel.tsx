@@ -1,24 +1,107 @@
 'use client'
 
-import type { PoliticalIntelReport } from '../types'
+import type { PoliticalIntelReport, PoliticalSnapshotMeta } from '../types'
+import type { SentimentByHandle } from './PoliticalDashboard'
 
 interface InsightsPanelProps {
     insights: PoliticalIntelReport['strategicInsights']
     marketContext: PoliticalIntelReport['marketContext']
+    meta?: PoliticalSnapshotMeta | null
+    sentimentByHandle?: SentimentByHandle
 }
 
-export function InsightsPanel({ insights, marketContext }: InsightsPanelProps) {
+/** Compact badge showing source count + platforms */
+function SourceBadge({ meta }: { meta?: PoliticalSnapshotMeta | null }) {
+    if (!meta) return null
+    const total = meta.totalSources ?? 0
+    if (total === 0) return null
+
+    const platforms: string[] = []
+    if ((meta.twitterSources ?? 0) > 0) platforms.push('𝕏')
+    if (meta.serpQueriesRun > 0) platforms.push('SERP')
+    if ((meta.redditSources ?? 0) > 0) platforms.push('Reddit')
+    if ((meta.youtubeSources ?? 0) > 0) platforms.push('YouTube')
+
+    return (
+        <span
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '6px',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                background: 'rgba(0,200,255,0.08)',
+                border: '1px solid rgba(0,200,255,0.15)',
+                color: '#00c8ff',
+            }}
+        >
+            📊 {total.toLocaleString('es-AR')} fuentes · {platforms.join(' + ')}
+        </span>
+    )
+}
+
+/** Compact sentiment badge for a specific handle */
+function SentimentBadge({
+    handle,
+    sentimentByHandle,
+}: {
+    handle: string
+    sentimentByHandle?: SentimentByHandle
+}) {
+    if (!sentimentByHandle) return null
+    const snap = sentimentByHandle[handle.replace(/^@/, '').toLowerCase()]
+    if (!snap) return null
+
+    return (
+        <span
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '6px',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                background:
+                    snap.negativePct > snap.positivePct
+                        ? 'rgba(248,113,113,0.08)'
+                        : 'rgba(52,211,153,0.08)',
+                border: `1px solid ${snap.negativePct > snap.positivePct ? 'rgba(248,113,113,0.15)' : 'rgba(52,211,153,0.15)'}`,
+                color: snap.negativePct > snap.positivePct ? '#F87171' : '#34D399',
+            }}
+        >
+            {snap.positivePct}% 👍 · {snap.negativePct}% 👎 ({snap.totalAnalyzed} fuentes)
+        </span>
+    )
+}
+
+export function InsightsPanel({
+    insights,
+    marketContext,
+    meta,
+    sentimentByHandle,
+}: InsightsPanelProps) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Dominant Narratives */}
-            <Section title="Narrativas Dominantes" color="#00c8ff">
+            <Section
+                title="Narrativas Dominantes"
+                color="#00c8ff"
+                badge={<SourceBadge meta={meta} />}
+            >
                 {insights.dominantNarratives.map((n, i) => (
                     <ListItem key={i} text={n} />
                 ))}
             </Section>
 
             {/* Emerging Trends */}
-            <Section title="Tendencias Emergentes" color="#A78BFA">
+            <Section
+                title="Tendencias Emergentes"
+                color="#A78BFA"
+                badge={<SourceBadge meta={meta} />}
+            >
                 {insights.emergingTrends.map((t, i) => (
                     <ListItem key={i} text={t} />
                 ))}
@@ -39,13 +122,19 @@ export function InsightsPanel({ insights, marketContext }: InsightsPanelProps) {
                     >
                         <div
                             style={{
-                                color: '#fff',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
                                 marginBottom: '0.25rem',
                             }}
                         >
-                            {v.politician}
+                            <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+                                {v.politician}
+                            </span>
+                            <SentimentBadge
+                                handle={v.handle}
+                                sentimentByHandle={sentimentByHandle}
+                            />
                         </div>
                         <div
                             style={{
@@ -78,13 +167,19 @@ export function InsightsPanel({ insights, marketContext }: InsightsPanelProps) {
                     >
                         <div
                             style={{
-                                color: '#fff',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
                                 marginBottom: '0.25rem',
                             }}
                         >
-                            {o.description}
+                            <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+                                {o.description}
+                            </span>
+                            <SentimentBadge
+                                handle={o.handle}
+                                sentimentByHandle={sentimentByHandle}
+                            />
                         </div>
                         <div
                             style={{
@@ -103,7 +198,11 @@ export function InsightsPanel({ insights, marketContext }: InsightsPanelProps) {
             </Section>
 
             {/* Market Context */}
-            <Section title="Contexto de Mercado" color="#FBBF24">
+            <Section
+                title="Contexto de Mercado"
+                color="#FBBF24"
+                badge={<SourceBadge meta={meta} />}
+            >
                 <div
                     style={{
                         color: '#8b9ec7',
@@ -155,10 +254,12 @@ export function InsightsPanel({ insights, marketContext }: InsightsPanelProps) {
 function Section({
     title,
     color,
+    badge,
     children,
 }: {
     title: string
     color: string
+    badge?: React.ReactNode
     children: React.ReactNode
 }) {
     return (
@@ -170,18 +271,28 @@ function Section({
                 padding: '1.25rem',
             }}
         >
-            <h3
+            <div
                 style={{
-                    color,
-                    fontSize: '0.95rem',
-                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginBottom: '0.75rem',
                     paddingBottom: '0.5rem',
                     borderBottom: '1px solid #1e2540',
                 }}
             >
-                {title}
-            </h3>
+                <h3
+                    style={{
+                        color,
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        margin: 0,
+                    }}
+                >
+                    {title}
+                </h3>
+                {badge}
+            </div>
             {children}
         </div>
     )

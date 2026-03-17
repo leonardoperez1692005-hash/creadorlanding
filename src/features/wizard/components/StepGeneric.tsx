@@ -92,6 +92,21 @@ export function StepGeneric({ title, section, onUpdate, fields }: StepGenericPro
                                     />
                                 </div>
                             </>
+                        ) : f.type === 'select' && f.options ? (
+                            <>
+                                <label style={labelStyle}>{f.label}</label>
+                                <select
+                                    value={(content[f.key] as string) ?? f.options[0]?.value ?? ''}
+                                    onChange={(e) => update(f.key, e.target.value)}
+                                    style={{ ...inputStyle, cursor: 'pointer' }}
+                                >
+                                    {f.options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </>
                         ) : URL_FIELDS.has(f.key) ? (
                             <AnchorPicker
                                 value={(content[f.key] as string) ?? ''}

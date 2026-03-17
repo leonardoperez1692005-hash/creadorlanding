@@ -17,8 +17,17 @@ export const agendaRenderer: SectionRenderer = (c, t, _ctx) => {
     </div>`,
         )
         .join('')
-    return `<section style="padding:80px 0"><div class="container narrow">
-  <h2 class="sl-section-title reveal">${esc(c.title || 'Agenda')}</h2>
+    const hasSubtitle = !!c.subtitle
+    const titleClass = hasSubtitle ? 'sl-section-title has-sub reveal' : 'sl-section-title reveal'
+    const subtitle = hasSubtitle
+        ? `<p class="sl-section-subtitle reveal">${esc(c.subtitle as string)}</p>`
+        : ''
+    const bgStyle = c.bg_color
+        ? ` style="padding:80px 0;background:${esc(c.bg_color as string)}"`
+        : ` style="padding:80px 0"`
+    return `<section${bgStyle}><div class="container narrow">
+  <h2 class="${titleClass}">${esc(c.title || 'Agenda')}</h2>
+  ${subtitle}
   ${entries}
 </div></section>`
 }

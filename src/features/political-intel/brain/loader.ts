@@ -144,6 +144,31 @@ export async function loadCampaignBrain(
         completeness: 0,
     }
 
+    // Auto-seed topics from core positions when none exist
+    if (brain.topics.length === 0 && campaign && campaign.corePositions.length > 0) {
+        const rows = campaign.corePositions.map((pos) => ({
+            user_id: userId,
+            name: pos.issue,
+            description: pos.position,
+            context_prompt: `Investigación temática sobre ${pos.issue} en el contexto de la campaña ${campaign.campaignName}. Posición oficial: ${pos.position}`,
+            serp_queries: [
+                pos.issue,
+                `${pos.issue} ${campaign.country ?? 'Argentina'}`,
+                `${pos.issue} ${campaign.candidateName}`,
+            ],
+            is_active: true,
+        }))
+
+        const { data: seeded } = await supabase
+            .from('political_topics')
+            .upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true })
+            .select()
+
+        if (seeded?.length) {
+            brain.topics = seeded.map(mapTopic)
+        }
+    }
+
     brain.completeness = calculateBrainCompleteness(brain)
 
     return brain

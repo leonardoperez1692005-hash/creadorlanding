@@ -2,8 +2,9 @@
 
 import { useRef, useState, useCallback } from 'react'
 import NextImage from 'next/image'
-import { Upload, X, Link as LinkIcon, Loader2 } from 'lucide-react'
+import { Upload, X, Link as LinkIcon, Loader2, Sparkles } from 'lucide-react'
 import { uploadProjectImageAction } from '../actions'
+import { StudioImagePicker } from '@/features/image-studio/components/StudioImagePicker'
 
 interface ImageUploadFieldProps {
     value: string
@@ -59,6 +60,7 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
     const [error, setError] = useState('')
     const [showUrlInput, setShowUrlInput] = useState(false)
     const [dragOver, setDragOver] = useState(false)
+    const [showStudioPicker, setShowStudioPicker] = useState(false)
 
     const handleFile = useCallback(
         async (file: File) => {
@@ -114,6 +116,15 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
     if (value && !showUrlInput) {
         return (
             <div>
+                {showStudioPicker && (
+                    <StudioImagePicker
+                        onSelect={(url) => {
+                            onChange(url)
+                            setShowStudioPicker(false)
+                        }}
+                        onClose={() => setShowStudioPicker(false)}
+                    />
+                )}
                 {label && <label style={labelSt}>{label}</label>}
                 <div
                     style={{
@@ -140,6 +151,15 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
                             gap: '4px',
                         }}
                     >
+                        <button
+                            type="button"
+                            onClick={() => setShowStudioPicker(true)}
+                            style={{ ...pillBtn, background: 'rgba(124,58,237,0.85)' }}
+                            title="Elegir del Image Studio"
+                            aria-label="Elegir del Image Studio"
+                        >
+                            <Sparkles style={{ width: '12px', height: '12px' }} />
+                        </button>
                         <button
                             type="button"
                             onClick={() => {
@@ -214,6 +234,15 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
     // Drop zone (empty state)
     return (
         <div>
+            {showStudioPicker && (
+                <StudioImagePicker
+                    onSelect={(url) => {
+                        onChange(url)
+                        setShowStudioPicker(false)
+                    }}
+                    onClose={() => setShowStudioPicker(false)}
+                />
+            )}
             {label && <label style={labelSt}>{label}</label>}
             <div
                 role="button"
@@ -292,28 +321,54 @@ export function ImageUploadField({ value, onChange, label }: ImageUploadFieldPro
             {error && (
                 <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px' }}>{error}</p>
             )}
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation()
-                    setShowUrlInput(true)
-                }}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    marginTop: '6px',
-                    padding: 0,
-                    background: 'none',
-                    border: 'none',
-                    color: '#5d7099',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                }}
-            >
-                <LinkIcon style={{ width: '11px', height: '11px' }} /> Pegar URL
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' }}>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        setShowUrlInput(true)
+                    }}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: 0,
+                        background: 'none',
+                        border: 'none',
+                        color: '#5d7099',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                    }}
+                >
+                    <LinkIcon style={{ width: '11px', height: '11px' }} /> Pegar URL
+                </button>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        setShowStudioPicker(true)
+                    }}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px',
+                        background:
+                            'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(0,200,255,0.10))',
+                        border: '1px solid rgba(0,200,255,0.25)',
+                        borderRadius: '6px',
+                        color: '#00c8ff',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        transition: 'all 0.15s',
+                    }}
+                >
+                    <Sparkles style={{ width: '11px', height: '11px' }} /> Desde Image Studio
+                </button>
+            </div>
             <style
                 dangerouslySetInnerHTML={{
                     __html: `@keyframes spin{to{transform:rotate(360deg)}}`,

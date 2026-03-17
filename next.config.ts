@@ -9,6 +9,11 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
     serverExternalPackages: ['pdfkit', 'jsdom', 'isomorphic-dompurify'],
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '15mb',
+        },
+    },
     turbopack: {
         root: path.resolve(__dirname),
         resolveAlias: {

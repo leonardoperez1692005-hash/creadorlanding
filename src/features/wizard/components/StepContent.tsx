@@ -7,14 +7,38 @@ import { StepGeneric } from './StepGeneric'
 import { StepList, StepSimpleList } from './StepList'
 import { saveProjectAction, publishProjectAction } from '../actions'
 
+// ─── Alias map for AI-generated section names ────────────────
+// Maps non-standard names (e.g. from agent) to valid STEP_SCHEMAS keys
+const SECTION_ALIASES: Record<string, string> = {
+    proposals: 'features',
+    biography: 'about',
+    biography_candidate: 'about',
+    events: 'agenda',
+    donate: 'lead_capture',
+    donations: 'lead_capture',
+    volunteer: 'lead_capture',
+    timeline: 'process_steps',
+    mission: 'story',
+    values: 'features',
+    news: 'featured_post',
+    gallery: 'image_gallery',
+    achievements: 'stats',
+    endorsements: 'testimonials',
+    press: 'featured_post',
+    social_media: 'contact',
+    contact_form: 'contact',
+}
+
 // ─── Main component ──────────────────────────────────────────
 
 export function StepContent({ step }: { step: string }) {
     const structureType = useWizardStore((s) => s.structureType)
     const section = useWizardStore((s) => s.getSection(step))
     const updateSection = useWizardStore((s) => s.updateSection)
-    // For dynamic sections like 'html_embed_2', fall back to base type schema ('html_embed')
-    const schema = getStepSchema(step) ?? getStepSchema(step.replace(/_\d+$/, ''))
+    // Resolve alias (AI may generate names like 'proposals', 'biography', etc.)
+    const baseStep = step.replace(/_\d+$/, '')
+    const resolvedStep = SECTION_ALIASES[step] ?? SECTION_ALIASES[baseStep] ?? step
+    const schema = getStepSchema(resolvedStep) ?? getStepSchema(resolvedStep.replace(/_\d+$/, ''))
 
     if (!schema) return <div className="text-white">Sección no encontrada: {step}</div>
 

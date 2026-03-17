@@ -15,7 +15,7 @@ import { env } from '../env'
 // ─── Constants ──────────────────────────────────────────
 
 const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
-const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+const DEFAULT_CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 
 /** NO-CENSURA rule injected into all political-intel prompts */

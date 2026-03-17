@@ -479,7 +479,6 @@ export function ThematicIntelPanel() {
                     isGeneratingAngles={isGeneratingAngles}
                     isGeneratingLanding={isGeneratingLanding}
                     landingError={landingError}
-                    topics={topics}
                     onGenerateAngles={generateThematicAnglesFromReport}
                     onGenerateCalendar={handleGenerateCalendar}
                     onGenerateLanding={handleGenerateLanding}

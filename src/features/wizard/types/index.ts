@@ -72,8 +72,9 @@ export interface WizardState {
 export interface FieldDefinition {
     key: string
     label: string
-    type: 'text' | 'textarea' | 'datetime-local' | 'url' | 'image' | 'color'
+    type: 'text' | 'textarea' | 'datetime-local' | 'url' | 'image' | 'color' | 'select'
     placeholder?: string
+    options?: { value: string; label: string }[]
 }
 
 export interface WizardStepConfig {

@@ -247,7 +247,14 @@ ${buildCardStyleCSS(t)}
 /* ---- Benefits ---- */
 .sl-benefits{padding:80px 0}
 .sl-benefits h2,.sl-section-title{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;
-  text-align:center;margin-bottom:56px;letter-spacing:-0.02em}
+  text-align:center;margin-bottom:48px;letter-spacing:-0.02em}
+.sl-section-title.has-sub{margin-bottom:12px}
+.sl-section-subtitle{font-size:clamp(1rem,2vw,1.25rem);text-align:center;
+  opacity:.6;margin-bottom:48px;line-height:1.6}
+.sl-eyebrow{font-size:.75rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase;
+  text-align:center;color:var(--primary);margin-bottom:12px}
+.feat-cta{text-align:center;margin-top:48px}
+.feat-cta .sl-btn{display:inline-block}
 .benefit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px}
 .benefit-card{padding:40px;border-radius:var(--radius);border:1px solid var(--muted);
   background:var(--bg-card);transition:transform .3s,box-shadow .3s}

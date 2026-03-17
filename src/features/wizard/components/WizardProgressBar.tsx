@@ -98,11 +98,13 @@ export function WizardProgressBar({
                                 borderRadius: '8px',
                                 border: isActive ? '1px solid #1a4a6e' : '1px solid transparent',
                                 background: isActive ? '#0d2540' : 'transparent',
-                                color: isActive ? '#38bdf8' : isDone ? '#5d7099' : '#3d4f6e',
-                                fontSize: '12px',
+                                color: isActive ? '#38bdf8' : '#e2e8f0',
+                                fontSize: '11px',
                                 fontWeight: isActive ? 700 : 500,
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.06em',
                                 fontFamily: 'inherit',
                                 transition: 'all 0.15s',
                             }}
@@ -123,7 +125,7 @@ export function WizardProgressBar({
                                         : isDone
                                           ? '#1e3050'
                                           : '#141c30',
-                                    color: isActive ? '#fff' : isDone ? '#5d7099' : '#3d4f6e',
+                                    color: isActive ? '#fff' : isDone ? '#94a3b8' : '#64748b',
                                 }}
                             >
                                 {isDone ? <Check style={{ width: '9px', height: '9px' }} /> : i + 1}

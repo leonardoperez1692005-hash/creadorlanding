@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import {
     Radar,
     Shield,
@@ -15,6 +15,10 @@ import {
     Film,
     ImagePlus,
     Brain,
+    Trash2,
+    Thermometer,
+    ChevronDown,
+    Package,
 } from 'lucide-react'
 import { useIntelligenceStore, type IntelligenceView } from '../store/intelligenceStore'
 import { useVideoRepurposerStore } from '@/features/video-repurposer/store/videoRepurposerStore'
@@ -24,6 +28,7 @@ const VALID_VIEWS = new Set<IntelligenceView>([
     'campaign-profile',
     'monitors',
     'thematic',
+    'thermometer',
     'dashboard',
     'attack-vectors',
     'calendar',
@@ -50,16 +55,23 @@ import { ThematicIntelPanel } from './ThematicIntelPanel'
 import { VideoRepurposerView } from '@/features/video-repurposer/components/VideoRepurposerView'
 import { ImageStudioView } from '@/features/image-studio/components/ImageStudioView'
 import { CommandCenter } from './CommandCenter'
+import { SentimentPanel } from './SentimentThermometer'
 
 interface PoliticalIntelClientProps {
     initialMonitors?: PoliticalMonitor[]
     initialHistory?: PoliticalReportHistoryItem[]
+    initialReport?: {
+        report: import('../types').PoliticalIntelReport
+        meta: import('../types').PoliticalSnapshotMeta | null
+        reportId: string
+    } | null
     allowedIntelViews?: string[]
 }
 
 export function PoliticalIntelClient({
     initialMonitors,
     initialHistory,
+    initialReport,
     allowedIntelViews,
 }: PoliticalIntelClientProps) {
     // If no allowedIntelViews, all views are allowed (superadmin or legacy)
@@ -72,7 +84,6 @@ export function PoliticalIntelClient({
         monitors,
         history,
         report,
-        phase,
         attackVectors,
         thematicAngles,
         loadCampaignProfile,
@@ -83,8 +94,11 @@ export function PoliticalIntelClient({
         loadTopics,
         loadCalendar,
         setActiveTopic,
+        deleteReport,
         // activeTopicId used elsewhere
     } = useIntelligenceStore()
+
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
     // Sync URL hash when view changes
     useEffect(() => {
@@ -106,21 +120,37 @@ export function PoliticalIntelClient({
         if (initialHistory && initialHistory.length > 0) {
             useIntelligenceStore.setState({ history: initialHistory })
         }
-        // Always load full history from DB (initialHistory may be incomplete)
 
-        loadHistory()
+        // Hydrate most recent report from server so dashboard is immediately available
+        if (initialReport) {
+            useIntelligenceStore.setState({
+                report: initialReport.report,
+                meta: initialReport.meta,
+                reportId: initialReport.reportId,
+                phase: 'complete',
+            })
+        }
+
+        // Always load full history from DB, then auto-load latest report if not already loaded
+        loadHistory().then(() => {
+            const state = useIntelligenceStore.getState()
+            // If we still have no active report but history has monitoring reports, auto-load the latest
+            if (!state.report && state.history.length > 0) {
+                const latestMonitoring = state.history.find((h) => h.reportType === 'report')
+                if (latestMonitoring) {
+                    loadReport(latestMonitoring.id)
+                }
+            }
+        })
 
         loadTopics()
 
         // Load video sessions for sidebar
-
         useVideoRepurposerStore.getState().loadSessions()
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Refresh history when switching views (ensures thematic reports appear)
-    useEffect(() => {
-        loadHistory()
-    }, [currentView]) // eslint-disable-line react-hooks/exhaustive-deps
+    // NOTE: History refresh happens inside generate(), generateThematicReport(), etc.
+    // No need to re-fetch on every view change — it caused unnecessary re-renders.
 
     // If profile loaded and doesn't exist, force campaign-profile form
     // While loading, respect currentView (avoids flash)
@@ -197,30 +227,34 @@ export function PoliticalIntelClient({
                 </div>
 
                 {/* Nav buttons */}
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        gap: '0.35rem',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                    }}
+                >
                     <NavBtn
                         icon={Brain}
-                        label="Centro"
+                        label="CENTRO"
                         active={effectiveView === 'command-center'}
                         onClick={() => setView('command-center')}
-                        color="#00c8ff"
                     />
                     {isViewAllowed('campaign-profile') && (
                         <NavBtn
                             icon={Shield}
-                            label="Campaña"
+                            label="CAMPAÑA"
                             active={effectiveView === 'campaign-profile'}
                             onClick={() => setView('campaign-profile')}
-                            color="#7C3AED"
                         />
                     )}
                     {isViewAllowed('monitors') && (
                         <NavBtn
                             icon={Users}
-                            label="Monitors"
+                            label="MONITORS"
                             active={effectiveView === 'monitors'}
                             onClick={() => setView('monitors')}
-                            color="#00c8ff"
                             badge={monitors.length > 0 ? String(monitors.length) : undefined}
                             disabled={profileRequired}
                         />
@@ -228,40 +262,43 @@ export function PoliticalIntelClient({
                     {isViewAllowed('thematic') && (
                         <NavBtn
                             icon={BookOpen}
-                            label="Temas"
+                            label="TEMAS"
                             active={effectiveView === 'thematic'}
                             onClick={() => setView('thematic')}
-                            color="#10B981"
                             disabled={profileRequired}
                         />
                     )}
+                    <NavBtn
+                        icon={Thermometer}
+                        label="TERMÓMETRO"
+                        active={effectiveView === 'thermometer'}
+                        onClick={() => setView('thermometer')}
+                        disabled={profileRequired}
+                    />
                     {isViewAllowed('dashboard') && (
                         <NavBtn
                             icon={BarChart3}
-                            label="Dashboard"
+                            label="DASHBOARD"
                             active={effectiveView === 'dashboard'}
                             onClick={() => setView('dashboard')}
-                            color="#34D399"
-                            disabled={profileRequired || !report}
+                            disabled={profileRequired}
                         />
                     )}
                     {isViewAllowed('attack-vectors') && (
                         <NavBtn
                             icon={Crosshair}
-                            label="Ataques"
+                            label="ATAQUES"
                             active={effectiveView === 'attack-vectors'}
                             onClick={() => setView('attack-vectors')}
-                            color="#F87171"
-                            disabled={profileRequired || !report}
+                            disabled={profileRequired}
                         />
                     )}
                     {isViewAllowed('calendar') && (
                         <NavBtn
                             icon={CalendarDays}
-                            label="Calendario"
+                            label="CALENDARIO"
                             active={effectiveView === 'calendar'}
                             onClick={() => setView('calendar')}
-                            color="#00c8ff"
                             disabled={
                                 profileRequired ||
                                 (attackVectors.length === 0 &&
@@ -270,41 +307,55 @@ export function PoliticalIntelClient({
                             }
                         />
                     )}
-                    {isViewAllowed('landing') && (
-                        <NavBtn
-                            icon={Layout}
-                            label="Landing"
-                            active={effectiveView === 'landing'}
-                            onClick={() => setView('landing')}
-                            color="#7C3AED"
-                            disabled={
-                                profileRequired ||
-                                (attackVectors.length === 0 &&
-                                    thematicAngles.length === 0 &&
-                                    history.length === 0)
-                            }
-                        />
-                    )}
-                    {isViewAllowed('video-repurposer') && (
-                        <NavBtn
-                            icon={Video}
-                            label="Video"
-                            active={effectiveView === 'video-repurposer'}
-                            onClick={() => setView('video-repurposer')}
-                            color="#F472B6"
-                            disabled={profileRequired}
-                        />
-                    )}
-                    {isViewAllowed('image-studio') && (
-                        <NavBtn
-                            icon={ImagePlus}
-                            label="Imágenes"
-                            active={effectiveView === 'image-studio'}
-                            onClick={() => setView('image-studio')}
-                            color="#F59E0B"
-                            disabled={profileRequired}
-                        />
-                    )}
+                    {/* Dropdown: CONTENIDO (Landing + Video + Imágenes) */}
+                    <NavDropdown
+                        icon={Package}
+                        label="CONTENIDO"
+                        active={['landing', 'video-repurposer', 'image-studio'].includes(
+                            effectiveView,
+                        )}
+                        disabled={profileRequired}
+                        items={[
+                            ...(isViewAllowed('landing')
+                                ? [
+                                      {
+                                          icon: Layout,
+                                          label: 'LANDING',
+                                          view: 'landing' as IntelligenceView,
+                                          active: effectiveView === 'landing',
+                                          disabled:
+                                              profileRequired ||
+                                              (attackVectors.length === 0 &&
+                                                  thematicAngles.length === 0 &&
+                                                  history.length === 0),
+                                      },
+                                  ]
+                                : []),
+                            ...(isViewAllowed('video-repurposer')
+                                ? [
+                                      {
+                                          icon: Video,
+                                          label: 'VIDEO',
+                                          view: 'video-repurposer' as IntelligenceView,
+                                          active: effectiveView === 'video-repurposer',
+                                          disabled: profileRequired,
+                                      },
+                                  ]
+                                : []),
+                            ...(isViewAllowed('image-studio')
+                                ? [
+                                      {
+                                          icon: ImagePlus,
+                                          label: 'IMÁGENES',
+                                          view: 'image-studio' as IntelligenceView,
+                                          active: effectiveView === 'image-studio',
+                                          disabled: profileRequired,
+                                      },
+                                  ]
+                                : []),
+                        ]}
+                        onSelect={(view) => setView(view)}
+                    />
                     {profileRequired && (
                         <span
                             style={{
@@ -349,13 +400,15 @@ export function PoliticalIntelClient({
                                 ? 'Calendarios'
                                 : effectiveView === 'thematic'
                                   ? 'Historial Temático'
-                                  : effectiveView === 'landing'
-                                    ? 'Reportes Disponibles'
-                                    : effectiveView === 'video-repurposer'
-                                      ? 'Videos Analizados'
-                                      : effectiveView === 'image-studio'
-                                        ? 'Imágenes Recientes'
-                                        : 'Historial de Reportes'}
+                                  : effectiveView === 'thermometer'
+                                    ? 'Termómetro'
+                                    : effectiveView === 'landing'
+                                      ? 'Reportes Disponibles'
+                                      : effectiveView === 'video-repurposer'
+                                        ? 'Videos Analizados'
+                                        : effectiveView === 'image-studio'
+                                          ? 'Imágenes Recientes'
+                                          : 'Historial de Reportes'}
                         </h3>
                     </div>
                     {(() => {
@@ -467,165 +520,282 @@ export function PoliticalIntelClient({
                                           : isThematic
                                             ? '#10B981'
                                             : '#00c8ff'
+                                    // Real ID (strip cal- prefix for virtual calendar entries)
+                                    const realId = item.id.startsWith('cal-')
+                                        ? item.id.replace('cal-', '')
+                                        : item.id
+                                    const isConfirming = confirmDeleteId === realId
+
                                     return (
-                                        <button
+                                        <div
                                             key={item.id}
-                                            onClick={() => handleHistoryClick(item)}
                                             style={{
+                                                position: 'relative',
                                                 display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '0.15rem',
-                                                padding: '0.6rem 1rem',
-                                                background: 'transparent',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                textAlign: 'left',
+                                                alignItems: 'stretch',
                                                 borderLeft: '2px solid transparent',
                                             }}
                                             onMouseEnter={(e) => {
                                                 e.currentTarget.style.background = `${hoverColor}08`
                                                 e.currentTarget.style.borderLeft = `2px solid ${hoverColor}`
+                                                const delBtn = e.currentTarget.querySelector(
+                                                    '.delete-report-btn',
+                                                ) as HTMLElement
+                                                if (delBtn) delBtn.style.opacity = '0.7'
                                             }}
                                             onMouseLeave={(e) => {
                                                 e.currentTarget.style.background = 'transparent'
                                                 e.currentTarget.style.borderLeft =
                                                     '2px solid transparent'
+                                                const delBtn = e.currentTarget.querySelector(
+                                                    '.delete-report-btn',
+                                                ) as HTMLElement
+                                                if (delBtn) delBtn.style.opacity = '0'
+                                                if (isConfirming) setConfirmDeleteId(null)
                                             }}
                                         >
-                                            <div
+                                            <button
+                                                onClick={() => handleHistoryClick(item)}
                                                 style={{
+                                                    flex: 1,
+                                                    minWidth: 0,
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.4rem',
+                                                    flexDirection: 'column',
+                                                    gap: '0.15rem',
+                                                    padding: '0.6rem 0.5rem 0.6rem 1rem',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left',
                                                 }}
                                             >
-                                                {isLandingSource ? (
-                                                    <Layout size={12} color="#7C3AED" />
-                                                ) : isAnyCalendar ? (
-                                                    <CalendarDays size={12} color="#00c8ff" />
-                                                ) : isThematic ? (
-                                                    <BookOpen size={12} color="#10B981" />
-                                                ) : (
-                                                    <Clock size={12} color="#6B7280" />
-                                                )}
-                                                <span
+                                                <div
                                                     style={{
-                                                        color: '#8b9ec7',
-                                                        fontSize: '0.72rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.4rem',
                                                     }}
                                                 >
-                                                    {new Date(item.createdAt).toLocaleDateString(
-                                                        'es-AR',
+                                                    {isLandingSource ? (
+                                                        <Layout size={12} color="#7C3AED" />
+                                                    ) : isAnyCalendar ? (
+                                                        <CalendarDays size={12} color="#00c8ff" />
+                                                    ) : isThematic ? (
+                                                        <BookOpen size={12} color="#10B981" />
+                                                    ) : (
+                                                        <Clock size={12} color="#6B7280" />
                                                     )}
-                                                </span>
+                                                    <span
+                                                        style={{
+                                                            color: '#8b9ec7',
+                                                            fontSize: '0.72rem',
+                                                        }}
+                                                    >
+                                                        {new Date(
+                                                            item.createdAt,
+                                                        ).toLocaleDateString('es-AR')}{' '}
+                                                        <span
+                                                            style={{
+                                                                color: '#4B5563',
+                                                                fontSize: '0.65rem',
+                                                            }}
+                                                        >
+                                                            {new Date(
+                                                                item.createdAt,
+                                                            ).toLocaleTimeString('es-AR', {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            })}
+                                                        </span>
+                                                    </span>
+                                                    {isLandingSource ? (
+                                                        <span
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                padding: '0 0.25rem',
+                                                                borderRadius: '3px',
+                                                                background: isLandingThematic
+                                                                    ? 'rgba(16,185,129,0.15)'
+                                                                    : 'rgba(0,200,255,0.15)',
+                                                                color: isLandingThematic
+                                                                    ? '#10B981'
+                                                                    : '#00c8ff',
+                                                                fontWeight: 700,
+                                                            }}
+                                                        >
+                                                            {isLandingThematic
+                                                                ? 'TEMA'
+                                                                : 'MONITOREO'}
+                                                        </span>
+                                                    ) : isAnyCalendar ? (
+                                                        <span
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                padding: '0 0.25rem',
+                                                                borderRadius: '3px',
+                                                                background: isThematicCalendar
+                                                                    ? 'rgba(16,185,129,0.15)'
+                                                                    : 'rgba(0,200,255,0.15)',
+                                                                color: isThematicCalendar
+                                                                    ? '#10B981'
+                                                                    : '#00c8ff',
+                                                                fontWeight: 700,
+                                                            }}
+                                                        >
+                                                            {isThematicCalendar
+                                                                ? 'TEMA'
+                                                                : 'MONITOREO'}
+                                                        </span>
+                                                    ) : isThematic ? (
+                                                        <span
+                                                            style={{
+                                                                fontSize: '0.6rem',
+                                                                padding: '0 0.25rem',
+                                                                borderRadius: '3px',
+                                                                background: 'rgba(16,185,129,0.15)',
+                                                                color: '#10B981',
+                                                                fontWeight: 700,
+                                                            }}
+                                                        >
+                                                            TEMA
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                                 {isLandingSource ? (
                                                     <span
                                                         style={{
-                                                            fontSize: '0.6rem',
-                                                            padding: '0 0.25rem',
-                                                            borderRadius: '3px',
-                                                            background: isLandingThematic
-                                                                ? 'rgba(16,185,129,0.15)'
-                                                                : 'rgba(0,200,255,0.15)',
-                                                            color: isLandingThematic
-                                                                ? '#10B981'
-                                                                : '#00c8ff',
-                                                            fontWeight: 700,
+                                                            color: '#A78BFA',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 600,
                                                         }}
                                                     >
-                                                        {isLandingThematic ? 'TEMA' : 'MONITOREO'}
+                                                        {isLandingThematic
+                                                            ? item.topicName || 'Tema'
+                                                            : `${item.monitorCount} monitor${item.monitorCount !== 1 ? 'es' : ''}`}
                                                     </span>
                                                 ) : isAnyCalendar ? (
                                                     <span
                                                         style={{
-                                                            fontSize: '0.6rem',
-                                                            padding: '0 0.25rem',
-                                                            borderRadius: '3px',
-                                                            background: isThematicCalendar
-                                                                ? 'rgba(16,185,129,0.15)'
-                                                                : 'rgba(0,200,255,0.15)',
-                                                            color: isThematicCalendar
-                                                                ? '#10B981'
-                                                                : '#00c8ff',
-                                                            fontWeight: 700,
+                                                            color: '#00c8ff',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 600,
                                                         }}
                                                     >
-                                                        {isThematicCalendar ? 'TEMA' : 'MONITOREO'}
+                                                        {isThematicCalendar
+                                                            ? item.topicName || 'Tema'
+                                                            : item.summary || 'Monitoreo'}
                                                     </span>
                                                 ) : isThematic ? (
                                                     <span
                                                         style={{
-                                                            fontSize: '0.6rem',
-                                                            padding: '0 0.25rem',
-                                                            borderRadius: '3px',
-                                                            background: 'rgba(16,185,129,0.15)',
                                                             color: '#10B981',
-                                                            fontWeight: 700,
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 600,
                                                         }}
                                                     >
-                                                        TEMA
+                                                        {item.topicName || 'Tema'}
                                                     </span>
-                                                ) : null}
-                                            </div>
-                                            {isLandingSource ? (
-                                                <span
+                                                ) : (
+                                                    <span
+                                                        style={{
+                                                            color: '#6B7280',
+                                                            fontSize: '0.7rem',
+                                                        }}
+                                                    >
+                                                        {item.monitorCount} monitor
+                                                        {item.monitorCount !== 1 ? 'es' : ''}
+                                                        {item.changesDetected > 0 &&
+                                                            ` · ${item.changesDetected} cambio${item.changesDetected !== 1 ? 's' : ''}`}
+                                                    </span>
+                                                )}
+                                                {item.summary &&
+                                                    !isAnyCalendar &&
+                                                    !isLandingSource && (
+                                                        <span
+                                                            style={{
+                                                                color: '#4B5563',
+                                                                fontSize: '0.68rem',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                                maxWidth: '100%',
+                                                            }}
+                                                        >
+                                                            {item.summary}
+                                                        </span>
+                                                    )}
+                                            </button>
+                                            {/* Delete button */}
+                                            {isConfirming ? (
+                                                <div
                                                     style={{
-                                                        color: '#A78BFA',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 600,
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        justifyContent: 'center',
+                                                        gap: '0.15rem',
+                                                        paddingRight: '0.5rem',
+                                                        flexShrink: 0,
                                                     }}
                                                 >
-                                                    {isLandingThematic
-                                                        ? item.topicName || 'Tema'
-                                                        : `${item.monitorCount} monitor${item.monitorCount !== 1 ? 'es' : ''}`}
-                                                </span>
-                                            ) : isAnyCalendar ? (
-                                                <span
-                                                    style={{
-                                                        color: '#00c8ff',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    {isThematicCalendar
-                                                        ? item.topicName || 'Tema'
-                                                        : item.summary || 'Monitoreo'}
-                                                </span>
-                                            ) : isThematic ? (
-                                                <span
-                                                    style={{
-                                                        color: '#10B981',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    {item.topicName || 'Tema'}
-                                                </span>
+                                                    <button
+                                                        onClick={async () => {
+                                                            await deleteReport(realId)
+                                                            setConfirmDeleteId(null)
+                                                        }}
+                                                        style={{
+                                                            background: '#EF4444',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            borderRadius: '3px',
+                                                            fontSize: '0.6rem',
+                                                            fontWeight: 700,
+                                                            padding: '0.15rem 0.3rem',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        Sí
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setConfirmDeleteId(null)}
+                                                        style={{
+                                                            background: '#374151',
+                                                            color: '#9CA3AF',
+                                                            border: 'none',
+                                                            borderRadius: '3px',
+                                                            fontSize: '0.6rem',
+                                                            fontWeight: 700,
+                                                            padding: '0.15rem 0.3rem',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        No
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                <span
-                                                    style={{ color: '#6B7280', fontSize: '0.7rem' }}
-                                                >
-                                                    {item.monitorCount} monitor
-                                                    {item.monitorCount !== 1 ? 'es' : ''}
-                                                    {item.changesDetected > 0 &&
-                                                        ` · ${item.changesDetected} cambio${item.changesDetected !== 1 ? 's' : ''}`}
-                                                </span>
-                                            )}
-                                            {item.summary && !isAnyCalendar && !isLandingSource && (
-                                                <span
-                                                    style={{
-                                                        color: '#4B5563',
-                                                        fontSize: '0.68rem',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap',
-                                                        maxWidth: '100%',
+                                                <button
+                                                    className="delete-report-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setConfirmDeleteId(realId)
                                                     }}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        padding: '0.4rem 0.5rem',
+                                                        opacity: 0,
+                                                        transition: 'opacity 0.2s',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        flexShrink: 0,
+                                                    }}
+                                                    aria-label="Eliminar reporte"
+                                                    title="Eliminar reporte"
                                                 >
-                                                    {item.summary}
-                                                </span>
+                                                    <Trash2 size={14} color="#EF4444" />
+                                                </button>
                                             )}
-                                        </button>
+                                        </div>
                                     )
                                 })}
                             </div>
@@ -648,14 +818,7 @@ export function PoliticalIntelClient({
                     {effectiveView === 'campaign-profile' && <CampaignProfileForm />}
                     {effectiveView === 'monitors' && <MonitorConfigPanel />}
                     {effectiveView === 'dashboard' &&
-                        (report ? (
-                            <PoliticalDashboard />
-                        ) : (
-                            <EmptyState
-                                message="Generá un análisis desde la pestaña Monitors para ver el dashboard."
-                                phase={phase}
-                            />
-                        ))}
+                        (report ? <PoliticalDashboard /> : <DashboardAutoLoader />)}
                     {effectiveView === 'attack-vectors' &&
                         (report ? (
                             <AttackVectorsPanel />
@@ -663,6 +826,7 @@ export function PoliticalIntelClient({
                             <EmptyState message="Primero generá un análisis de inteligencia." />
                         ))}
                     {effectiveView === 'thematic' && <ThematicIntelPanel />}
+                    {effectiveView === 'thermometer' && <SentimentPanel />}
                     {effectiveView === 'calendar' && <PoliticalCalendarView />}
                     {effectiveView === 'landing' && <PoliticalLandingPanel />}
                     {effectiveView === 'video-repurposer' && <VideoRepurposerView />}
@@ -689,7 +853,6 @@ function NavBtn({
     label,
     active,
     onClick,
-    color,
     badge,
     disabled,
 }: {
@@ -697,10 +860,10 @@ function NavBtn({
     label: string
     active: boolean
     onClick: () => void
-    color: string
     badge?: string
     disabled?: boolean
 }) {
+    const activeColor = '#00c8ff'
     return (
         <button
             onClick={onClick}
@@ -711,17 +874,19 @@ function NavBtn({
                 gap: '0.35rem',
                 padding: '0.4rem 0.8rem',
                 borderRadius: '6px',
-                fontSize: '0.78rem',
+                fontSize: '0.72rem',
                 fontWeight: active ? 700 : 500,
-                background: active ? `${color}15` : 'transparent',
-                border: `1px solid ${active ? `${color}30` : 'transparent'}`,
-                color: active ? color : disabled ? '#4B5563' : '#6B7280',
+                letterSpacing: '0.03em',
+                background: active ? `${activeColor}15` : 'transparent',
+                border: `1px solid ${active ? `${activeColor}30` : 'transparent'}`,
+                color: active ? activeColor : disabled ? '#4B5563' : '#e2e8f0',
                 cursor: disabled ? 'default' : 'pointer',
                 opacity: disabled ? 0.5 : 1,
                 transition: 'all 0.15s',
+                textTransform: 'uppercase' as const,
             }}
         >
-            <Icon size={14} color={active ? color : disabled ? '#4B5563' : '#6B7280'} />
+            <Icon size={14} color={active ? activeColor : disabled ? '#4B5563' : '#e2e8f0'} />
             {label}
             {badge && (
                 <span
@@ -730,14 +895,164 @@ function NavBtn({
                         borderRadius: '4px',
                         fontSize: '0.65rem',
                         fontWeight: 700,
-                        background: `${color}20`,
-                        color,
+                        background: `${activeColor}20`,
+                        color: activeColor,
                     }}
                 >
                     {badge}
                 </span>
             )}
         </button>
+    )
+}
+
+function NavDropdown({
+    icon: Icon,
+    label,
+    active,
+    disabled,
+    items,
+    onSelect,
+}: {
+    icon: React.ComponentType<{ size?: number; color?: string }>
+    label: string
+    active: boolean
+    disabled?: boolean
+    items: Array<{
+        icon: React.ComponentType<{ size?: number; color?: string }>
+        label: string
+        view: IntelligenceView
+        active: boolean
+        disabled?: boolean
+    }>
+    onSelect: (view: IntelligenceView) => void
+}) {
+    const [open, setOpen] = useState(false)
+    const activeColor = '#00c8ff'
+
+    // Find label of active sub-item (if any)
+    const activeItem = items.find((i) => i.active)
+    const displayLabel = activeItem ? activeItem.label : label
+
+    return (
+        <div style={{ position: 'relative' }}>
+            <button
+                onClick={() => !disabled && setOpen(!open)}
+                disabled={disabled}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.4rem 0.8rem',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: active ? 700 : 500,
+                    letterSpacing: '0.03em',
+                    background: active ? `${activeColor}15` : 'transparent',
+                    border: `1px solid ${active ? `${activeColor}30` : 'transparent'}`,
+                    color: active ? activeColor : disabled ? '#4B5563' : '#e2e8f0',
+                    cursor: disabled ? 'default' : 'pointer',
+                    opacity: disabled ? 0.5 : 1,
+                    transition: 'all 0.15s',
+                    textTransform: 'uppercase' as const,
+                }}
+            >
+                <Icon size={14} color={active ? activeColor : disabled ? '#4B5563' : '#e2e8f0'} />
+                {displayLabel}
+                <ChevronDown
+                    size={12}
+                    color={active ? activeColor : '#e2e8f0'}
+                    style={{
+                        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.15s',
+                    }}
+                />
+            </button>
+            {open && (
+                <>
+                    {/* Click-away overlay */}
+                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                    <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 98 }}
+                        onClick={() => setOpen(false)}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 4px)',
+                            right: 0,
+                            zIndex: 99,
+                            background: '#111827',
+                            border: '1px solid #1e2540',
+                            borderRadius: '8px',
+                            padding: '0.35rem',
+                            minWidth: '160px',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                        }}
+                    >
+                        {items.map((item) => {
+                            const ItemIcon = item.icon
+                            return (
+                                <button
+                                    key={item.view}
+                                    onClick={() => {
+                                        if (!item.disabled) {
+                                            onSelect(item.view)
+                                            setOpen(false)
+                                        }
+                                    }}
+                                    disabled={item.disabled}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.5rem 0.75rem',
+                                        borderRadius: '5px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: item.active ? 700 : 500,
+                                        background: item.active
+                                            ? `${activeColor}15`
+                                            : 'transparent',
+                                        border: 'none',
+                                        color: item.active
+                                            ? activeColor
+                                            : item.disabled
+                                              ? '#4B5563'
+                                              : '#e2e8f0',
+                                        cursor: item.disabled ? 'default' : 'pointer',
+                                        opacity: item.disabled ? 0.5 : 1,
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        textTransform: 'uppercase' as const,
+                                        letterSpacing: '0.03em',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!item.active && !item.disabled)
+                                            e.currentTarget.style.background = '#1e2540'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!item.active && !item.disabled)
+                                            e.currentTarget.style.background = 'transparent'
+                                    }}
+                                >
+                                    <ItemIcon
+                                        size={14}
+                                        color={
+                                            item.active
+                                                ? activeColor
+                                                : item.disabled
+                                                  ? '#4B5563'
+                                                  : '#e2e8f0'
+                                        }
+                                    />
+                                    {item.label}
+                                </button>
+                            )
+                        })}
+                    </div>
+                </>
+            )}
+        </div>
     )
 }
 
@@ -923,6 +1238,64 @@ function VideoSidebarContent() {
                 )
             })}
         </div>
+    )
+}
+
+/**
+ * Auto-loads the latest monitoring report when dashboard has no active report.
+ * Shows a loading state while fetching, then either renders the dashboard
+ * or shows EmptyState if there's truly no data.
+ */
+function DashboardAutoLoader() {
+    const { history, report, phase, loadReport } = useIntelligenceStore()
+    const [attempted, setAttempted] = useState(false)
+
+    useEffect(() => {
+        if (report || attempted) return
+        const latestMonitoring = history.find((h) => h.reportType === 'report')
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time flag, not cascading
+        setAttempted(true)
+        if (latestMonitoring) {
+            void loadReport(latestMonitoring.id)
+        }
+    }, [report, history, attempted, loadReport])
+
+    // Report loaded successfully → render dashboard
+    if (report) return <PoliticalDashboard />
+
+    // Still loading
+    if (!attempted || (history.length === 0 && phase === 'idle')) {
+        return (
+            <div
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                <div style={{ textAlign: 'center' }}>
+                    <div
+                        style={{
+                            width: 32,
+                            height: 32,
+                            border: '3px solid #1e2540',
+                            borderTopColor: '#00c8ff',
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                            margin: '0 auto 1rem',
+                        }}
+                    />
+                    <p style={{ color: '#6B7280', fontSize: '0.85rem' }}>
+                        Cargando último reporte...
+                    </p>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                </div>
+            </div>
+        )
+    }
+
+    // No reports exist at all
+    return (
+        <EmptyState
+            message="Generá un análisis desde la pestaña Monitors para ver el dashboard."
+            phase={phase}
+        />
     )
 }
 

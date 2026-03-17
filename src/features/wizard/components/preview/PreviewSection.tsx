@@ -40,6 +40,26 @@ import {
     AboutPreview,
 } from './ContentSections'
 
+const SECTION_TYPE_ALIASES: Record<string, string> = {
+    proposals: 'features',
+    biography: 'about',
+    biography_candidate: 'about',
+    events: 'agenda',
+    donate: 'lead_capture',
+    donations: 'lead_capture',
+    volunteer: 'lead_capture',
+    timeline: 'process_steps',
+    mission: 'story',
+    values: 'features',
+    news: 'featured_post',
+    gallery: 'image_gallery',
+    achievements: 'stats',
+    endorsements: 'testimonials',
+    press: 'featured_post',
+    social_media: 'contact',
+    contact_form: 'contact',
+}
+
 export function PreviewSection({
     section,
     isMobile,
@@ -49,8 +69,9 @@ export function PreviewSection({
 }) {
     const content = section.content as PreviewContent
     const m = isMobile
+    const resolvedType = SECTION_TYPE_ALIASES[section.type] ?? section.type
 
-    switch (section.type) {
+    switch (resolvedType) {
         case 'hero':
             return <HeroPreview content={content} m={m} />
         case 'benefits':

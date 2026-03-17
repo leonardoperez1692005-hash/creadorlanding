@@ -38,7 +38,15 @@ export const DEFAULT_SERP_TEMPLATES = [
     '{handles_csv} redes sociales estrategia digital {year}',
 ]
 
-/** Build default SERP queries from templates */
+// --- Per-Rival SERP Query Templates ---
+// Placeholders: {name}, {party}, {role}, {country_name}
+export const PER_RIVAL_SERP_TEMPLATES = [
+    '"{name}" declaraciones últimas noticias',
+    '"{name}" {party} {country_name} polémicas',
+    '"{name}" {role} senado congreso actividad',
+]
+
+/** Build default SERP queries from templates (general context) */
 export function buildDefaultSerpQueries(countryCode: string, handles: string[]): string[] {
     const country = COUNTRIES[countryCode]
     if (!country) return []
@@ -51,6 +59,31 @@ export function buildDefaultSerpQueries(countryCode: string, handles: string[]):
             .replace('{year}', year)
             .replace('{handles_csv}', handlesCsv),
     )
+}
+
+/** Build SERP queries PER RIVAL — más específicas, buscan al político por nombre */
+export function buildPerRivalSerpQueries(
+    monitors: Array<{ fullName: string; party: string; role: string; country: string }>,
+    countryCode: string,
+): string[] {
+    const country = COUNTRIES[countryCode]
+    if (!country) return []
+
+    const queries: string[] = []
+    for (const m of monitors) {
+        for (const tpl of PER_RIVAL_SERP_TEMPLATES) {
+            queries.push(
+                tpl
+                    .replace('{name}', m.fullName)
+                    .replace('{party}', m.party || '')
+                    .replace('{role}', m.role || '')
+                    .replace('{country_name}', country.name)
+                    .replace(/\s{2,}/g, ' ')
+                    .trim(),
+            )
+        }
+    }
+    return queries
 }
 
 // --- Change Detection Thresholds ---

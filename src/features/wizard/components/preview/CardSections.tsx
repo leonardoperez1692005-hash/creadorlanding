@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { Check } from 'lucide-react'
+import { sanitizeHtml } from '@/shared/lib/sanitize'
 import type { SectionPreviewProps, ContentItem } from './types'
 
 export function BenefitsPreview({ content, m }: SectionPreviewProps) {
@@ -62,57 +63,91 @@ export function BenefitsPreview({ content, m }: SectionPreviewProps) {
 
 export function FeaturesPreview({ content, m }: SectionPreviewProps) {
     const items: ContentItem[] = Array.isArray(content.items) ? content.items : []
+    const title = (content.title as string) || 'Características'
+    const subtitle = content.subtitle as string | undefined
+    const ctaText = content.cta_text as string | undefined
+    const ctaUrl = (content.cta_url as string) || '#'
+    const bgColor = content.bg_color as string | undefined
+
     return (
-        <section className={`${m ? 'py-12 px-4' : 'py-24 px-6'} max-w-6xl mx-auto`}>
-            <h2 className={`${m ? 'text-2xl mb-8' : 'text-4xl mb-16'} font-bold text-center`}>
-                Características
-            </h2>
-            <div
-                className={`grid grid-cols-1 ${m ? 'gap-4' : 'md:grid-cols-2 lg:grid-cols-3 gap-8'}`}
-            >
-                {items.length > 0
-                    ? items.map((item, i) => (
-                          <div
-                              key={i}
-                              className={`${m ? 'p-5 rounded-2xl' : 'p-10 rounded-[2.5rem]'} border transition-all hover:-translate-y-2 hover:shadow-2xl glass group`}
-                              style={{
-                                  backgroundColor: 'var(--preview-card-bg)',
-                                  borderColor: 'var(--preview-muted)',
-                              }}
-                          >
+        <section
+            className={`${m ? 'py-12 px-4' : 'py-24 px-6'}`}
+            style={bgColor ? { backgroundColor: bgColor } : undefined}
+        >
+            <div className="max-w-6xl mx-auto">
+                <h2 className={`${m ? 'text-2xl mb-3' : 'text-4xl mb-4'} font-bold text-center`}>
+                    {title}
+                </h2>
+                {subtitle && (
+                    <p className={`text-center opacity-60 ${m ? 'text-sm mb-8' : 'text-lg mb-14'}`}>
+                        {subtitle}
+                    </p>
+                )}
+                {!subtitle && <div className={m ? 'mb-8' : 'mb-16'} />}
+                <div
+                    className={`grid grid-cols-1 ${m ? 'gap-4' : 'md:grid-cols-2 lg:grid-cols-3 gap-8'}`}
+                >
+                    {items.length > 0
+                        ? items.map((item, i) => (
                               <div
-                                  className={`${m ? 'w-10 h-10 mb-4 rounded-xl' : 'w-14 h-14 mb-8 rounded-2xl'} flex items-center justify-center glass group-hover:scale-110 transition-transform`}
-                                  style={{ color: 'var(--preview-secondary)' }}
+                                  key={i}
+                                  className={`${m ? 'p-5 rounded-2xl' : 'p-10 rounded-[2.5rem]'} border transition-all hover:-translate-y-2 hover:shadow-2xl glass group`}
+                                  style={{
+                                      backgroundColor: 'var(--preview-card-bg)',
+                                      borderColor: 'var(--preview-muted)',
+                                  }}
                               >
-                                  <Check size={m ? 20 : 28} strokeWidth={3} />
+                                  <div
+                                      className={`${m ? 'w-10 h-10 mb-4 rounded-xl' : 'w-14 h-14 mb-8 rounded-2xl'} flex items-center justify-center glass group-hover:scale-110 transition-transform`}
+                                      style={{ color: 'var(--preview-secondary)' }}
+                                  >
+                                      <Check size={m ? 20 : 28} strokeWidth={3} />
+                                  </div>
+                                  <h3
+                                      className={`${m ? 'text-lg mb-2' : 'text-2xl mb-4'} font-bold`}
+                                      style={{ color: 'var(--preview-secondary)' }}
+                                  >
+                                      {item.title || 'Característica'}
+                                  </h3>
+                                  <p
+                                      className={`opacity-60 ${m ? 'text-sm' : 'text-lg'} leading-relaxed`}
+                                      dangerouslySetInnerHTML={{
+                                          __html: sanitizeHtml(
+                                              item.description || 'Descripción...',
+                                          ),
+                                      }}
+                                  />
                               </div>
-                              <h3
-                                  className={`${m ? 'text-lg mb-2' : 'text-2xl mb-4'} font-bold`}
-                                  style={{ color: 'var(--preview-secondary)' }}
+                          ))
+                        : [1, 2, 3].map((i) => (
+                              <div
+                                  key={i}
+                                  className={`${m ? 'p-5 rounded-2xl' : 'p-10 rounded-[2.5rem]'} border opacity-20 glass`}
+                                  style={{
+                                      backgroundColor: 'var(--preview-card-bg)',
+                                      borderColor: 'var(--preview-muted)',
+                                  }}
                               >
-                                  {item.title || 'Característica'}
-                              </h3>
-                              <p
-                                  className={`opacity-60 ${m ? 'text-sm' : 'text-lg'} leading-relaxed`}
-                              >
-                                  {item.description || 'Descripción...'}
-                              </p>
-                          </div>
-                      ))
-                    : [1, 2, 3].map((i) => (
-                          <div
-                              key={i}
-                              className={`${m ? 'p-5 rounded-2xl' : 'p-10 rounded-[2.5rem]'} border opacity-20 glass`}
-                              style={{
-                                  backgroundColor: 'var(--preview-card-bg)',
-                                  borderColor: 'var(--preview-muted)',
-                              }}
-                          >
-                              <div className="h-14 w-14 mb-8 rounded-2xl opacity-20 bg-current" />
-                              <div className="h-8 w-3/4 mb-6 rounded-lg opacity-20 bg-current" />
-                              <div className="h-4 w-full mb-3 rounded-lg opacity-10 bg-current" />
-                          </div>
-                      ))}
+                                  <div className="h-14 w-14 mb-8 rounded-2xl opacity-20 bg-current" />
+                                  <div className="h-8 w-3/4 mb-6 rounded-lg opacity-20 bg-current" />
+                                  <div className="h-4 w-full mb-3 rounded-lg opacity-10 bg-current" />
+                              </div>
+                          ))}
+                </div>
+                {ctaText && (
+                    <div className="flex justify-center mt-12">
+                        <a
+                            href={ctaUrl}
+                            className={`inline-flex items-center gap-2 ${m ? 'px-6 py-3 text-sm' : 'px-10 py-4 text-base'} font-bold rounded-2xl transition-all hover:scale-105`}
+                            style={{
+                                background: 'var(--preview-primary)',
+                                color: 'var(--preview-bg)',
+                            }}
+                        >
+                            {ctaText}
+                        </a>
+                    </div>
+                )}
             </div>
         </section>
     )

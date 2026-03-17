@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Zap, ArrowRight, Loader2 } from 'lucide-react'
-import type { PoliticalIntelReport } from '../types'
+import type { PoliticalIntelReport, PoliticalSnapshotMeta } from '../types'
 
 interface ActionsPanelProps {
     actions: PoliticalIntelReport['recommendedActions']
     comparativeAnalysis: PoliticalIntelReport['comparativeAnalysis']
     executiveSummary: string
+    meta?: PoliticalSnapshotMeta | null
 }
 
 const priorityColors: Record<string, { bg: string; border: string; text: string }> = {
@@ -21,6 +22,7 @@ export function ActionsPanel({
     actions,
     comparativeAnalysis,
     executiveSummary,
+    meta,
 }: ActionsPanelProps) {
     const router = useRouter()
     const [loadingStrategy, setLoadingStrategy] = useState(false)
@@ -208,6 +210,39 @@ export function ActionsPanel({
                     </button>
                 </div>
             </div>
+
+            {/* Data backing badge */}
+            {meta && (meta.totalSources ?? 0) > 0 && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '8px',
+                        background: 'rgba(0,200,255,0.05)',
+                        border: '1px solid rgba(0,200,255,0.1)',
+                        marginBottom: '0.75rem',
+                    }}
+                >
+                    <span style={{ fontSize: '0.85rem' }}>📊</span>
+                    <span style={{ color: '#8b9ec7', fontSize: '0.75rem' }}>
+                        Acciones basadas en el análisis de{' '}
+                        <strong style={{ color: '#00c8ff' }}>
+                            {(meta.totalSources ?? 0).toLocaleString('es-AR')} fuentes
+                        </strong>{' '}
+                        ·{' '}
+                        {[
+                            (meta.twitterSources ?? 0) > 0 ? `${meta.twitterSources} tweets` : '',
+                            meta.serpQueriesRun > 0 ? `${meta.serpQueriesRun} SERP` : '',
+                            (meta.redditSources ?? 0) > 0 ? `${meta.redditSources} Reddit` : '',
+                            (meta.youtubeSources ?? 0) > 0 ? `${meta.youtubeSources} YouTube` : '',
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </span>
+                </div>
+            )}
 
             {/* Actions list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

@@ -15,6 +15,10 @@ import { analyzeThematicContext, generateThematicAngles } from '../thematicAnaly
 import { generateThematicLandingContent } from '../generator'
 import { buildThematicSerpQueries } from '../config'
 import { getAuthUserId } from './auth'
+import { isRedditAvailable, scrapeRedditTopic } from '../redditClient'
+import { isYouTubeAvailable, scrapeYouTubeTopic } from '../youtubeClient'
+import { isTrendsAvailable, buildTrendsContextForPrompt } from '../trendsClient'
+import { indexPoliticianStatements, getOrCreatePoliticalCorpus } from '../knowledgeIndexer'
 
 // =============================================
 // THEMATIC INTELLIGENCE — RESEARCH & ANGLES
@@ -69,15 +73,155 @@ export async function generateThematicReportAction(
             topic.serpQueries.length > 0 ? topic.serpQueries : undefined,
         )
 
+        // Phase 1: SERP research (existing)
         const serpResults = await researchPoliticalContext(queries, campaignProfile.country, [])
+
+        // Phase 2: Multi-source enrichment (Reddit + YouTube + Google Trends)
+        // Run all in parallel for speed — each is independent and best-effort
+        const [redditStatements, youtubeResult, trendsContext] = await Promise.all([
+            // Reddit: search posts + comments about this topic
+            isRedditAvailable()
+                ? scrapeRedditTopic(topic.name, campaignProfile.country, 25, 20).catch((err) => {
+                      logger.warn(
+                          'thematic-intel',
+                          `Reddit enrichment failed: ${(err as Error).message}`,
+                      )
+                      return []
+                  })
+                : Promise.resolve([]),
+            // YouTube: search videos + extract comments
+            isYouTubeAvailable()
+                ? scrapeYouTubeTopic(
+                      topic.name,
+                      3,
+                      100,
+                      campaignProfile.country.toUpperCase(),
+                  ).catch((err) => {
+                      logger.warn(
+                          'thematic-intel',
+                          `YouTube enrichment failed: ${(err as Error).message}`,
+                      )
+                      return { statements: [], videoIds: [] }
+                  })
+                : Promise.resolve({ statements: [], videoIds: [] }),
+            // Google Trends: validate if topic is actually trending
+            isTrendsAvailable()
+                ? buildTrendsContextForPrompt(
+                      topic.name,
+                      campaignProfile.country.toUpperCase(),
+                  ).catch((err) => {
+                      logger.warn(
+                          'thematic-intel',
+                          `Trends validation failed: ${(err as Error).message}`,
+                      )
+                      return ''
+                  })
+                : Promise.resolve(''),
+        ])
+
+        // Index Reddit + YouTube statements in knowledge base (best-effort)
+        const allNewStatements = [...redditStatements, ...youtubeResult.statements]
+        if (allNewStatements.length > 0) {
+            try {
+                const corpusName = await getOrCreatePoliticalCorpus(userId, topic.name, topic.name)
+                await indexPoliticianStatements(userId, corpusName, topic.name, allNewStatements)
+                logger.info(
+                    'thematic-intel',
+                    `Indexed ${allNewStatements.length} multi-source statements for "${topic.name}" (Reddit: ${redditStatements.length}, YouTube: ${youtubeResult.statements.length})`,
+                )
+            } catch (err) {
+                logger.warn(
+                    'thematic-intel',
+                    `Statement indexing failed: ${(err as Error).message}`,
+                )
+            }
+        }
+
+        // Build enriched context prompt with multi-source data
+        let enrichedContextPrompt = topic.contextPrompt || ''
+        if (trendsContext) {
+            enrichedContextPrompt = `${trendsContext}\n\n${enrichedContextPrompt}`
+        }
+        if (redditStatements.length > 0) {
+            const redditSample = redditStatements
+                .slice(0, 10)
+                .map((s, i) => `${i + 1}. "${s.text.substring(0, 200)}" — ${s.source_title}`)
+                .join('\n')
+            enrichedContextPrompt += `\n\n## OPINIÓN PÚBLICA EN REDDIT (${redditStatements.length} posts/comentarios)\n${redditSample}`
+        }
+        if (youtubeResult.statements.length > 0) {
+            const ytSample = youtubeResult.statements
+                .slice(0, 10)
+                .map((s, i) => `${i + 1}. "${s.text.substring(0, 200)}" — ${s.source_title}`)
+                .join('\n')
+            enrichedContextPrompt += `\n\n## OPINIÓN PÚBLICA EN YOUTUBE (${youtubeResult.statements.length} comentarios)\n${ytSample}`
+        }
+
+        // Source count for metadata
+        const sourceCount = {
+            serp: serpResults.filter((r) => r.success).length,
+            reddit: redditStatements.length,
+            youtube: youtubeResult.statements.length,
+            trends: trendsContext ? 1 : 0,
+            total:
+                serpResults.filter((r) => r.success).length +
+                redditStatements.length +
+                youtubeResult.statements.length,
+        }
+        logger.info(
+            'thematic-intel',
+            `Total sources for "${topic.name}": ${sourceCount.total} (SERP: ${sourceCount.serp}, Reddit: ${sourceCount.reddit}, YouTube: ${sourceCount.youtube})`,
+        )
 
         const report = await analyzeThematicContext(
             topic.name,
             topic.description,
-            topic.contextPrompt,
+            enrichedContextPrompt,
             serpResults,
             campaignProfile,
         )
+
+        // Attach multi-source metadata for UI (SourceCitations + AnalysisReliability)
+        const allSourceItems = [
+            ...serpResults
+                .filter((r) => r.success)
+                .map((r) => ({
+                    text: r.content.substring(0, 300),
+                    sourceUrl: '',
+                    sourceTitle: `SERP: ${r.query.substring(0, 80)}`,
+                    date: '',
+                    sourceType: 'news',
+                    platform: 'web',
+                })),
+            ...redditStatements.map((s) => ({
+                text: s.text.substring(0, 300),
+                sourceUrl: s.source_url,
+                sourceTitle: s.source_title,
+                date: s.date,
+                sourceType: s.source_url.includes('/comments/') ? 'reddit_comment' : 'reddit_post',
+                platform: 'reddit',
+            })),
+            ...youtubeResult.statements.map((s) => ({
+                text: s.text.substring(0, 300),
+                sourceUrl: s.source_url,
+                sourceTitle: s.source_title,
+                date: s.date,
+                sourceType: 'youtube_comment',
+                platform: 'youtube',
+            })),
+        ]
+
+        report.sourceMeta = {
+            total: sourceCount.total,
+            breakdown: {
+                serp: sourceCount.serp,
+                reddit: sourceCount.reddit,
+                youtube: sourceCount.youtube,
+                trends: sourceCount.trends,
+                twitter: 0,
+            },
+            sources: allSourceItems.slice(0, 500),
+        }
 
         const { data: reportRow, error: insertError } = await supabase
             .from('political_intel_reports')

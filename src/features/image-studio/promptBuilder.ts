@@ -34,6 +34,10 @@ export const PLATFORM_IMAGE_CONFIG: Record<ImagePlatform, PlatformImageConfig> =
         defaultSize: '1024x1024',
         formatHint: 'Square format',
     },
+    web: {
+        defaultSize: '1920x800',
+        formatHint: 'Wide hero banner format for web (12:5)',
+    },
 }
 
 /**

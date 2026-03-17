@@ -19,6 +19,7 @@ import {
     generatePoliticalAttackVectorsAction,
     loadPoliticalReportAction,
     listPoliticalReportsAction,
+    deleteReportAction,
     generatePoliticalCalendarAction,
     loadPoliticalCalendarAction,
     listTopicsAction,
@@ -48,6 +49,7 @@ export type IntelligenceView =
     | 'calendar'
     | 'landing'
     | 'thematic'
+    | 'thermometer'
     | 'video-repurposer'
     | 'image-studio'
 
@@ -123,6 +125,9 @@ interface IntelligenceState {
     loadThematicReport: (reportId: string) => Promise<void>
     setActiveTopic: (topicId: string | null) => void
     loadTopicCalendar: (reportId: string, topicId: string) => Promise<void>
+
+    // Delete
+    deleteReport: (reportId: string) => Promise<boolean>
 
     // State setters
     setCampaignProfile: (profile: PoliticalCampaignProfile | null) => void
@@ -262,6 +267,7 @@ export const useIntelligenceStore = create<IntelligenceState>((set, get) => ({
                 phase: 'complete',
                 phaseMessage: 'Análisis completado',
                 error: null,
+                currentView: 'dashboard',
             })
 
             // Refresh history in background
@@ -478,6 +484,26 @@ export const useIntelligenceStore = create<IntelligenceState>((set, get) => ({
         set((state) => ({
             monitors: state.monitors.filter((m) => m.id !== id),
         })),
+
+    // ─── Delete report ──────────────────────────
+
+    deleteReport: async (reportId) => {
+        const result = await deleteReportAction(reportId)
+        if (result.success) {
+            set((state) => ({
+                history: state.history.filter((h) => h.id !== reportId),
+                // Clear active report if it's the one being deleted
+                ...(state.reportId === reportId
+                    ? { report: null, meta: null, reportId: null, attackVectors: [] }
+                    : {}),
+                ...(state.thematicReportId === reportId
+                    ? { thematicReport: null, thematicReportId: null, thematicAngles: [] }
+                    : {}),
+            }))
+            return true
+        }
+        return false
+    },
 
     setError: (error) => set({ error }),
 

@@ -40,6 +40,7 @@ import { newsletterRenderer } from './newsletter'
 import { featuredPostRenderer } from './featuredPost'
 import { integrationsRenderer } from './integrations'
 import { tabbedFeaturesRenderer } from './tabbedFeatures'
+import { featuresRenderer } from './features'
 
 const registry: Record<string, SectionRenderer> = {
     // ── Core VSL blocks ──
@@ -70,7 +71,7 @@ const registry: Record<string, SectionRenderer> = {
     process: processStepsRenderer,
     process_steps: processStepsRenderer,
     how_it_works: processStepsRenderer,
-    features: benefitsRenderer, // alias → benefits layout
+    features: featuresRenderer,
     skills: skillsRenderer,
     experience: experienceRenderer,
     education: educationRenderer,
@@ -89,6 +90,25 @@ const registry: Record<string, SectionRenderer> = {
     featured_post: featuredPostRenderer,
     integrations: integrationsRenderer,
     tabbed_features: tabbedFeaturesRenderer,
+
+    // ── AI-generated section name aliases ──
+    proposals: featuresRenderer,
+    biography: aboutRenderer,
+    biography_candidate: aboutRenderer,
+    events: agendaRenderer,
+    donate: leadCaptureRenderer,
+    donations: leadCaptureRenderer,
+    volunteer: leadCaptureRenderer,
+    timeline: processStepsRenderer,
+    mission: storyRenderer,
+    values: featuresRenderer,
+    news: featuredPostRenderer,
+    gallery: imageGalleryRenderer,
+    achievements: statsRenderer,
+    endorsements: testimonialsRenderer,
+    press: featuredPostRenderer,
+    social_media: contactRenderer,
+    contact_form: contactRenderer,
 }
 
 export function getRenderer(sectionType: string): SectionRenderer | undefined {

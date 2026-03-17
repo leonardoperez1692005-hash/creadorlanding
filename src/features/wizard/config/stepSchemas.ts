@@ -321,7 +321,12 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
     process: processSchema,
     process_steps: processSchema,
     how_it_works: processSchema,
-    features: { kind: 'list', title: 'Características', itemFields: ['title', 'description'] },
+    features: {
+        kind: 'list',
+        title: 'Características',
+        headerFields: ['title', 'subtitle', 'cta_text', 'cta_url', 'bg_color'],
+        itemFields: ['title', 'description'],
+    },
     skills: { kind: 'list', title: 'Habilidades', itemFields: ['title', 'level'] },
     experience: {
         kind: 'list',
@@ -333,8 +338,26 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
         kind: 'generic',
         title: 'Sobre Nosotros',
         fields: [
+            {
+                key: 'eyebrow',
+                label: 'Eyebrow (texto sobre el título)',
+                type: 'text',
+                placeholder: 'Ej: Conocenos',
+            },
             { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestra Historia' },
             { key: 'text', label: 'Contenido (acepta HTML)', type: 'textarea' },
+            { key: 'photo', label: 'Foto', type: 'image' },
+            {
+                key: 'photo_layout',
+                label: 'Disposición de la foto',
+                type: 'select',
+                options: [
+                    { value: 'top', label: 'Foto arriba, texto abajo' },
+                    { value: 'left', label: 'Foto a la izquierda' },
+                    { value: 'right', label: 'Foto a la derecha' },
+                ],
+            },
+            { key: 'bg_color', label: 'Color de Fondo', type: 'color' },
         ],
     },
     guarantee: {
@@ -384,7 +407,12 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
     },
     stats: { kind: 'list', title: 'Estadísticas', itemFields: ['value', 'label'] },
     speakers: { kind: 'list', title: 'Speakers', itemFields: ['name', 'bio', 'photo'] },
-    agenda: { kind: 'list', title: 'Agenda', itemFields: ['time', 'title', 'speaker'] },
+    agenda: {
+        kind: 'list',
+        title: 'Agenda',
+        headerFields: ['title', 'subtitle', 'bg_color'],
+        itemFields: ['time', 'title', 'speaker'],
+    },
     sponsors: { kind: 'list', title: 'Sponsors', itemFields: ['name', 'logo'] },
     newsletter: {
         kind: 'generic',

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import {
     BarChart3,
     BookOpen,
+    ChevronRight,
     ImagePlus,
     Layout,
     MessageSquare,
@@ -149,21 +150,48 @@ export function CommandCenter() {
                                 Actividad Reciente
                             </h4>
                             {brain.recentReports.slice(0, 3).map((r) => (
-                                <div
+                                <button
                                     key={r.id}
+                                    onClick={() =>
+                                        setView(
+                                            r.reportType === 'thematic' ? 'thematic' : 'dashboard',
+                                        )
+                                    }
                                     style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        width: '100%',
                                         fontSize: '0.78rem',
                                         color: '#d1d5db',
-                                        padding: '0.4rem 0',
+                                        padding: '0.5rem 0.25rem',
                                         borderBottom: '1px solid #1e2540',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        borderBottomWidth: '1px',
+                                        borderBottomStyle: 'solid',
+                                        borderBottomColor: '#1e2540',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        borderRadius: '4px',
+                                        transition: 'background 0.15s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(0,200,255,0.05)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
                                     }}
                                 >
-                                    <span style={{ color: '#00c8ff' }}>[{r.reportType}]</span>{' '}
-                                    {r.topicName ?? 'General'} —{' '}
-                                    <span style={{ color: '#8b9ec7' }}>
-                                        {new Date(r.createdAt).toLocaleDateString('es-AR')}
+                                    <span>
+                                        <span style={{ color: '#00c8ff' }}>[{r.reportType}]</span>{' '}
+                                        {r.topicName ?? 'General'} —{' '}
+                                        <span style={{ color: '#8b9ec7' }}>
+                                            {new Date(r.createdAt).toLocaleDateString('es-AR')}
+                                        </span>
                                     </span>
-                                </div>
+                                    <ChevronRight size={12} color="#8b9ec7" />
+                                </button>
                             ))}
                         </div>
                     )}
@@ -189,21 +217,46 @@ export function CommandCenter() {
                                 Sentimiento Público
                             </h4>
                             {brain.sentiment.slice(0, 3).map((s) => (
-                                <div
+                                <button
                                     key={s.handle}
+                                    onClick={() => setView('monitors')}
                                     style={{
-                                        fontSize: '0.78rem',
-                                        padding: '0.3rem 0',
                                         display: 'flex',
+                                        alignItems: 'center',
                                         justifyContent: 'space-between',
+                                        width: '100%',
+                                        fontSize: '0.78rem',
+                                        padding: '0.5rem 0.25rem',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        borderBottomWidth: '1px',
+                                        borderBottomStyle: 'solid',
+                                        borderBottomColor: '#1e2540',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        borderRadius: '4px',
+                                        transition: 'background 0.15s',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(0,200,255,0.05)'
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent'
                                     }}
                                 >
                                     <span style={{ color: '#d1d5db' }}>@{s.handle}</span>
-                                    <span>
+                                    <span
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                        }}
+                                    >
                                         <span style={{ color: '#10B981' }}>+{s.positivePct}%</span>{' '}
                                         <span style={{ color: '#EF4444' }}>-{s.negativePct}%</span>
+                                        <ChevronRight size={12} color="#8b9ec7" />
                                     </span>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}

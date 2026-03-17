@@ -49,6 +49,7 @@ export interface PreviewContent {
     // Media
     video_url?: string
     photo?: string
+    photo_layout?: string
     image?: string
     // People
     name?: string

@@ -48,9 +48,7 @@ export const env = {
         return (process.env.AI_PROVIDER ?? 'gemini').toLowerCase()
     },
     get claudeApiKey(): string {
-        const key = process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY
-        if (!key) throw new Error('Missing env var: CLAUDE_API_KEY or ANTHROPIC_API_KEY')
-        return key
+        return process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY ?? ''
     },
     get brightdataApiKey(): string {
         return process.env.BRIGHTDATA_API_KEY ?? ''

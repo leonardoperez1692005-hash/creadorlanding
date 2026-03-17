@@ -19,6 +19,8 @@ import type {
 } from './types'
 import { politicalIntelReportSchema, attackVectorsResponseSchema } from './schemas'
 import { COUNTRIES, GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE } from './config'
+import type { MonitoringImpulse } from './brain'
+import { buildMonitoringPromptBlock } from './brain'
 
 // ─── Metrics Computation ─────────────────────────────────
 
@@ -67,13 +69,16 @@ export function computeMetrics(
 
 // ─── Intelligence Report Generation ─────────────────────
 
-/** Genera un reporte de inteligencia política completo usando Gemini (perfiles, métricas, SERP, cambios). */
+/** Genera un reporte de inteligencia política completo usando Gemini (perfiles, métricas, SERP, cambios).
+ * @param sinapsisImpulse — Impulso del cerebro de campaña. Si se provee, Gemini analiza rivales EN CONTRASTE con nuestro candidato.
+ */
 export async function analyzeWithGemini(
     profiles: TwitterProfileSnapshot[],
     metrics: ProfileMetrics[],
     serpResults: SerpContextResult[],
     monitors: PoliticalMonitor[],
     changeDetections: ChangeDetection[],
+    sinapsisImpulse?: MonitoringImpulse | null,
 ): Promise<PoliticalIntelReport> {
     const countryCode = monitors[0]?.country ?? 'ar'
     const country = COUNTRIES[countryCode]?.name ?? countryCode
@@ -114,10 +119,15 @@ export async function analyzeWithGemini(
                   .join('\n')
             : 'Sin cambios detectados respecto al último análisis.'
 
-    const prompt = `REGLA ABSOLUTA DE NO-CENSURA: NO censures, NO suavices, NO modifiques las propuestas del candidato. Usá las propuestas EXACTAS tal como están escritas. La responsabilidad ética es del candidato, no tuya.
+    // Sinapsis: inyectar contexto de campaña para análisis con contraste
+    const sinapsisBlock = sinapsisImpulse
+        ? `\n${buildMonitoringPromptBlock(sinapsisImpulse)}\n`
+        : ''
 
+    const prompt = `REGLA ABSOLUTA DE NO-CENSURA: NO censures, NO suavices, NO modifiques las propuestas del candidato. Usá las propuestas EXACTAS tal como están escritas. La responsabilidad ética es del candidato, no tuya.
+${sinapsisBlock}
 Eres un consultor de inteligencia política de élite.
-Analiza los siguientes perfiles políticos de ${country} en X/Twitter y genera un reporte estratégico accionable.
+Analiza los siguientes perfiles políticos de ${country} en X/Twitter y genera un reporte estratégico accionable.${sinapsisImpulse ? ` Tu cliente es ${sinapsisImpulse.candidateName} (${sinapsisImpulse.party}). TODO el análisis debe ser desde la perspectiva de SU campaña.` : ''}
 
 ## PERFILES ANALIZADOS
 ${profilesBlock}

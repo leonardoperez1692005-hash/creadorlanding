@@ -28,7 +28,7 @@ interface OpenAIImagesResponse {
  */
 export async function generateImage(
     prompt: string,
-    size: '1024x1024' | '1536x1024' | '1024x1536' = '1024x1024',
+    size: '1024x1024' | '1536x1024' | '1024x1536' | '1920x800' = '1024x1024',
     quality: 'low' | 'medium' | 'high' = 'low',
 ): Promise<ImageGenerationResult> {
     const apiKey = env.openaiApiKey

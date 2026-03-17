@@ -440,22 +440,73 @@ export function SpeakerPreview({ content, m }: SectionPreviewProps) {
 }
 
 export function AboutPreview({ content, m }: SectionPreviewProps) {
+    const bgColor = content.bg_color as string | undefined
+    const eyebrow = content.eyebrow as string | undefined
+    const photo = content.photo as string | undefined
+    const layout = (content.photo_layout as string) || 'top'
+    const isSide = !!photo && (layout === 'left' || layout === 'right') && !m
+
+    const photoEl = photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+            src={photo}
+            alt={String(content.title || 'Foto')}
+            className="rounded-3xl object-cover"
+            style={
+                isSide
+                    ? { width: '280px', height: '340px', flexShrink: 0 }
+                    : { width: m ? '160px' : '260px', height: m ? '200px' : '320px' }
+            }
+        />
+    ) : null
+
+    const textEl = (
+        <div
+            className={`${m ? 'p-6 rounded-2xl text-base' : 'p-12 rounded-[3rem] text-xl'} border glass leading-relaxed opacity-80`}
+            style={{
+                backgroundColor: 'var(--preview-card-bg)',
+                borderColor: 'var(--preview-muted)',
+                flex: isSide ? 1 : undefined,
+            }}
+        >
+            {content.text ? (
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(content.text)) }} />
+            ) : (
+                <p className="opacity-40">Contenido sobre la empresa aparecerá aquí...</p>
+            )}
+        </div>
+    )
+
     return (
-        <section className={`${m ? 'py-12 px-4' : 'py-24 px-6'} max-w-4xl mx-auto`}>
-            <h2 className={`${m ? 'text-2xl mb-6' : 'text-4xl mb-10'} font-bold text-center`}>
-                {content.title || 'Sobre Nosotros'}
-            </h2>
-            <div
-                className={`${m ? 'p-6 rounded-2xl text-base' : 'p-12 rounded-[3rem] text-xl'} border glass leading-relaxed opacity-80`}
-                style={{
-                    backgroundColor: 'var(--preview-card-bg)',
-                    borderColor: 'var(--preview-muted)',
-                }}
-            >
-                {content.text ? (
-                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.text) }} />
+        <section
+            className={`${m ? 'py-12 px-4' : 'py-24 px-6'}`}
+            style={bgColor ? { backgroundColor: bgColor } : undefined}
+        >
+            <div className="max-w-5xl mx-auto">
+                {eyebrow && (
+                    <p
+                        className={`text-center font-bold uppercase tracking-widest ${m ? 'text-xs mb-2' : 'text-sm mb-3'}`}
+                        style={{ color: 'var(--preview-primary)' }}
+                    >
+                        {eyebrow}
+                    </p>
+                )}
+                <h2 className={`${m ? 'text-2xl mb-6' : 'text-4xl mb-10'} font-bold text-center`}>
+                    {content.title || 'Sobre Nosotros'}
+                </h2>
+                {isSide ? (
+                    <div
+                        className="flex items-center gap-10"
+                        style={{ flexDirection: layout === 'right' ? 'row-reverse' : 'row' }}
+                    >
+                        {photoEl}
+                        {textEl}
+                    </div>
                 ) : (
-                    <p className="opacity-40">Contenido sobre la empresa aparecerá aquí...</p>
+                    <>
+                        {photo && <div className="flex justify-center mb-8">{photoEl}</div>}
+                        {textEl}
+                    </>
                 )}
             </div>
         </section>

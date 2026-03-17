@@ -1,8 +1,9 @@
 // =============================================
 // Political Twitter Scraper
 // Scraping de tweets reales del rival político
-// Strategy 1: Nitter (mirror estático, sin JS)
-// Strategy 2: SERP site:x.com por tema (fallback)
+// Strategy 1: SocialData API (primary — 200+ tweets/search)
+// Strategy 2: Nitter (free fallback)
+// Strategy 3: SERP site:x.com (last resort)
 // =============================================
 
 import { scrapeUrl, serpSearch, sleep } from '@/lib/brightdata'
@@ -10,6 +11,7 @@ import { callGemini, parseJsonFromAI } from '@/lib/gemini'
 import { logger } from '@/shared/lib/logger'
 import { z } from 'zod'
 import type { TopicStatement } from './topicScraper'
+import { isSocialDataAvailable, scrapeViaSocialData } from './socialDataClient'
 
 // ─── Nitter instances (ordered by reliability) ────────────
 
@@ -199,9 +201,10 @@ function dedupTweets(statements: TopicStatement[]): TopicStatement[] {
 /**
  * Scrape tweets reales de un político sobre los temas indicados.
  *
- * Estrategia:
- * 1. Nitter (timeline completo, todos los temas de una vez, más eficiente)
- * 2. SERP site:x.com por tema si nitter falla o devuelve < 3 tweets
+ * Estrategia de 3 niveles (fallback chain):
+ * 1. SocialData API (primary — 100+ tweets per topic with real URLs)
+ * 2. Nitter (free fallback — limited to ~8 tweets via Gemini extraction)
+ * 3. SERP site:x.com (last resort — cached Google snippets)
  *
  * @param politicianName  Nombre del político (para Gemini)
  * @param politicianHandle  Handle sin @ (para URLs)
@@ -219,22 +222,47 @@ export async function scrapeRivalTweets(
     const cleanHandle = politicianHandle.replace(/^@/, '').toLowerCase()
     const allStatements: TopicStatement[] = []
 
-    // ─── Strategy 1: Nitter timeline (1 request, todos los temas) ─────
-    const nitterContent = await fetchNitterTimeline(cleanHandle)
-    if (nitterContent) {
-        const extracted = await extractTweetsFromContent(
-            politicianName,
-            cleanHandle,
-            topics,
-            nitterContent,
-            'nitter',
-        )
-        allStatements.push(...extracted)
-        logger.info('twitter-scraper', `Nitter: ${extracted.length} tweets for @${cleanHandle}`)
+    // ─── Strategy 1: SocialData API (primary — high volume, real URLs) ─────
+    if (isSocialDataAvailable()) {
+        try {
+            const socialDataResults = await scrapeViaSocialData(
+                politicianName,
+                cleanHandle,
+                topics,
+                100, // 100 tweets per topic
+            )
+            allStatements.push(...socialDataResults)
+            logger.info(
+                'twitter-scraper',
+                `SocialData: ${socialDataResults.length} tweets for @${cleanHandle}`,
+            )
+        } catch (err) {
+            logger.warn(
+                'twitter-scraper',
+                `SocialData failed for @${cleanHandle}: ${(err as Error).message}`,
+            )
+        }
     }
 
-    // ─── Strategy 2: SERP per topic (fallback o enriquecimiento) ──────
-    // Run if nitter failed entirely OR yielded fewer than 3 tweets
+    // ─── Strategy 2: Nitter (free fallback) ─────
+    // Run only if SocialData yielded fewer than 10 tweets
+    if (allStatements.length < 10) {
+        const nitterContent = await fetchNitterTimeline(cleanHandle)
+        if (nitterContent) {
+            const extracted = await extractTweetsFromContent(
+                politicianName,
+                cleanHandle,
+                topics,
+                nitterContent,
+                'nitter',
+            )
+            allStatements.push(...extracted)
+            logger.info('twitter-scraper', `Nitter: ${extracted.length} tweets for @${cleanHandle}`)
+        }
+    }
+
+    // ─── Strategy 3: SERP per topic (last resort) ──────
+    // Run if both SocialData + Nitter yielded fewer than 3 tweets
     if (allStatements.length < 3) {
         logger.info('twitter-scraper', `Running SERP fallback for @${cleanHandle}`)
         const topicsToSearch = topics.slice(0, 3) // max 3 topics to limit API calls

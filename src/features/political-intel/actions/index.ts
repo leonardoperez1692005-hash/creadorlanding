@@ -9,6 +9,7 @@ export {
     loadPoliticalReportAction,
     listPoliticalReportsAction,
     detectChangesFromDb,
+    deleteReportAction,
 } from './intel'
 export { generatePoliticalCalendarAction, loadPoliticalCalendarAction } from './calendar'
 export { getPoliticalLandingDataAction } from './landing'
