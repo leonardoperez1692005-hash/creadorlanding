@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { logger } from '@/shared/lib/logger'
 import { requestClip, checkClipStatus, timestampToSeconds } from '@/lib/video/clipper'
+
+const clipSchema = z.object({
+    source_url: z.string().url(),
+    timestamp_start: z.string().max(20),
+    timestamp_end: z.string().max(20),
+    output_format: z.enum(['mp4', 'webm']).default('mp4'),
+    subtitles: z.string().max(5000).optional(),
+    aspect_ratio: z.string().max(10).default('9:16'),
+})
+
+export const maxDuration = 30
 
 /** POST: Request a new clip from Shotstack */
 export async function POST(req: Request) {
@@ -21,16 +33,12 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json()
-        const { source_url, timestamp_start, timestamp_end, subtitles } = body as {
-            source_url: string
-            timestamp_start: string
-            timestamp_end: string
-            subtitles?: string
+        const parsed = clipSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Datos de entrada inválidos' }, { status: 400 })
         }
 
-        if (!source_url || !timestamp_start || !timestamp_end) {
-            return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
-        }
+        const { source_url, timestamp_start, timestamp_end, subtitles } = parsed.data
 
         const startSec = timestampToSeconds(timestamp_start)
         const endSec = timestampToSeconds(timestamp_end)

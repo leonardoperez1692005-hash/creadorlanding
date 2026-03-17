@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { logger } from '@/shared/lib/logger'
@@ -8,6 +9,12 @@ import {
     getTranscript,
     estimateDurationFromTranscript,
 } from '@/lib/video/youtube'
+
+const downloadSchema = z.object({
+    url: z.string().url().max(2000),
+})
+
+export const maxDuration = 30
 
 /** POST: Get video info + transcript (if available) */
 export async function POST(req: Request) {
@@ -29,9 +36,14 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json()
-        const { url } = body as { url: string }
+        const parsed = downloadSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Datos de entrada inválidos' }, { status: 400 })
+        }
 
-        if (!url || !isValidYouTubeUrl(url)) {
+        const { url } = parsed.data
+
+        if (!isValidYouTubeUrl(url)) {
             return NextResponse.json({ error: 'URL de YouTube inválida' }, { status: 400 })
         }
 

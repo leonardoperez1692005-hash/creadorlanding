@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import {
@@ -8,6 +9,14 @@ import {
     generateStrategyDOCX,
 } from '@/lib/exports/docx/docxGenerator'
 import { logger } from '@/shared/lib/logger'
+
+const exportSchema = z.object({
+    type: z.string().max(50),
+
+    data: z.any(),
+})
+
+export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
     try {
@@ -24,7 +33,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Demasiadas solicitudes' }, { status: 429 })
         }
 
-        const { type, data } = await req.json()
+        const body = await req.json()
+        const parsed = exportSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Datos de entrada inválidos' }, { status: 400 })
+        }
+
+        const { type, data } = parsed.data
 
         let buffer: Buffer
 

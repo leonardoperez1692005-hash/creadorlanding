@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { rateLimitAsync } from '@/shared/lib/rate-limit'
 import { logger } from '@/shared/lib/logger'
 import { analyzeVideo } from '@/features/video-repurposer/analyzer'
+
+const analyzeSchema = z.object({
+    transcript: z.string().max(100000),
+    video_url: z.string().url(),
+    video_title: z.string().max(500).default(''),
+    duration_seconds: z.number().positive().max(86400).default(0),
+    candidate_context: z.string().max(5000).optional(),
+    speaker_hint: z.string().max(500).optional(),
+})
+
+export const maxDuration = 30
 
 /** POST: Analyze a video transcript with Gemini */
 export async function POST(req: Request) {
@@ -24,6 +36,11 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json()
+        const parsed = analyzeSchema.safeParse(body)
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Datos de entrada inválidos' }, { status: 400 })
+        }
+
         const {
             transcript,
             video_url,
@@ -31,18 +48,7 @@ export async function POST(req: Request) {
             duration_seconds,
             candidate_context,
             speaker_hint,
-        } = body as {
-            transcript: string
-            video_url: string
-            video_title: string
-            duration_seconds: number
-            candidate_context?: string
-            speaker_hint?: string
-        }
-
-        if (!transcript || !video_url) {
-            return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 })
-        }
+        } = parsed.data
 
         logger.info('video-repurposer', 'Starting video analysis', {
             video_url,
