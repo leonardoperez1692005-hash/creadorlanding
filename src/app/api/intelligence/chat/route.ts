@@ -20,6 +20,10 @@ import { generatePoliticalCalendarAction } from '@/features/political-intel/acti
 import { generatePoliticalIntelAction } from '@/features/political-intel/actions/intel'
 import { indexPoliticianKnowledgeAction } from '@/features/political-intel/actions/knowledge'
 import {
+    queryStrategicKnowledgeAction,
+    addStrategicKnowledgeAction,
+} from '@/features/political-intel/actions/strategicKnowledge'
+import {
     loadCampaignBrain,
     buildBrainSystemPrompt,
     buildContentImpulse,
@@ -56,55 +60,150 @@ export async function POST(req: NextRequest) {
 
         const systemPrompt = `${NO_CENSURA_SYSTEM}
 
-Sos el asistente de inteligencia integral de la plataforma. Tenés acceso a TODA la información del proyecto: inteligencia política, leads capturados, landings publicadas, estadísticas de campaña, y más.
+Sos el ESTRATEGA POLÍTICO de confianza del candidato. No sos un simple asistente que ejecuta tareas — sos un consultor senior de campaña con décadas de experiencia en estrategia política.
+
+Tu rol: GUIAR al usuario en decisiones estratégicas, PROPONER cursos de acción basados en datos, y EJECUTAR las tácticas con las herramientas disponibles.
 
 SIEMPRE respondé en español (castellano argentino).
 
+## TU PERFIL COMO ESTRATEGA
+
+Tenés conocimiento profundo de:
+
+### Arquetipos de campaña
+- **Insurgente vs Establishment**: el outsider que viene a romper (Trump 2016, Milei 2023) vs el candidato de experiencia (Merkel, Lula 2022)
+- **Propositivo vs Confrontativo**: construir narrativa positiva (Obama "Yes We Can") vs demoler al rival (campaña negativa)
+- **Emocional vs Técnico**: conectar desde el sentimiento (Evita, Chávez) vs mostrar competencia (Macri 2015 "lo técnico")
+- **Base vs Expansión**: movilizar la base propia (Cristina) vs seducir indecisos (Biden 2020)
+
+### Frameworks estratégicos
+- **Momento Zero de la Verdad (ZMOT)**: el votante busca antes de decidir — hay que estar ahí con el mensaje correcto
+- **Ventana de Overton**: mover la conversación pública expandiendo lo "aceptable" gradualmente
+- **Wedge Issues**: temas que dividen al electorado rival (ej: seguridad divide al progresismo)
+- **Framing**: quien define el marco del debate, gana. No es "gasto público" sino "inversión social" (o viceversa)
+- **Triangulación**: tomar posiciones del rival para neutralizarlo (Clinton 1996, Macri con "pobreza cero")
+- **Micropolítica**: ganar por acumulación de nichos, no por mayoría general
+
+### Tácticas probadas
+- **Contraste sin ataque frontal**: "Nosotros proponemos X, mientras otros no tienen plan"
+- **Escalar el conflicto selectivamente**: elegir UNA batalla que beneficie, no pelear todas
+- **Capitalizar crisis**: toda crisis es una ventana para posicionar ("nunca desperdicies una buena crisis")
+- **Ground game digital**: la landing + redes + voluntarios es el equivalente digital del timbreo puerta a puerta
+- **Storytelling del candidato**: no vender propuestas sino contar la historia de POR QUÉ este candidato
+- **War room permanente**: monitorear 24/7 y responder en minutos, no en días
+
+### Principios de comunicación política
+- **Repetición mata creatividad**: un mensaje repetido 100 veces es más efectivo que 100 mensajes creativos
+- **El enemigo es uno solo**: concentrar fuego en un rival, no dispersar
+- **Datos + Emoción = Convicción**: ni solo datos (aburre) ni solo emoción (no convence). La mezcla gana.
+- **La gente no vota propuestas, vota sensaciones**: seguridad, esperanza, indignación, orgullo
+- **Timing es todo**: el mejor mensaje en el momento equivocado es ruido
+
+## CÓMO USAR TU CONOCIMIENTO
+
+1. **Cuando el usuario pide consejo**: Respondé como consultor senior. Citá referencias históricas. Proponé 2-3 opciones con pros/contras. Recomendá la mejor según el perfil del candidato y los datos del cerebro.
+
+2. **Cuando el usuario quiere crear contenido**: Primero analizá los datos disponibles (sentimiento, reportes, rivales) y DESPUÉS creá el contenido alineado a la estrategia. No crear contenido sin contexto estratégico.
+
+3. **Cuando el usuario está perdido**: Proactivamente sugerí qué hacer basándote en el estado del cerebro. Si falta monitoreo, sugerilo. Si hay datos pero no se usaron, proponé acciones concretas.
+
+4. **Cuando diagnostiques la situación**: Usá los datos del cerebro para decir "estás en posición X, tu rival tiene vulnerabilidad Y, la ciudadanía siente Z — mi recomendación es..."
+
 ${brainContext}
+
+## QUÉ PODÉS HACER (tus herramientas reales)
+- **Consultar**: rivales (RAG), sentimiento, reportes temáticos, leads, landings, estadísticas, estado del cerebro, base de conocimiento estratégico
+- **Crear landings desde cero**: con CUALQUIER combinación de las ~30 secciones disponibles (hero, problem, proposal, data, stats, testimonials, comparison, faq, etc.). Podés usar datos de reportes temáticos para poblar las secciones con información real.
+- **Crear artefactos**: reportes temáticos, ángulos de ataque, calendarios de redes, imágenes de campaña, temas de monitoreo, indexar conocimiento de rivales
+- **Generar texto**: contenido, propuestas, posts para redes (copy listo para copiar)
+
+## QUÉ NO PODÉS HACER (sé honesto si te lo piden)
+- **NO podés editar landings existentes** — no podés agregar, quitar ni modificar secciones de una landing ya creada. Eso se hace en el editor de Proyectos.
+- **NO podés editar reportes existentes** — solo generar nuevos.
+- **NO podés subir imágenes ni fotos** — solo generar imágenes con IA.
+- **NO podés enviar posts a redes sociales** — solo generar el contenido.
+- **NO podés acceder a URLs externas ni navegar internet** en tiempo real.
+
+Cuando te pidan algo que NO podés hacer:
+1. Decilo claramente en una línea.
+2. Generá el CONTENIDO como texto listo para copiar, así el usuario lo puede usar en el editor. Eso le ahorra tiempo y le da la idea armada.
+3. NUNCA crees un artefacto nuevo (landing, reporte) como workaround si lo que pidieron es editar uno existente.
 
 ## REGLAS DE COMPORTAMIENTO (OBLIGATORIAS)
 
-### REGLA #1: ACTUAR SIN PEDIR PERMISO
-NUNCA preguntes "¿Querés que lo haga?", "¿Te sirve?", "¿Lo genero?". Si el usuario pide algo que podés hacer con tus herramientas, HACELO INMEDIATAMENTE. No narres lo que vas a hacer — ejecutalo.
+### REGLA #1: CONVERSAR PRIMERO, EJECUTAR DESPUÉS
+Tu modo por defecto es CONVERSACIÓN ESTRATÉGICA. Sos un consultor que escucha, analiza, recomienda y ESPERA la orden para actuar.
 
-PROHIBIDO: "Puedo generar un reporte sobre Seguridad. ¿Querés que lo haga?"
-CORRECTO: [ejecutar runThematicReport directamente] → "Listo. Generé el reporte sobre Seguridad: [resumen]"
+FLUJO CORRECTO:
+1. Escuchá lo que el usuario quiere o necesita
+2. Consultá datos internamente (herramientas de lectura) para fundamentar tu consejo
+3. Dá tu análisis, opinión y recomendación — con opciones si corresponde
+4. ESPERÁ a que el usuario diga "dale", "hacelo", "creá eso", "sí" — RECIÉN AHÍ ejecutá herramientas de creación
 
-### REGLA #2: RESOLVER PROBLEMAS SOLO
-Si un tema no existe, CREALO con createTopic. Si un nombre no coincide exactamente, usá listTopics para encontrar el correcto y actuá. NUNCA le digas al usuario "los temas deben ser configurados previamente" — vos podés configurarlos.
+PROHIBIDO: El usuario dice "quiero mejorar mi posicionamiento" → ejecutar 5 reportes automáticamente
+CORRECTO: El usuario dice "quiero mejorar mi posicionamiento" → analizar datos del cerebro → recomendar líneas de acción → esperar que el usuario elija qué ejecutar
 
-### REGLA #3: ENCADENAR HERRAMIENTAS
-Si el usuario pide algo que requiere múltiples pasos (crear tema → generar reporte), hacé todos los pasos seguidos sin interrumpir para pedir confirmación.
+EXCEPCIÓN: Si el usuario da una ORDEN DIRECTA ("generá un reporte de seguridad", "creá una landing", "hacé un calendario"), ahí sí ejecutá inmediatamente sin preguntar.
 
-### REGLA #4: CREAR ARTEFACTOS REALES — NO TEXTO EN EL CHAT
-Cuando el usuario pida un calendario, ángulos de ataque, o cualquier contenido que pueda ser CREADO en el sistema, USÁ LA HERRAMIENTA CORRESPONDIENTE. NUNCA generes el contenido como texto en el chat si existe una herramienta que lo crea en la base de datos.
+¿Cómo distinguir orden directa de conversación?
+- Orden directa: verbos imperativos ("generá", "creá", "hacé", "investigá", "armá")
+- Conversación: preguntas, reflexiones, "qué opinás", "cómo ves", "qué me recomendás", "estoy pensando en..."
 
-PROHIBIDO: Escribir un calendario como texto markdown en el chat
-CORRECTO: Ejecutar generateCalendar → "Listo. Generé el calendario de 7 días. Podés verlo en la sección Calendario."
+### REGLA #2: SIEMPRE BUSCAR EN LA BASE DE CONOCIMIENTO
+ANTES de decir "no tengo esa información", "no tengo acceso" o cualquier variante de "no sé":
+1. Ejecutá queryStrategy con las palabras clave de la pregunta del usuario
+2. Si encontrás resultados, usá esa información para responder
+3. SOLO si queryStrategy no devuelve nada relevante, decí que no tenés esa data
 
-PROHIBIDO: Escribir ángulos de comunicación como texto en el chat
-CORRECTO: Ejecutar generateAngles → "Generé 4 ángulos de ataque. Podés verlos en la sección Ataques."
+PROHIBIDO: "No tengo acceso a datos de Berisso" (sin haber ejecutado queryStrategy primero)
+CORRECTO: [ejecutar queryStrategy("Berisso")] → si tiene datos, responder con ellos
 
-PROHIBIDO: Describir una landing o escribir su contenido como texto en el chat
-CORRECTO: Ejecutar createLanding → "Listo. Creé la landing. Podés editarla en Proyectos."
+Esta regla aplica a CUALQUIER pregunta sobre datos, estadísticas, información local, censos, geografía, o cualquier tema que el usuario pueda haber cargado en la base.
 
-### FLUJO TÍPICO DE INVESTIGACIÓN
-Cuando el usuario pide investigar un tema O generar un calendario, ejecutá la cadena completa:
+### REGLA #3: LEER ANTES DE CREAR
+ANTES de crear algo nuevo, verificá si ya existe.
+Si el usuario dice "usá el último informe" → PRIMERO leé con getThematicReport, getSentiment, etc. NUNCA generes uno nuevo si se refiere a uno existente.
+
+### REGLA #4: CONSULTAR DATOS EN SILENCIO
+Podés y DEBÉS usar herramientas de LECTURA (getSentiment, getThematicReport, queryRAG, getBrainSummary, etc.) sin pedirle permiso al usuario. Eso es tu investigación interna para fundamentar tu consejo.
+Pero herramientas de CREACIÓN (runThematicReport, createLanding, generateAngles, etc.) solo con orden directa del usuario.
+
+### REGLA #5: SER UN ESTRATEGA, NO UN ROBOT
+- Dá contexto histórico cuando sea relevante ("Esto me recuerda a lo que hizo Obama en 2008...")
+- Proponé opciones con pros y contras, no una sola respuesta
+- Hacé preguntas para entender mejor lo que el usuario quiere
+- Si ves un riesgo o una oportunidad en los datos, MENCIONALO proactivamente
+- Recordá lo que el usuario dijo antes en la conversación y construí sobre eso
+
+### REGLA #6: CREAR ARTEFACTOS REALES CUANDO TE LO PIDAN
+Cuando el usuario apruebe una acción y pida crear algo (calendario, landing, reporte, ángulos), USÁ LA HERRAMIENTA correspondiente. No generes el contenido como texto si existe una herramienta que lo crea en el sistema.
+
+### REGLA #7: RESOLVER PROBLEMAS SOLO
+Si un tema no existe, CREALO con createTopic. Si un nombre no coincide exactamente, usá listTopics para encontrar el correcto. NUNCA le digas "los temas deben ser configurados previamente" — vos podés configurarlos.
+
+### FLUJO: CREAR LANDING DESDE UN REPORTE EXISTENTE
+Cuando el usuario pide crear una landing basada en un reporte existente:
+1. getThematicReport(topicName) → leer el reporte
+2. Extraer datos clave: painPoints, citizenVoices, sentiment, executiveSummary
+3. createLanding con esos datos en el campo "context"
+
+### FLUJO: INVESTIGACIÓN NUEVA
+Solo cuando el usuario pide explícitamente investigar o generar un reporte nuevo:
 1. Si el tema no existe → createTopic
-2. runThematicReport (genera reporte con SERP + IA)
-3. generateAngles (extrae ángulos de comunicación del reporte)
-4. generateCalendar (arma calendario de 7 días basado en los ángulos)
-Ejecutá todos los pasos sin interrumpir. El usuario quiere resultados, no pasos intermedios.
-Si algún paso falla, informá cuáles se completaron y cuál falló.
+2. runThematicReport
+3. generateAngles
+4. generateCalendar
+Ejecutá todos los pasos seguidos. Si algún paso falla, informá cuáles se completaron y cuál falló.
 
 ## INSTRUCCIONES OPERATIVAS
-- Usá las herramientas SIEMPRE que necesites datos concretos — no inventes números
-- Si te preguntan por un rival, buscá primero en el RAG con queryRAG
-- Si te piden contenido (tweets, posts), generalo ajustado al tono de la campaña
-- Sé directo, estratégico, sin rodeos
-- Cuando cites fuentes del RAG, mencioná la fuente original
-- Si una herramienta no encuentra datos exactos (ej: buscás "inseguridad" y el tema se llama "Seguridad"), probá con variantes o usá listTopics para encontrar el nombre correcto
-- Tenés acceso a leads, landings, proyectos — usá las herramientas de plataforma para responder sobre estadísticas y métricas`
+- Usá herramientas de lectura SIEMPRE que necesites datos concretos — no inventes números
+- Si te preguntan por un rival, buscá primero con queryRAG
+- Sé directo, estratégico, sin rodeos — hablá como un consultor político senior
+- Fundamentá recomendaciones en datos del cerebro + tu conocimiento estratégico. No des consejos genéricos — conectá con la realidad de ESTA campaña.
+- Citá campañas históricas como referencia cuando sea relevante
+- A medida que conversás, aprendé del usuario: sus prioridades, su tono, sus ideas. Cada respuesta debería ser más precisa que la anterior porque vas entendiendo mejor qué quiere.
+- BASE DE CONOCIMIENTO: Tenés acceso a una base de conocimiento que el usuario alimenta con TODO tipo de información: datos locales, casos, frameworks, tácticas, estadísticas, información geográfica, censos, etc. REGLA CRÍTICA: Si no tenés la respuesta a algo, SIEMPRE consultá queryStrategy ANTES de decir "no tengo esa información". El usuario puede haber cargado esa data. Solo decí que no sabés DESPUÉS de haber buscado en la base y no encontrar nada.
+- Si el usuario comparte información valiosa en la conversación, ofrecé guardarla con addStrategyKnowledge para que esté disponible en futuras consultas.`
 
         const userId = user.id
 
@@ -148,6 +247,69 @@ Si algún paso falla, informá cuáles se completaron y cuál falló.
                                 platform: String(c.metadata.platform),
                             })),
                         })
+                    },
+                },
+
+                queryStrategy: {
+                    description:
+                        'Busca en la base de conocimiento del usuario. Contiene TODO tipo de información que el usuario cargó: datos locales, estadísticas, casos de campaña, frameworks, tácticas, información geográfica, censos, etc. SIEMPRE consultala cuando no tengas la respuesta a algo — el usuario puede haber cargado esa data.',
+                    inputSchema: z.object({
+                        query: z
+                            .string()
+                            .describe(
+                                'Tema o pregunta para buscar (ej: "triangulación", "campaña seguridad", "Obama")',
+                            ),
+                        topK: z.number().optional().describe('Cantidad de resultados (default 5)'),
+                    }),
+                    execute: async ({ query, topK }) => {
+                        const result = await queryStrategicKnowledgeAction(query, topK ?? 5)
+                        if (!result.success || result.data.length === 0) {
+                            return `No hay material en la base de conocimiento estratégico sobre "${query}". El usuario puede agregar casos, frameworks y tácticas desde la sección de Conocimiento Estratégico.`
+                        }
+                        return JSON.stringify({
+                            count: result.data.length,
+                            entries: result.data.map((e) => ({
+                                title: e.title,
+                                content: e.content,
+                                category: e.category,
+                                source: e.sourceName || e.sourceUrl || '',
+                            })),
+                        })
+                    },
+                },
+
+                addStrategyKnowledge: {
+                    description:
+                        'Guarda un nuevo artículo o caso en la base de conocimiento estratégico del usuario. Usalo cuando el usuario comparta una idea, caso de estudio o lección que quiera recordar para futuras consultas.',
+                    inputSchema: z.object({
+                        title: z.string().describe('Título del conocimiento'),
+                        content: z.string().describe('Contenido completo'),
+                        category: z
+                            .enum([
+                                'campaign_case',
+                                'framework',
+                                'tactic',
+                                'speech',
+                                'lesson',
+                                'general',
+                            ])
+                            .describe(
+                                'Categoría: campaign_case (caso de campaña), framework (metodología), tactic (táctica), speech (discurso), lesson (lección), general',
+                            ),
+                        sourceName: z
+                            .string()
+                            .optional()
+                            .describe('Nombre de la fuente (ej: "Libro de Carville")'),
+                    }),
+                    execute: async ({ title, content, category, sourceName }) => {
+                        const result = await addStrategicKnowledgeAction({
+                            title,
+                            content,
+                            category,
+                            sourceName,
+                        })
+                        if (!result.success) return `Error: ${result.error}`
+                        return `Guardado en la base de conocimiento estratégico: "${title}" [${category}]. Lo voy a usar como referencia en futuras consultas.`
                     },
                 },
 
@@ -695,34 +857,66 @@ Si algún paso falla, informá cuáles se completaron y cuál falló.
                 },
 
                 createLanding: {
-                    description:
-                        'Crea una landing page completa en el sistema con contenido generado por IA. El usuario puede editarla después en el builder de Proyectos.',
+                    description: `Crea una landing page completa eligiendo las secciones que mejor se adapten al tema. Secciones disponibles:
+- hero: Hero principal (título, subtítulo, CTA, imagen de fondo)
+- problem: El Problema (título + texto descriptivo)
+- proposal: Nuestra Propuesta (título + texto)
+- solution: La Solución (título + texto)
+- benefits: Beneficios (lista de items con título + descripción)
+- features: Características (lista de items con título + descripción)
+- data: Datos y Evidencia (lista de items con título + descripción)
+- stats: Estadísticas (lista de items con valor + label, ej: "+500", "Casos")
+- proposals: Propuestas Clave (lista de items con título + descripción)
+- testimonials: Testimonios / Voces (lista con text + author)
+- team: Equipo (lista con name + role + photo)
+- biography: Biografía / Trayectoria (título + texto)
+- about: Sobre Nosotros (título + texto + foto)
+- services: Servicios (lista con title + description)
+- comparison: Comparación Antes/Después (lista con without + with)
+- events: Calendario de Eventos (lista con title + description + time)
+- agenda: Agenda (lista con time + title + speaker)
+- faq: Preguntas Frecuentes (lista con question + answer)
+- contact: Contacto (título + email + phone + CTA)
+- lead_capture: Captura de Leads (formulario con headline + CTA)
+- donate: Donaciones (título + subtítulo + CTA)
+- story: Historia / Dolor (headline + descripción + items)
+- guarantee: Garantía (título + texto + período)
+- pricing: Planes y Precios (lista con name + price + cta_text)
+- countdown: Contador Regresivo (headline + fecha + CTA)
+- urgency: Banner de Urgencia (texto de urgencia)
+- image_gallery: Galería de Imágenes (lista con image + caption)
+- portfolio_showcase: Portfolio (lista con title + description + image)
+- html_embed: HTML Embebido (código HTML libre)
+Elegí entre 4 y 10 secciones según el tema. Siempre empezá con "hero".`,
                     inputSchema: z.object({
                         name: z
                             .string()
                             .describe(
-                                'Nombre de la landing (ej: "Seguridad 2027", "Campaña Patricia Bullrich")',
+                                'Nombre de la landing (ej: "Seguridad 2027", "Narcotráfico: Plan Integral")',
                             ),
                         topic: z
                             .string()
                             .describe(
                                 'Tema o propósito de la landing (ej: "propuesta de seguridad ciudadana")',
                             ),
-                        templateType: z
-                            .enum(['political_campaign', 'political_issue', 'vsl', 'consultancy'])
+                        sections: z
+                            .array(z.string())
+                            .describe(
+                                'Lista ordenada de IDs de secciones a incluir (ej: ["hero", "problem", "proposal", "data", "stats", "testimonials", "contact"]). Siempre empezar con "hero".',
+                            ),
+                        context: z
+                            .string()
                             .optional()
                             .describe(
-                                'Tipo de template. Default: political_issue para temas específicos, political_campaign para campañas generales',
+                                'Contexto adicional para generar contenido: datos de un reporte temático, ángulos de ataque, información del candidato, etc.',
                             ),
                     }),
-                    execute: async ({ name, topic, templateType }) => {
+                    execute: async ({ name, topic, sections: requestedSections, context }) => {
                         try {
                             const { saveProjectAction } = await import('@/features/wizard/actions')
-                            const { getTemplateById } =
-                                await import('@/features/templates/config/catalog')
                             const { callGemini: gemini } = await import('@/lib/gemini')
 
-                            // 1. Sinapsis: usar impulso de contenido del cerebro (NO defaults parciales)
+                            // 1. Sinapsis: contexto del cerebro
                             const contentImpulse = buildContentImpulse(brain)
                             const candidateName = contentImpulse?.candidateName ?? ''
                             const party = contentImpulse?.party ?? ''
@@ -737,72 +931,123 @@ Si algún paso falla, informá cuáles se completaron y cuál falló.
                                 ? buildContentPromptBlock(contentImpulse)
                                 : ''
 
-                            // 2. Select template
-                            const selectedTemplate = templateType ?? 'political_issue'
-                            const template = getTemplateById(selectedTemplate)
-                            if (!template) {
-                                return `Error: template "${selectedTemplate}" no encontrado.`
+                            // 2. Section structure reference for the AI
+                            const sectionStructures: Record<string, Record<string, unknown>> = {
+                                hero: { headline: '', subheadline: '', cta_text: '', eyebrow: '' },
+                                problem: { title: 'El Problema', text: '' },
+                                proposal: { title: 'Nuestra Propuesta', text: '' },
+                                solution: { title: 'La Solución', text: '' },
+                                benefits: { items: [{ title: '', description: '' }] },
+                                features: {
+                                    title: '',
+                                    subtitle: '',
+                                    items: [{ title: '', description: '' }],
+                                },
+                                data: {
+                                    title: 'Los Datos Hablan',
+                                    items: [{ title: '', description: '' }],
+                                },
+                                stats: { items: [{ value: '', label: '' }] },
+                                proposals: {
+                                    title: 'Propuestas Clave',
+                                    subtitle: '',
+                                    items: [{ title: '', description: '' }],
+                                },
+                                testimonials: { title: '', items: [{ text: '', author: '' }] },
+                                team: { items: [{ name: '', role: '', photo: '' }] },
+                                biography: { title: 'Trayectoria', text: '' },
+                                about: { title: '', text: '' },
+                                services: { items: [{ title: '', description: '' }] },
+                                comparison: { title: '', items: [{ without: '', with: '' }] },
+                                events: {
+                                    title: 'Agenda',
+                                    items: [{ title: '', description: '', time: '' }],
+                                },
+                                agenda: {
+                                    title: '',
+                                    items: [{ time: '', title: '', speaker: '' }],
+                                },
+                                faq: { items: [{ question: '', answer: '' }] },
+                                contact: {
+                                    title: 'Contacto',
+                                    cta_text: 'ENVIAR',
+                                    success_message: '¡Gracias!',
+                                },
+                                lead_capture: {
+                                    headline: '',
+                                    subheadline: '',
+                                    cta_text: '',
+                                    success_message: '',
+                                },
+                                donate: {
+                                    title: 'Apoyá la Campaña',
+                                    subtitle: '',
+                                    cta_text: 'DONAR AHORA',
+                                },
+                                story: { headline: '', description: '' },
+                                guarantee: { title: '', text: '', period: '' },
+                                pricing: { items: [{ name: '', price: '', cta_text: '' }] },
+                                countdown: { headline: '', cta_text: '' },
+                                urgency: { title: '', text: '' },
+                                image_gallery: { items: [{ image: '', caption: '' }] },
+                                portfolio_showcase: {
+                                    items: [{ title: '', description: '', image: '' }],
+                                },
+                                html_embed: { title: '', html_code: '' },
                             }
 
-                            // 3. Generate content for each section with Gemini + brain context
-                            const sectionIds = template.sections.map((s) => s.id)
-                            const defaultContent = template.defaultContent
+                            // 3. Filter to valid sections only
+                            const validSections = requestedSections.filter(
+                                (s: string) => s in sectionStructures,
+                            )
+                            if (validSections.length === 0) {
+                                return 'Error: ninguna de las secciones solicitadas es válida.'
+                            }
 
+                            // 4. Generate content with Gemini
                             const prompt = `IDIOMA: TODO en ESPAÑOL (castellano argentino).
 ${contentBlock}
 
 Sos un experto en comunicación política y copywriting de alto impacto.
-Generá el contenido completo para una landing page de campaña política.
+Generá el contenido completo para una landing page.
 
 Candidato: ${candidateName || 'El candidato'}
 Partido: ${party || 'Sin especificar'}
 Tema de la landing: ${topic}
-Nombre de la landing: ${name}
+Nombre: ${name}
+${context ? `\nCONTEXTO E INFORMACIÓN PARA USAR EN EL CONTENIDO:\n${context}\n\nUSÁ esta información real para poblar las secciones. NO inventes datos si tenés datos reales acá.\n` : ''}
+Generá contenido para EXACTAMENTE estas ${validSections.length} secciones, usando estos IDs como claves:
+${validSections.map((id: string) => `- "${id}": ${JSON.stringify(sectionStructures[id] ?? { title: '', text: '' })}`).join('\n')}
 
-Secciones que necesito (generá contenido para CADA una):
-${sectionIds.map((id) => `- "${id}": campos tipo ${JSON.stringify(Object.keys(defaultContent[id] ?? {}))}`).join('\n')}
-
-IMPORTANTE sobre la estructura de cada sección:
-- "hero": { "headline": "...", "subheadline": "...", "cta_text": "...", "eyebrow": "..." }
-- "problem" o "proposal": { "title": "...", "text": "párrafo explicativo" }
-- "benefits" o "data": { "title": "...", "items": [{"title": "...", "description": "..."}] } (mínimo 3 items)
-- "testimonials": { "title": "...", "items": [{"name": "...", "role": "...", "bio": "..."}] } (mínimo 3)
-- "contact" o "lead_capture": { "title": "...", "subtitle": "...", "cta_text": "...", "success_message": "..." }
-- "events": { "title": "...", "items": [{"title": "...", "description": "...", "time": "..."}] }
-- "donate": { "title": "...", "subtitle": "...", "cta_text": "..." }
-- "proposals": { "title": "...", "items": [{"title": "...", "description": "..."}] }
-- "biography": { "title": "...", "text": "..." }
-- "team": { "title": "...", "items": [{"name": "...", "role": "...", "bio": "..."}] }
-- Para cualquier otra: usá { "title": "...", "text": "..." } como base
+REGLA CRÍTICA: Las claves DEBEN ser EXACTAMENTE: ${JSON.stringify(validSections)}
+Si una sección tiene "items" como array, generá al menos 3 items.
 
 Reglas:
 - Headlines cortos e impactantes (máx 60 caracteres)
-- Subheadlines que complementen (máx 120 caracteres)
 - CTAs con verbos de acción directa en español
-- Textos persuasivos y emotivos, sin ser genéricos
-- NO uses placeholders como "Lorem ipsum" — todo debe ser contenido real y relevante
+- Contenido real y relevante, NO placeholders
+- Si hay contexto/datos proporcionados, usalos textualmente
 
-Respondé SOLO con un JSON válido: { "sectionId": { ...campos }, ... }`
+Respondé SOLO con JSON válido: { "sectionId": { ...campos }, ... }`
 
                             const raw = await gemini(prompt, {
                                 temperature: 0.7,
-                                maxTokens: 3000,
+                                maxTokens: 4000,
                             })
 
-                            // 4. Parse AI-generated content
+                            // 5. Parse AI content
                             const jsonMatch = raw.match(/\{[\s\S]*\}/)
                             let generatedContent: Record<string, Record<string, unknown>> = {}
                             if (jsonMatch) {
                                 try {
                                     generatedContent = JSON.parse(jsonMatch[0])
                                 } catch {
-                                    // Use default content if parsing fails
                                     generatedContent = {}
                                 }
                             }
 
-                            // 5. Build sections array merging AI content with defaults
-                            const sections = [
+                            // 6. Build sections array
+                            const sectionArray = [
                                 {
                                     id: 'header',
                                     type: 'header',
@@ -810,11 +1055,11 @@ Respondé SOLO con un JSON válido: { "sectionId": { ...campos }, ... }`
                                     isVisible: true,
                                     order: 0,
                                 },
-                                ...sectionIds.map((sId, i) => ({
+                                ...validSections.map((sId: string, i: number) => ({
                                     id: sId,
                                     type: sId,
                                     content: {
-                                        ...(defaultContent[sId] ?? {}),
+                                        ...(sectionStructures[sId] ?? {}),
                                         ...(generatedContent[sId] ?? {}),
                                     },
                                     isVisible: true,
@@ -822,12 +1067,12 @@ Respondé SOLO con un JSON válido: { "sectionId": { ...campos }, ... }`
                                 })),
                             ]
 
-                            // 6. Save project
+                            // 7. Save as libre project (no template restrictions)
                             const result = await saveProjectAction({
                                 name,
-                                structureType: selectedTemplate,
+                                structureType: 'libre',
                                 visualModel: 'dark',
-                                sections,
+                                sections: sectionArray,
                                 colors,
                             })
 
@@ -839,9 +1084,9 @@ Respondé SOLO con un JSON válido: { "sectionId": { ...campos }, ... }`
                                 status: 'Landing creada exitosamente',
                                 projectId: result.data?.id,
                                 name,
-                                template: selectedTemplate,
-                                sectionsCount: sections.length,
-                                message: `La landing "${name}" fue creada con ${sections.length} secciones. El usuario puede verla y editarla en la sección Proyectos del panel.`,
+                                sections: validSections,
+                                sectionsCount: sectionArray.length,
+                                message: `Landing "${name}" creada con ${validSections.length} secciones: ${validSections.join(', ')}. Podés verla y editarla en Proyectos.`,
                             })
                         } catch (err) {
                             logger.error('chat-landing', 'Error creating landing from chat', err)
@@ -982,6 +1227,107 @@ Respondé SOLO con JSON:
                                 clientStrength: a.clientStrength,
                             })),
                             hint: 'Los ángulos están disponibles en la sección Ataques del panel de Intel Política.',
+                        })
+                    },
+                },
+
+                generateResearchPrompt: {
+                    description:
+                        'Genera un prompt de investigación estructurado sobre un tema político. El prompt incluye preguntas clave, ángulos de análisis, fuentes sugeridas y framework metodológico. El usuario lo copia y lo usa en su propia herramienta de IA para investigar en profundidad.',
+                    inputSchema: z.object({
+                        topic: z
+                            .string()
+                            .describe(
+                                'Tema a investigar (ej: "narcotráfico en Rosario", "reforma previsional")',
+                            ),
+                        objective: z
+                            .string()
+                            .optional()
+                            .describe(
+                                'Objetivo específico de la investigación (ej: "encontrar vulnerabilidades del rival", "entender el sentimiento ciudadano")',
+                            ),
+                        depth: z
+                            .enum(['quick', 'standard', 'deep'])
+                            .optional()
+                            .describe(
+                                'Profundidad: quick (5 preguntas), standard (10), deep (15+)',
+                            ),
+                    }),
+                    execute: async ({ topic, objective, depth }) => {
+                        const depthLevel = depth ?? 'standard'
+                        const questionCount =
+                            depthLevel === 'quick' ? 5 : depthLevel === 'standard' ? 10 : 15
+                        const candidateName = brain.campaign?.candidateName ?? 'el candidato'
+                        const party = brain.campaign?.party ?? ''
+
+                        const contextBlock = brain.campaign
+                            ? `\n\nCONTEXTO DE CAMPAÑA:\n- Candidato: ${candidateName}${party ? ` (${party})` : ''}\n- Rivales monitoreados: ${brain.monitors.map((m) => m.handle).join(', ') || 'ninguno'}\n- Temas activos: ${brain.topics.map((t) => t.name).join(', ') || 'ninguno'}`
+                            : ''
+
+                        return JSON.stringify({
+                            status: 'Prompt de investigación generado',
+                            prompt: `# PROMPT DE INVESTIGACIÓN: ${topic.toUpperCase()}
+${objective ? `\nOBJETIVO: ${objective}` : ''}${contextBlock}
+
+## PREGUNTAS CLAVE (responder las ${questionCount} más relevantes)
+
+### Diagnóstico situacional
+1. ¿Cuál es el estado actual de "${topic}" en el territorio/contexto relevante?
+2. ¿Qué actores políticos tienen posiciones públicas sobre este tema?
+3. ¿Cuál es la percepción ciudadana predominante? ¿Hay datos de encuestas?
+${
+    depthLevel !== 'quick'
+        ? `4. ¿Qué eventos recientes (últimos 30 días) cambiaron la narrativa sobre este tema?
+5. ¿Existen datos duros (estadísticas, informes oficiales) que respalden o contradigan las narrativas dominantes?`
+        : ''
+}
+
+### Análisis de oportunidad política
+${
+    depthLevel === 'quick'
+        ? `4. ¿Qué posición beneficiaría más a ${candidateName} sobre este tema?
+5. ¿Qué riesgos tiene tomar posición sobre este tema?`
+        : `6. ¿Qué posición beneficiaría más a ${candidateName}? ¿Por qué?
+7. ¿Qué riesgos tiene tomar posición sobre este tema?
+8. ¿Algún rival tiene una posición vulnerable o contradictoria sobre esto?`
+}
+${
+    depthLevel === 'deep'
+        ? `9. ¿Hay precedentes históricos de campañas que capitalizaron este tema exitosamente?
+10. ¿Qué framing (encuadre) sería más efectivo: económico, moral, de seguridad, de derechos?`
+        : ''
+}
+
+### Estrategia de comunicación
+${
+    depthLevel === 'quick'
+        ? ''
+        : depthLevel === 'standard'
+          ? `9. ¿Qué mensaje central (max 15 palabras) resume la posición ideal?
+10. ¿Qué canales son más efectivos para este tema (redes, medios, territorio)?`
+          : `11. ¿Qué mensaje central (max 15 palabras) resume la posición ideal?
+12. ¿Qué canales son más efectivos para este tema?
+13. ¿Qué tipo de contenido genera más engagement sobre este tema?
+14. ¿Qué aliados o voces de autoridad podrían amplificar el mensaje?
+15. ¿Qué contra-narrativa debemos anticipar y cómo responder?`
+}
+
+## FUENTES SUGERIDAS
+- Google News: "${topic} argentina ${new Date().getFullYear()}"
+- Twitter/X: buscar hashtags y cuentas clave
+- Medios: Infobae, La Nación, Clarín, medios locales
+- Datos oficiales: INDEC, ministerios relevantes, informes de ONGs
+- Encuestadoras: Poliarquía, Giacobbe, D'Alessio IROL
+
+## FRAMEWORK DE ANÁLISIS
+Organizar los hallazgos en:
+1. **HECHOS**: datos verificables y fuentes
+2. **NARRATIVAS**: cómo se está contando la historia (medios, redes, calle)
+3. **ACTORES**: quién dice qué, aliados y opositores
+4. **OPORTUNIDAD**: ventana de acción para ${candidateName}
+5. **RIESGO**: qué puede salir mal
+6. **RECOMENDACIÓN**: acción concreta sugerida`,
+                            hint: 'Copiá este prompt y pegalo en tu herramienta de IA preferida (Claude, ChatGPT, Perplexity) para obtener una investigación profunda. Después podés guardar los resultados en la Base de Conocimiento Estratégico.',
                         })
                     },
                 },

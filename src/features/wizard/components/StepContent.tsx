@@ -10,12 +10,8 @@ import { saveProjectAction, publishProjectAction } from '../actions'
 // ─── Alias map for AI-generated section names ────────────────
 // Maps non-standard names (e.g. from agent) to valid STEP_SCHEMAS keys
 const SECTION_ALIASES: Record<string, string> = {
-    proposals: 'features',
-    biography: 'about',
-    biography_candidate: 'about',
-    events: 'agenda',
-    donate: 'lead_capture',
-    donations: 'lead_capture',
+    biography_candidate: 'biography',
+    donations: 'donate',
     volunteer: 'lead_capture',
     timeline: 'process_steps',
     mission: 'story',

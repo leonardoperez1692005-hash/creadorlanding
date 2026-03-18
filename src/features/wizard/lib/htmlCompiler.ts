@@ -26,6 +26,7 @@ import {
     type BackgroundPresetId,
     BACKGROUND_PRESETS,
 } from '@/lib/canvas/generativeBackgrounds'
+import { buildDesignSystemCSS, type DesignSystemId } from './designSystems'
 
 // ─── Public API ────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ export function compileLandingHtml(input: CompileInput): string {
     const fontBody = colors.fontBody || 'Outfit'
     const borderRadius = (colors.borderRadius as Theme['borderRadius']) || 'rounded'
     const cardStyle = (colors.cardStyle as Theme['cardStyle']) || 'flat'
+    const designSystem = (colors.designSystem as DesignSystemId) || 'default'
 
     const theme: Theme = {
         primary,
@@ -101,7 +103,15 @@ export function compileLandingHtml(input: CompileInput): string {
 <meta property="og:description" content="${esc(seoDesc)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="${esc(canonicalUrl)}">
-${ogImage ? `<meta property="og:image" content="${esc(ogImage)}">` : ''}
+<meta property="og:locale" content="es_AR">
+${
+    ogImage
+        ? `<meta property="og:image" content="${esc(ogImage)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${esc(seoDesc)}">`
+        : ''
+}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(seoTitle)}">
 <meta name="twitter:description" content="${esc(seoDesc)}">
@@ -112,10 +122,11 @@ ${ogImage ? `<meta name="twitter:image" content="${esc(ogImage)}">` : ''}
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="${esc(getGoogleFontsUrl(fontHeading, fontBody))}" rel="stylesheet">
 ${buildTrackingHead(meta)}
-<style>${minifyCSS(buildCSS(theme))}</style>
+<style>${minifyCSS(buildCSS(theme) + buildDesignSystemCSS(designSystem, theme) + buildScrollAnimationsCSS())}</style>
 ${buildJsonLd(seoTitle, seoDesc, canonicalUrl, ogImage, contentSections)}
 </head>
 <body>
+<div class="sl-scroll-progress" aria-hidden="true"></div>
 ${bgSvg ? `<div class="sl-gen-bg" aria-hidden="true">${bgSvg}</div>` : ''}
 ${buildHeader(projectName, headerSection?.content as Record<string, unknown> | undefined, theme)}
 <main>
@@ -484,18 +495,41 @@ function buildJsonLd(
     ogImage: string,
     sections: WizardSection[],
 ): string {
+    // --- WebPage schema ---
     const webPage: Record<string, unknown> = {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
         name: seoTitle,
         description: seoDesc,
         url: canonicalUrl,
+        inLanguage: 'es',
     }
     if (ogImage) webPage.image = ogImage
 
     let out = `<script type="application/ld+json">${JSON.stringify(webPage)}</script>`
 
-    // FAQPage schema when FAQ sections exist
+    // --- BreadcrumbList schema ---
+    const breadcrumb = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Inicio',
+                item: canonicalUrl.replace(/\/p\/.*$/, ''),
+            },
+            {
+                '@type': 'ListItem',
+                position: 2,
+                name: seoTitle,
+                item: canonicalUrl,
+            },
+        ],
+    }
+    out += `\n<script type="application/ld+json">${JSON.stringify(breadcrumb)}</script>`
+
+    // --- FAQPage schema ---
     const faqSections = sections.filter((s) => s.type === 'faq' && s.isVisible)
     const faqItems: {
         '@type': string
@@ -524,7 +558,61 @@ function buildJsonLd(
         out += `\n<script type="application/ld+json">${JSON.stringify(faqSchema)}</script>`
     }
 
+    // --- Event schema (from agenda/events sections) ---
+    const eventSections = sections.filter(
+        (s) => (s.type === 'agenda' || s.type === 'events') && s.isVisible,
+    )
+    for (const section of eventSections) {
+        const content = section.content as Content
+        const items = Array.isArray(content.items) ? content.items : []
+        for (const item of items) {
+            if (item.title) {
+                const event: Record<string, unknown> = {
+                    '@context': 'https://schema.org',
+                    '@type': 'Event',
+                    name: item.title,
+                    description: item.description || item.title,
+                }
+                if (item.time) event.startDate = item.time
+                if (item.speaker) {
+                    event.organizer = { '@type': 'Person', name: item.speaker }
+                }
+                out += `\n<script type="application/ld+json">${JSON.stringify(event)}</script>`
+            }
+        }
+    }
+
+    // --- Organization schema (from speaker/about sections) ---
+    const aboutSection = sections.find(
+        (s) =>
+            (s.type === 'about' || s.type === 'biography' || s.type === 'biography_candidate') &&
+            s.isVisible,
+    )
+    if (aboutSection) {
+        const content = aboutSection.content as Content
+        const orgName = (content.title as string) || seoTitle
+        const org: Record<string, unknown> = {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: orgName,
+            url: canonicalUrl,
+        }
+        if (content.text) org.description = content.text
+        if (ogImage) org.logo = ogImage
+        out += `\n<script type="application/ld+json">${JSON.stringify(org)}</script>`
+    }
+
     return out
+}
+
+// ─── Scroll Animations CSS ──────────────────────────────────
+
+function buildScrollAnimationsCSS(): string {
+    return `
+/* Scroll Progress Bar */
+.sl-scroll-progress{position:fixed;top:0;left:0;height:3px;width:0;
+  background:var(--primary);z-index:9999;transition:width .1s linear;pointer-events:none}
+`
 }
 
 // ─── CSS Minification ────────────────────────────────────────
@@ -600,17 +688,87 @@ function buildScripts(sections: WizardSection[], _baseUrl: string, _projectId: s
     const hasVideo = sections.some(
         (s) => s.type === 'hero' && s.isVisible && (s.content as Content).video_url,
     )
+    const hasStats = sections.some(
+        (s) => (s.type === 'stats' || s.type === 'achievements') && s.isVisible,
+    )
 
     return `<script>
 (function(){
-  /* ── Reveal on Scroll ── */
+  /* ── Respect prefers-reduced-motion ── */
+  var prefersReduced=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* ── Reveal on Scroll with staggered delays ── */
   var els=document.querySelectorAll('.reveal');
-  if('IntersectionObserver' in window){
+  if(!prefersReduced&&'IntersectionObserver' in window){
     var obs=new IntersectionObserver(function(entries){
-      entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}})
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          /* Staggered: find siblings and apply delay */
+          var parent=e.target.parentElement;
+          if(parent){
+            var siblings=parent.querySelectorAll('.reveal:not(.visible)');
+            var idx=Array.prototype.indexOf.call(siblings,e.target);
+            if(idx>0)e.target.style.transitionDelay=(idx*80)+'ms';
+          }
+          e.target.classList.add('visible');
+          obs.unobserve(e.target);
+        }
+      })
     },{threshold:0.12,rootMargin:'0px 0px -40px 0px'});
     els.forEach(function(el){obs.observe(el)});
   } else { els.forEach(function(el){el.classList.add('visible')}) }
+
+  /* ── Scroll Progress Bar ── */
+  var bar=document.querySelector('.sl-scroll-progress');
+  if(bar&&!prefersReduced){
+    window.addEventListener('scroll',function(){
+      var h=document.documentElement;
+      var pct=h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+      bar.style.width=pct+'%';
+    },{passive:true});
+  }
+
+  /* ── Parallax on Hero ── */
+  var hero=document.querySelector('.sl-hero');
+  if(hero&&!prefersReduced){
+    window.addEventListener('scroll',function(){
+      var y=window.scrollY;
+      if(y<800){hero.style.backgroundPositionY=(y*0.3)+'px'}
+    },{passive:true});
+  }
+
+${
+    hasStats
+        ? `
+  /* ── Counter Animation for Stats ── */
+  if(!prefersReduced){
+    var statEls=document.querySelectorAll('[data-count-target]');
+    if(statEls.length&&'IntersectionObserver' in window){
+      var cObs=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            var el=e.target;var raw=el.getAttribute('data-count-target')||'0';
+            var num=parseFloat(raw.replace(/[^0-9.-]/g,''));
+            var prefix=raw.match(/^[^0-9.-]*/)?.[0]||'';
+            var suffix=raw.match(/[^0-9.-]*$/)?.[0]||'';
+            var isFloat=raw.indexOf('.')>=0;var dur=1200;var start=Date.now();
+            function tick(){
+              var t=Math.min(1,(Date.now()-start)/dur);
+              t=t<0.5?4*t*t*t:(1-Math.pow(-2*t+2,3)/2); /* easeInOutCubic */
+              var val=num*t;
+              el.textContent=prefix+(isFloat?val.toFixed(1):Math.round(val))+suffix;
+              if(t<1)requestAnimationFrame(tick);else el.textContent=raw;
+            }
+            tick();cObs.unobserve(el);
+          }
+        })
+      },{threshold:0.3});
+      statEls.forEach(function(el){cObs.observe(el)});
+    }
+  }
+`
+        : ''
+}
 
 ${
     hasVideo

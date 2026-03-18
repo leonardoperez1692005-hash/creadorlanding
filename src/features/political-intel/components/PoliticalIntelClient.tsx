@@ -6,7 +6,6 @@ import {
     Shield,
     Users,
     BarChart3,
-    Crosshair,
     CalendarDays,
     Layout,
     Clock,
@@ -30,7 +29,6 @@ const VALID_VIEWS = new Set<IntelligenceView>([
     'thematic',
     'thermometer',
     'dashboard',
-    'attack-vectors',
     'calendar',
     'landing',
     'video-repurposer',
@@ -48,7 +46,7 @@ import type { PoliticalMonitor, PoliticalReportHistoryItem } from '../types'
 import { CampaignProfileForm } from './CampaignProfileForm'
 import { MonitorConfigPanel } from './MonitorConfigPanel'
 import { PoliticalDashboard } from './PoliticalDashboard'
-import { AttackVectorsPanel } from './AttackVectorsPanel'
+// AttackVectorsPanel moved to PoliticalDashboard → Acciones
 import { PoliticalCalendarView } from './PoliticalCalendarView'
 import { PoliticalLandingPanel } from './PoliticalLandingPanel'
 import { ThematicIntelPanel } from './ThematicIntelPanel'
@@ -84,6 +82,8 @@ export function PoliticalIntelClient({
         monitors,
         history,
         report,
+        reportId: activeReportId,
+        thematicReportId: activeThematicReportId,
         attackVectors,
         thematicAngles,
         loadCampaignProfile,
@@ -220,8 +220,8 @@ export function PoliticalIntelClient({
                         >
                             Intel Política
                         </h1>
-                        <p style={{ fontSize: '0.78rem', color: '#8b9ec7', margin: 0 }}>
-                            Monitoreo de rivales · Bright Data + Gemini · Multi-país
+                        <p style={{ fontSize: '0.925rem', color: '#8b9ec7', margin: 0 }}>
+                            Monitoreo de rivales · Inteligencia Artificial · Multi-país
                         </p>
                     </div>
                 </div>
@@ -284,15 +284,7 @@ export function PoliticalIntelClient({
                             disabled={profileRequired}
                         />
                     )}
-                    {isViewAllowed('attack-vectors') && (
-                        <NavBtn
-                            icon={Crosshair}
-                            label="ATAQUES"
-                            active={effectiveView === 'attack-vectors'}
-                            onClick={() => setView('attack-vectors')}
-                            disabled={profileRequired}
-                        />
-                    )}
+                    {/* ATAQUES fusionado en DASHBOARD → Acciones */}
                     {isViewAllowed('calendar') && (
                         <NavBtn
                             icon={CalendarDays}
@@ -359,7 +351,7 @@ export function PoliticalIntelClient({
                     {profileRequired && (
                         <span
                             style={{
-                                fontSize: '0.72rem',
+                                fontSize: '0.875rem',
                                 color: '#F59E0B',
                                 marginLeft: '0.5rem',
                                 display: 'flex',
@@ -377,7 +369,7 @@ export function PoliticalIntelClient({
 
             {/* Body */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* History Sidebar */}
+                {/* History Sidebar — hidden on landing view */}
                 <div
                     style={{
                         width: 240,
@@ -390,8 +382,8 @@ export function PoliticalIntelClient({
                     <div style={{ padding: '0 1rem', marginBottom: '0.75rem' }}>
                         <h3
                             style={{
-                                color: '#8b9ec7',
-                                fontSize: '0.78rem',
+                                color: effectiveView === 'landing' ? '#A78BFA' : '#8b9ec7',
+                                fontSize: '0.925rem',
                                 fontWeight: 600,
                                 margin: 0,
                             }}
@@ -403,13 +395,25 @@ export function PoliticalIntelClient({
                                   : effectiveView === 'thermometer'
                                     ? 'Termómetro'
                                     : effectiveView === 'landing'
-                                      ? 'Reportes Disponibles'
+                                      ? '🧠 Fuentes de Inteligencia'
                                       : effectiveView === 'video-repurposer'
                                         ? 'Videos Analizados'
                                         : effectiveView === 'image-studio'
                                           ? 'Imágenes Recientes'
                                           : 'Historial de Reportes'}
                         </h3>
+                        {effectiveView === 'landing' && (
+                            <p
+                                style={{
+                                    color: '#6B7280',
+                                    fontSize: '0.8rem',
+                                    margin: '0.3rem 0 0',
+                                }}
+                            >
+                                Seleccioná un informe para cargar sus vectores y ángulos en la
+                                landing
+                            </p>
+                        )}
                     </div>
                     {(() => {
                         // ─── Video Repurposer sidebar (reads from video store) ───
@@ -460,7 +464,7 @@ export function PoliticalIntelClient({
                                 )
                             }
 
-                            // Landing view: show reports as landing sources
+                            // Landing view: show reports as intelligence sources with clear labels
                             if (effectiveView === 'landing') {
                                 return [...history]
                                     .sort(
@@ -474,6 +478,10 @@ export function PoliticalIntelClient({
                                             h.reportType === 'thematic'
                                                 ? ('landing-thematic' as string)
                                                 : ('landing-monitoring' as string),
+                                        summary:
+                                            h.reportType === 'thematic'
+                                                ? h.topicName || 'Tema'
+                                                : `${h.monitorCount} monitor${h.monitorCount !== 1 ? 'es' : ''}`,
                                     }))
                             }
 
@@ -481,12 +489,109 @@ export function PoliticalIntelClient({
                             return history.filter((h) => h.reportType !== 'thematic')
                         })()
 
+                        // Landing view: show active report banner at top
+                        if (
+                            effectiveView === 'landing' &&
+                            (activeReportId || activeThematicReportId)
+                        ) {
+                            const hasMonitoringReport = activeReportId && report
+                            const hasThematicReport = activeThematicReportId
+                            const activeInHistory = filteredHistory.some(
+                                (h) => h.id === activeReportId || h.id === activeThematicReportId,
+                            )
+                            if (!activeInHistory && (hasMonitoringReport || hasThematicReport)) {
+                                return (
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.5rem',
+                                        }}
+                                    >
+                                        {/* Active report not in history — show pinned banner */}
+                                        <div
+                                            style={{
+                                                margin: '0 0.5rem 0.5rem',
+                                                padding: '0.6rem 0.75rem',
+                                                borderRadius: '8px',
+                                                background: 'rgba(124,58,237,0.1)',
+                                                border: '1px solid rgba(124,58,237,0.25)',
+                                                borderLeft: '3px solid #A78BFA',
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    color: '#A78BFA',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: 700,
+                                                    marginBottom: '0.2rem',
+                                                }}
+                                            >
+                                                INFORME ACTIVO
+                                            </div>
+                                            <div style={{ color: '#c4cfe8', fontSize: '0.85rem' }}>
+                                                {hasMonitoringReport
+                                                    ? `Monitoreo — ${report.comparativeAnalysis?.length ?? 0} rivales analizados`
+                                                    : 'Reporte temático'}
+                                            </div>
+                                            {attackVectors.length > 0 && (
+                                                <div
+                                                    style={{
+                                                        color: '#F87171',
+                                                        fontSize: '0.8rem',
+                                                        marginTop: '0.15rem',
+                                                    }}
+                                                >
+                                                    {attackVectors.length} vector
+                                                    {attackVectors.length > 1 ? 'es' : ''} ZMOT
+                                                </div>
+                                            )}
+                                            {thematicAngles.length > 0 && (
+                                                <div
+                                                    style={{
+                                                        color: '#10B981',
+                                                        fontSize: '0.8rem',
+                                                        marginTop: '0.15rem',
+                                                    }}
+                                                >
+                                                    {thematicAngles.length} ángulo
+                                                    {thematicAngles.length > 1 ? 's' : ''} temático
+                                                    {thematicAngles.length > 1 ? 's' : ''}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* Rest of history */}
+                                        {filteredHistory.length > 0 && (
+                                            <div
+                                                style={{
+                                                    padding: '0 0.75rem',
+                                                    marginBottom: '0.25rem',
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        color: '#4B5563',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 700,
+                                                        textTransform: 'uppercase',
+                                                        letterSpacing: '0.08em',
+                                                    }}
+                                                >
+                                                    Otros informes
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
+                        }
+
                         if (filteredHistory.length === 0)
                             return (
                                 <p
                                     style={{
                                         color: '#4B5563',
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.875rem',
                                         padding: '0 1rem',
                                     }}
                                 >
@@ -525,6 +630,14 @@ export function PoliticalIntelClient({
                                         ? item.id.replace('cal-', '')
                                         : item.id
                                     const isConfirming = confirmDeleteId === realId
+                                    // Highlight active report in ALL views (not just landing)
+                                    const isActiveReport =
+                                        realId === activeReportId ||
+                                        realId === activeThematicReportId
+                                    const activeColor =
+                                        isLandingThematic || isThematic || isThematicCalendar
+                                            ? '#10B981'
+                                            : '#00c8ff'
 
                                     return (
                                         <div
@@ -533,7 +646,12 @@ export function PoliticalIntelClient({
                                                 position: 'relative',
                                                 display: 'flex',
                                                 alignItems: 'stretch',
-                                                borderLeft: '2px solid transparent',
+                                                borderLeft: isActiveReport
+                                                    ? `3px solid ${activeColor}`
+                                                    : '2px solid transparent',
+                                                background: isActiveReport
+                                                    ? `${activeColor}15`
+                                                    : undefined,
                                             }}
                                             onMouseEnter={(e) => {
                                                 e.currentTarget.style.background = `${hoverColor}08`
@@ -588,7 +706,7 @@ export function PoliticalIntelClient({
                                                     <span
                                                         style={{
                                                             color: '#8b9ec7',
-                                                            fontSize: '0.72rem',
+                                                            fontSize: '0.875rem',
                                                         }}
                                                     >
                                                         {new Date(
@@ -597,7 +715,7 @@ export function PoliticalIntelClient({
                                                         <span
                                                             style={{
                                                                 color: '#4B5563',
-                                                                fontSize: '0.65rem',
+                                                                fontSize: '0.8rem',
                                                             }}
                                                         >
                                                             {new Date(
@@ -611,7 +729,7 @@ export function PoliticalIntelClient({
                                                     {isLandingSource ? (
                                                         <span
                                                             style={{
-                                                                fontSize: '0.6rem',
+                                                                fontSize: '0.8rem',
                                                                 padding: '0 0.25rem',
                                                                 borderRadius: '3px',
                                                                 background: isLandingThematic
@@ -630,7 +748,7 @@ export function PoliticalIntelClient({
                                                     ) : isAnyCalendar ? (
                                                         <span
                                                             style={{
-                                                                fontSize: '0.6rem',
+                                                                fontSize: '0.8rem',
                                                                 padding: '0 0.25rem',
                                                                 borderRadius: '3px',
                                                                 background: isThematicCalendar
@@ -649,7 +767,7 @@ export function PoliticalIntelClient({
                                                     ) : isThematic ? (
                                                         <span
                                                             style={{
-                                                                fontSize: '0.6rem',
+                                                                fontSize: '0.8rem',
                                                                 padding: '0 0.25rem',
                                                                 borderRadius: '3px',
                                                                 background: 'rgba(16,185,129,0.15)',
@@ -665,7 +783,7 @@ export function PoliticalIntelClient({
                                                     <span
                                                         style={{
                                                             color: '#A78BFA',
-                                                            fontSize: '0.7rem',
+                                                            fontSize: '0.85rem',
                                                             fontWeight: 600,
                                                         }}
                                                     >
@@ -677,7 +795,7 @@ export function PoliticalIntelClient({
                                                     <span
                                                         style={{
                                                             color: '#00c8ff',
-                                                            fontSize: '0.7rem',
+                                                            fontSize: '0.85rem',
                                                             fontWeight: 600,
                                                         }}
                                                     >
@@ -689,7 +807,7 @@ export function PoliticalIntelClient({
                                                     <span
                                                         style={{
                                                             color: '#10B981',
-                                                            fontSize: '0.7rem',
+                                                            fontSize: '0.85rem',
                                                             fontWeight: 600,
                                                         }}
                                                     >
@@ -699,7 +817,7 @@ export function PoliticalIntelClient({
                                                     <span
                                                         style={{
                                                             color: '#6B7280',
-                                                            fontSize: '0.7rem',
+                                                            fontSize: '0.85rem',
                                                         }}
                                                     >
                                                         {item.monitorCount} monitor
@@ -714,7 +832,7 @@ export function PoliticalIntelClient({
                                                         <span
                                                             style={{
                                                                 color: '#4B5563',
-                                                                fontSize: '0.68rem',
+                                                                fontSize: '0.825rem',
                                                                 overflow: 'hidden',
                                                                 textOverflow: 'ellipsis',
                                                                 whiteSpace: 'nowrap',
@@ -747,7 +865,7 @@ export function PoliticalIntelClient({
                                                             color: '#fff',
                                                             border: 'none',
                                                             borderRadius: '3px',
-                                                            fontSize: '0.6rem',
+                                                            fontSize: '0.8rem',
                                                             fontWeight: 700,
                                                             padding: '0.15rem 0.3rem',
                                                             cursor: 'pointer',
@@ -762,7 +880,7 @@ export function PoliticalIntelClient({
                                                             color: '#9CA3AF',
                                                             border: 'none',
                                                             borderRadius: '3px',
-                                                            fontSize: '0.6rem',
+                                                            fontSize: '0.8rem',
                                                             fontWeight: 700,
                                                             padding: '0.15rem 0.3rem',
                                                             cursor: 'pointer',
@@ -819,12 +937,7 @@ export function PoliticalIntelClient({
                     {effectiveView === 'monitors' && <MonitorConfigPanel />}
                     {effectiveView === 'dashboard' &&
                         (report ? <PoliticalDashboard /> : <DashboardAutoLoader />)}
-                    {effectiveView === 'attack-vectors' &&
-                        (report ? (
-                            <AttackVectorsPanel />
-                        ) : (
-                            <EmptyState message="Primero generá un análisis de inteligencia." />
-                        ))}
+                    {/* attack-vectors view removed — now inside Dashboard → Acciones */}
                     {effectiveView === 'thematic' && <ThematicIntelPanel />}
                     {effectiveView === 'thermometer' && <SentimentPanel />}
                     {effectiveView === 'calendar' && <PoliticalCalendarView />}
@@ -874,7 +987,7 @@ function NavBtn({
                 gap: '0.35rem',
                 padding: '0.4rem 0.8rem',
                 borderRadius: '6px',
-                fontSize: '0.72rem',
+                fontSize: '0.875rem',
                 fontWeight: active ? 700 : 500,
                 letterSpacing: '0.03em',
                 background: active ? `${activeColor}15` : 'transparent',
@@ -893,7 +1006,7 @@ function NavBtn({
                     style={{
                         padding: '0 0.35rem',
                         borderRadius: '4px',
-                        fontSize: '0.65rem',
+                        fontSize: '0.8rem',
                         fontWeight: 700,
                         background: `${activeColor}20`,
                         color: activeColor,
@@ -945,7 +1058,7 @@ function NavDropdown({
                     gap: '0.35rem',
                     padding: '0.4rem 0.8rem',
                     borderRadius: '6px',
-                    fontSize: '0.72rem',
+                    fontSize: '0.875rem',
                     fontWeight: active ? 700 : 500,
                     letterSpacing: '0.03em',
                     background: active ? `${activeColor}15` : 'transparent',
@@ -1008,7 +1121,7 @@ function NavDropdown({
                                         gap: '0.5rem',
                                         padding: '0.5rem 0.75rem',
                                         borderRadius: '5px',
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.875rem',
                                         fontWeight: item.active ? 700 : 500,
                                         background: item.active
                                             ? `${activeColor}15`
@@ -1068,7 +1181,7 @@ function VideoCalendarSidebarEntry() {
     return (
         <div style={{ marginTop: '0.5rem', borderTop: '1px solid #1e2540', paddingTop: '0.5rem' }}>
             <div style={{ padding: '0 1rem', marginBottom: '0.35rem' }}>
-                <span style={{ color: '#8b9ec7', fontSize: '0.68rem', fontWeight: 600 }}>
+                <span style={{ color: '#8b9ec7', fontSize: '0.825rem', fontWeight: 600 }}>
                     DESDE VIDEO
                 </span>
             </div>
@@ -1102,7 +1215,7 @@ function VideoCalendarSidebarEntry() {
                         <Video size={12} color="#F472B6" />
                         <span
                             style={{
-                                fontSize: '0.6rem',
+                                fontSize: '0.8rem',
                                 padding: '0 0.25rem',
                                 borderRadius: '3px',
                                 background: 'rgba(244,114,182,0.15)',
@@ -1116,7 +1229,7 @@ function VideoCalendarSidebarEntry() {
                     <span
                         style={{
                             color: '#F472B6',
-                            fontSize: '0.7rem',
+                            fontSize: '0.85rem',
                             fontWeight: 600,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -1126,7 +1239,7 @@ function VideoCalendarSidebarEntry() {
                     >
                         {s.videoTitle}
                     </span>
-                    <span style={{ color: '#8b9ec7', fontSize: '0.68rem' }}>{s.speakerName}</span>
+                    <span style={{ color: '#8b9ec7', fontSize: '0.825rem' }}>{s.speakerName}</span>
                 </button>
             ))}
         </div>
@@ -1143,7 +1256,7 @@ function VideoSidebarContent() {
 
     if (sessions.length === 0 && !analysis) {
         return (
-            <p style={{ color: '#4B5563', fontSize: '0.75rem', padding: '0 1rem' }}>
+            <p style={{ color: '#4B5563', fontSize: '0.875rem', padding: '0 1rem' }}>
                 {phase === 'idle'
                     ? 'Pegá una URL de YouTube para comenzar.'
                     : phase === 'error'
@@ -1185,13 +1298,13 @@ function VideoSidebarContent() {
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Film size={12} color="#F472B6" />
-                            <span style={{ color: '#8b9ec7', fontSize: '0.72rem' }}>
+                            <span style={{ color: '#8b9ec7', fontSize: '0.875rem' }}>
                                 {new Date(s.createdAt).toLocaleDateString('es-AR')}
                             </span>
                             {s.hasCalendar && (
                                 <span
                                     style={{
-                                        fontSize: '0.6rem',
+                                        fontSize: '0.8rem',
                                         padding: '0 0.25rem',
                                         borderRadius: '3px',
                                         background: 'rgba(0,200,255,0.15)',
@@ -1205,7 +1318,7 @@ function VideoSidebarContent() {
                             {s.clipCount > 0 && (
                                 <span
                                     style={{
-                                        fontSize: '0.6rem',
+                                        fontSize: '0.8rem',
                                         padding: '0 0.25rem',
                                         borderRadius: '3px',
                                         background: 'rgba(52,211,153,0.15)',
@@ -1220,7 +1333,7 @@ function VideoSidebarContent() {
                         <span
                             style={{
                                 color: '#F472B6',
-                                fontSize: '0.7rem',
+                                fontSize: '0.85rem',
                                 fontWeight: 600,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -1231,7 +1344,7 @@ function VideoSidebarContent() {
                         >
                             {s.videoTitle}
                         </span>
-                        <span style={{ color: '#6B7280', fontSize: '0.68rem' }}>
+                        <span style={{ color: '#6B7280', fontSize: '0.825rem' }}>
                             {s.speakerName}
                         </span>
                     </button>
@@ -1263,8 +1376,8 @@ function DashboardAutoLoader() {
     // Report loaded successfully → render dashboard
     if (report) return <PoliticalDashboard />
 
-    // Still loading
-    if (!attempted || (history.length === 0 && phase === 'idle')) {
+    // Still loading — only show spinner if we haven't attempted yet
+    if (!attempted) {
         return (
             <div
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -1281,7 +1394,7 @@ function DashboardAutoLoader() {
                             margin: '0 auto 1rem',
                         }}
                     />
-                    <p style={{ color: '#6B7280', fontSize: '0.85rem' }}>
+                    <p style={{ color: '#6B7280', fontSize: '0.95rem' }}>
                         Cargando último reporte...
                     </p>
                     <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
@@ -1290,12 +1403,37 @@ function DashboardAutoLoader() {
         )
     }
 
-    // No reports exist at all
+    // No reports exist — guide the user
     return (
-        <EmptyState
-            message="Generá un análisis desde la pestaña Monitors para ver el dashboard."
-            phase={phase}
-        />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center', maxWidth: 420 }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📊</div>
+                <h3
+                    style={{
+                        color: '#fff',
+                        fontSize: '1.15rem',
+                        fontWeight: 700,
+                        margin: '0 0 0.5rem',
+                    }}
+                >
+                    No hay reportes de inteligencia aún
+                </h3>
+                <p
+                    style={{
+                        color: '#8b9ec7',
+                        fontSize: '0.95rem',
+                        lineHeight: 1.6,
+                        margin: '0 0 1.25rem',
+                    }}
+                >
+                    Para ver el dashboard necesitás generar un análisis primero. Andá a{' '}
+                    <strong style={{ color: '#00c8ff' }}>Monitors</strong> y hacé click en{' '}
+                    <strong style={{ color: '#00c8ff' }}>Analizar</strong> para escanear a tus
+                    rivales, o andá a <strong style={{ color: '#10B981' }}>Temas</strong> para
+                    investigar un tema social.
+                </p>
+            </div>
+        </div>
     )
 }
 
@@ -1313,11 +1451,11 @@ function EmptyState({ message, phase }: { message: string; phase?: string }) {
             }}
         >
             <Radar size={48} color="#1e2540" />
-            <p style={{ color: '#6B7280', fontSize: '0.9rem', textAlign: 'center', maxWidth: 400 }}>
+            <p style={{ color: '#6B7280', fontSize: '1rem', textAlign: 'center', maxWidth: 400 }}>
                 {message}
             </p>
             {phase && phase !== 'idle' && phase !== 'complete' && phase !== 'error' && (
-                <p style={{ color: '#00c8ff', fontSize: '0.85rem' }}>Estado: {phase}</p>
+                <p style={{ color: '#00c8ff', fontSize: '0.95rem' }}>Estado: {phase}</p>
             )}
         </div>
     )

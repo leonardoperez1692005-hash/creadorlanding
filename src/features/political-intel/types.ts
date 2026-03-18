@@ -306,12 +306,31 @@ export interface ThematicPainPoint {
     severity: 'critical' | 'high' | 'medium'
     affectedGroup: string
     candidateMatchingProposal: string | null
+    /** Programmatic: how many items mentioned this pain point */
+    mentionCount?: number
+    /** Programmatic: percentage of analyzed items mentioning this pain point */
+    mentionPct?: number
+    /** Programmatic: real quotes from sources that mention this pain point */
+    sampleQuotes?: Array<{ text: string; sourceUrl?: string }>
 }
 
 export interface ThematicTrend {
     description: string
     direction: 'growing' | 'stable' | 'declining'
     relevance: 'high' | 'medium' | 'low'
+    /** Programmatic: Google Trends average interest (0-100) */
+    googleTrendsAverage?: number
+    /** Programmatic: related search queries from Google Trends */
+    relatedQueries?: string[]
+}
+
+/** Citizen voice with real source attribution (programmatic) */
+export interface ThematicCitizenVoice {
+    text: string
+    source: 'reddit' | 'youtube' | 'twitter'
+    sourceUrl?: string
+    date?: string
+    sentiment?: 'positive' | 'negative' | 'neutral'
 }
 
 export interface ThematicExistingProposal {
@@ -329,12 +348,21 @@ export interface ThematicReport {
         overall: string
         description: string
         keyEmotions: string[]
+        /** Programmatic: total items analyzed for sentiment */
+        totalAnalyzed?: number
+        /** Programmatic: percentage of positive items */
+        positivePct?: number
+        /** Programmatic: percentage of negative items */
+        negativePct?: number
+        /** Programmatic: percentage of neutral items */
+        neutralPct?: number
     }
     painPoints: ThematicPainPoint[]
     trends: ThematicTrend[]
     existingProposals: ThematicExistingProposal[]
     mediaNarrative: string
-    citizenVoices: string[]
+    /** Legacy: string[]. New: ThematicCitizenVoice[]. UI detects type. */
+    citizenVoices: Array<string | ThematicCitizenVoice>
     /** Multi-source metadata — populated after Gemini analysis */
     sourceMeta?: {
         total: number
@@ -353,6 +381,11 @@ export interface ThematicReport {
             sourceType: string
             platform: string
         }>
+        /** Fetch-level diagnostics: what happened with each source */
+        fetchDiagnostics?: Record<
+            string,
+            { status: 'ok' | 'error' | 'skipped'; count: number; error?: string }
+        >
     }
 }
 

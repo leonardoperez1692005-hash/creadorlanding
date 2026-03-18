@@ -56,7 +56,7 @@ function TrendBar({ snapshots }: { snapshots: SentimentSnapshot[] }) {
                     />
                     <span
                         style={{
-                            fontSize: '0.5rem',
+                            fontSize: '0.75rem',
                             color: '#334155',
                             marginTop: 2,
                             lineHeight: 1,
@@ -80,7 +80,7 @@ const SOURCE_LABELS: Record<string, { icon: string; label: string }> = {
     twitter: { icon: '𝕏', label: 'Twitter' },
     reddit: { icon: '💬', label: 'Reddit' },
     youtube: { icon: '▶', label: 'YouTube' },
-    serp: { icon: '📰', label: 'SERP' },
+    serp: { icon: '📰', label: 'Web' },
     nitter: { icon: '🐦', label: 'Nitter' },
 }
 
@@ -227,7 +227,7 @@ function ThermometerCard({
                 >
                     <span
                         style={{
-                            fontSize: '0.72rem',
+                            fontSize: '0.875rem',
                             fontWeight: 600,
                             color: accentColor,
                             whiteSpace: 'nowrap',
@@ -267,7 +267,7 @@ function ThermometerCard({
                         style={{
                             padding: '0.2rem 0.3rem',
                             borderRadius: 6,
-                            fontSize: '0.62rem',
+                            fontSize: '0.8rem',
                             fontWeight: 600,
                             background: '#0A0E1A',
                             border: '1px solid #1e2540',
@@ -290,7 +290,7 @@ function ThermometerCard({
                             gap: '0.25rem',
                             padding: '0.2rem 0.55rem',
                             borderRadius: 6,
-                            fontSize: '0.68rem',
+                            fontSize: '0.825rem',
                             fontWeight: 600,
                             background: 'rgba(0,200,255,0.08)',
                             border: '1px solid rgba(0,200,255,0.2)',
@@ -335,7 +335,7 @@ function ThermometerCard({
                             border: '1px solid rgba(0,200,255,0.25)',
                             borderRadius: 6,
                             padding: '0.25rem 0.5rem',
-                            fontSize: '0.72rem',
+                            fontSize: '0.875rem',
                             color: '#e2e8f0',
                             outline: 'none',
                         }}
@@ -376,7 +376,7 @@ function ThermometerCard({
             )}
 
             {error && (
-                <div style={{ color: '#f87171', fontSize: '0.68rem', marginBottom: '0.5rem' }}>
+                <div style={{ color: '#f87171', fontSize: '0.825rem', marginBottom: '0.5rem' }}>
                     {error}
                 </div>
             )}
@@ -404,9 +404,9 @@ function ThermometerCard({
                             <button
                                 onClick={() => setShowOrganic(false)}
                                 style={{
-                                    padding: '0.1rem 0.5rem',
+                                    padding: '0.3rem 0.6rem',
                                     borderRadius: 20,
-                                    fontSize: '0.65rem',
+                                    fontSize: '0.8rem',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                     border: 'none',
@@ -424,9 +424,9 @@ function ThermometerCard({
                             <button
                                 onClick={() => setShowOrganic(true)}
                                 style={{
-                                    padding: '0.1rem 0.5rem',
+                                    padding: '0.3rem 0.6rem',
                                     borderRadius: 20,
-                                    fontSize: '0.65rem',
+                                    fontSize: '0.8rem',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                     border: 'none',
@@ -499,7 +499,7 @@ function ThermometerCard({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 3,
-                                    fontSize: '0.7rem',
+                                    fontSize: '0.85rem',
                                     color: '#34d399',
                                 }}
                             >
@@ -511,7 +511,7 @@ function ThermometerCard({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 3,
-                                    fontSize: '0.7rem',
+                                    fontSize: '0.85rem',
                                     color: '#64748b',
                                 }}
                             >
@@ -523,7 +523,7 @@ function ThermometerCard({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 3,
-                                    fontSize: '0.7rem',
+                                    fontSize: '0.85rem',
                                     color: '#f87171',
                                 }}
                             >
@@ -536,7 +536,7 @@ function ThermometerCard({
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 2,
-                                        fontSize: '0.68rem',
+                                        fontSize: '0.825rem',
                                         color: positiveTrend >= 0 ? '#34d399' : '#f87171',
                                         marginLeft: 'auto',
                                     }}
@@ -568,11 +568,11 @@ function ThermometerCard({
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '0.25rem',
-                                    fontSize: '0.65rem',
+                                    fontSize: '0.8rem',
                                     color: '#94a3b8',
                                     background: 'rgba(100,116,139,0.08)',
                                     border: '1px solid rgba(100,116,139,0.15)',
-                                    padding: '0.1rem 0.4rem',
+                                    padding: '0.2rem 0.5rem',
                                     borderRadius: 20,
                                 }}
                             >
@@ -584,11 +584,11 @@ function ThermometerCard({
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         gap: '0.25rem',
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.8rem',
                                         color: '#FBBF24',
                                         background: 'rgba(251,191,36,0.06)',
                                         border: '1px solid rgba(251,191,36,0.18)',
-                                        padding: '0.1rem 0.4rem',
+                                        padding: '0.2rem 0.5rem',
                                         borderRadius: 20,
                                     }}
                                 >
@@ -608,7 +608,7 @@ function ThermometerCard({
                     {latest.summary && (
                         <p
                             style={{
-                                fontSize: '0.72rem',
+                                fontSize: '0.875rem',
                                 color: '#94a3b8',
                                 marginBottom: '0.6rem',
                                 lineHeight: 1.5,
@@ -624,7 +624,7 @@ function ThermometerCard({
                             <div style={{ flex: 1 }}>
                                 <div
                                     style={{
-                                        fontSize: '0.62rem',
+                                        fontSize: '0.8rem',
                                         color: '#34d399',
                                         marginBottom: 3,
                                         fontWeight: 600,
@@ -636,7 +636,7 @@ function ThermometerCard({
                                     <div
                                         key={i}
                                         style={{
-                                            fontSize: '0.68rem',
+                                            fontSize: '0.825rem',
                                             color: '#94a3b8',
                                             padding: '1px 0',
                                             display: 'flex',
@@ -653,7 +653,7 @@ function ThermometerCard({
                             <div style={{ flex: 1 }}>
                                 <div
                                     style={{
-                                        fontSize: '0.62rem',
+                                        fontSize: '0.8rem',
                                         color: '#f87171',
                                         marginBottom: 3,
                                         fontWeight: 600,
@@ -665,7 +665,7 @@ function ThermometerCard({
                                     <div
                                         key={i}
                                         style={{
-                                            fontSize: '0.68rem',
+                                            fontSize: '0.825rem',
                                             color: '#94a3b8',
                                             padding: '1px 0',
                                             display: 'flex',
@@ -692,7 +692,7 @@ function ThermometerCard({
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 3,
-                                    fontSize: '0.65rem',
+                                    fontSize: '0.8rem',
                                     color: '#475569',
                                     background: 'none',
                                     border: 'none',
@@ -751,7 +751,7 @@ function ThermometerCard({
                                                 style={{
                                                     padding: '0.35rem 0.45rem',
                                                     borderRadius: 5,
-                                                    fontSize: '0.7rem',
+                                                    fontSize: '0.85rem',
                                                     color: c.isLikelyBot ? '#64748b' : '#94a3b8',
                                                     opacity: c.isLikelyBot ? 0.6 : 1,
                                                     background: c.isLikelyBot
@@ -788,7 +788,7 @@ function ThermometerCard({
                                                     <span
                                                         style={{
                                                             flexShrink: 0,
-                                                            fontSize: '0.6rem',
+                                                            fontSize: '0.8rem',
                                                             marginTop: 1,
                                                         }}
                                                     >
@@ -807,7 +807,7 @@ function ThermometerCard({
                                                                 aria-label={`Ver fuente en ${sourceInfo.label}`}
                                                                 style={{
                                                                     color: '#00c8ff',
-                                                                    fontSize: '0.6rem',
+                                                                    fontSize: '0.8rem',
                                                                     textDecoration: 'none',
                                                                     opacity: 0.7,
                                                                 }}
@@ -827,7 +827,7 @@ function ThermometerCard({
 
                     <div
                         style={{
-                            fontSize: '0.62rem',
+                            fontSize: '0.8rem',
                             color: '#334155',
                             marginTop: '0.4rem',
                         }}
@@ -855,7 +855,7 @@ function ThermometerCard({
                     style={{
                         textAlign: 'center',
                         color: '#475569',
-                        fontSize: '0.75rem',
+                        fontSize: '0.875rem',
                         padding: '1rem 0',
                     }}
                 >
@@ -918,29 +918,29 @@ function PoliticianGroup({
                     <ChevronRight size={14} color={accentColor} />
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                    <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.9rem' }}>
+                    <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '1rem' }}>
                         {displayName}
                     </span>
                     {handleType === 'own' && (
                         <span
                             style={{
-                                fontSize: '0.6rem',
+                                fontSize: '0.8rem',
                                 fontWeight: 700,
                                 color: '#7C3AED',
                                 background: 'rgba(124,58,237,0.1)',
                                 border: '1px solid rgba(124,58,237,0.2)',
-                                padding: '0.1rem 0.4rem',
+                                padding: '0.2rem 0.5rem',
                                 borderRadius: 10,
                             }}
                         >
                             MI CANDIDATO
                         </span>
                     )}
-                    <span style={{ color: '#475569', fontSize: '0.75rem' }}>@{handle}</span>
+                    <span style={{ color: '#475569', fontSize: '0.875rem' }}>@{handle}</span>
                 </div>
                 <span
                     style={{
-                        fontSize: '0.65rem',
+                        fontSize: '0.8rem',
                         color: '#475569',
                     }}
                 >
@@ -1056,7 +1056,7 @@ export function SentimentPanel() {
                         background: 'rgba(251,191,36,0.06)',
                         border: '1px solid rgba(251,191,36,0.2)',
                         color: '#FBBF24',
-                        fontSize: '0.85rem',
+                        fontSize: '0.95rem',
                     }}
                 >
                     Para usar el Termómetro, primero agregá temas en{' '}
@@ -1093,7 +1093,7 @@ export function SentimentPanel() {
                         marginBottom: '0.5rem',
                     }}
                 >
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#475569' }}>
                         {ownHandle
                             ? `Tu candidato: @${ownHandle}`
                             : 'Podés agregar tu propio candidato para comparar'}
@@ -1107,7 +1107,7 @@ export function SentimentPanel() {
                                     setOwnNameInput(ownName)
                                 }}
                                 style={{
-                                    fontSize: '0.68rem',
+                                    fontSize: '0.825rem',
                                     color: '#7C3AED',
                                     background: 'rgba(124,58,237,0.06)',
                                     border: '1px solid rgba(124,58,237,0.18)',
@@ -1123,7 +1123,7 @@ export function SentimentPanel() {
                             <button
                                 onClick={clearOwnCandidate}
                                 style={{
-                                    fontSize: '0.68rem',
+                                    fontSize: '0.825rem',
                                     color: '#f87171',
                                     background: 'transparent',
                                     border: 'none',
@@ -1161,7 +1161,7 @@ export function SentimentPanel() {
                                 <label
                                     htmlFor="own-handle-input"
                                     style={{
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.8rem',
                                         color: '#A78BFA',
                                         display: 'block',
                                         marginBottom: 2,
@@ -1182,7 +1182,7 @@ export function SentimentPanel() {
                                         border: '1px solid rgba(124,58,237,0.25)',
                                         background: '#0A0E1A',
                                         color: '#fff',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.925rem',
                                         outline: 'none',
                                         boxSizing: 'border-box',
                                     }}
@@ -1192,7 +1192,7 @@ export function SentimentPanel() {
                                 <label
                                     htmlFor="own-name-input"
                                     style={{
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.8rem',
                                         color: '#A78BFA',
                                         display: 'block',
                                         marginBottom: 2,
@@ -1213,7 +1213,7 @@ export function SentimentPanel() {
                                         border: '1px solid rgba(124,58,237,0.25)',
                                         background: '#0A0E1A',
                                         color: '#fff',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.925rem',
                                         outline: 'none',
                                         boxSizing: 'border-box',
                                     }}
@@ -1227,7 +1227,7 @@ export function SentimentPanel() {
                                 style={{
                                     padding: '0.3rem 0.8rem',
                                     borderRadius: 6,
-                                    fontSize: '0.72rem',
+                                    fontSize: '0.875rem',
                                     fontWeight: 600,
                                     background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
                                     border: 'none',
@@ -1243,7 +1243,7 @@ export function SentimentPanel() {
                                 style={{
                                     padding: '0.3rem 0.8rem',
                                     borderRadius: 6,
-                                    fontSize: '0.72rem',
+                                    fontSize: '0.875rem',
                                     background: 'transparent',
                                     border: '1px solid #1e2540',
                                     color: '#64748b',
@@ -1292,7 +1292,7 @@ function SentimentHeader() {
         <div style={{ marginBottom: '1.5rem' }}>
             <h2
                 style={{
-                    fontSize: '1.1rem',
+                    fontSize: '1.2rem',
                     fontWeight: 700,
                     color: '#e2e8f0',
                     display: 'flex',
@@ -1303,7 +1303,7 @@ function SentimentHeader() {
             >
                 Termómetro de Opinión Pública
             </h2>
-            <p style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '0.3rem' }}>
+            <p style={{ color: '#64748b', fontSize: '0.925rem', marginTop: '0.3rem' }}>
                 Sentimiento multi-fuente (Twitter, Reddit, YouTube) por político y tema. Cada tema
                 se analiza por separado con detección de bots y campañas coordinadas.
             </p>

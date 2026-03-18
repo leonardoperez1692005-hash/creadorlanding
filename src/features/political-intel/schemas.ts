@@ -178,12 +178,19 @@ const thematicPainPointSchema = z.object({
     severity: z.enum(['critical', 'high', 'medium']),
     affectedGroup: z.string(),
     candidateMatchingProposal: z.string().nullable(),
+    mentionCount: z.number().optional(),
+    mentionPct: z.number().optional(),
+    sampleQuotes: z
+        .array(z.object({ text: z.string(), sourceUrl: z.string().optional() }))
+        .optional(),
 })
 
 const thematicTrendSchema = z.object({
     description: z.string(),
     direction: z.enum(['growing', 'stable', 'declining']),
     relevance: z.enum(['high', 'medium', 'low']),
+    googleTrendsAverage: z.number().optional(),
+    relatedQueries: z.array(z.string()).optional(),
 })
 
 const thematicExistingProposalSchema = z.object({
@@ -192,16 +199,44 @@ const thematicExistingProposalSchema = z.object({
     publicReception: z.string(),
 })
 
+/** Schema for the qualitative Gemini response (pre-computed data merged later) */
 export const thematicReportSchema = z.object({
     executiveSummary: z.string(),
     publicSentiment: z.object({
         overall: z.string(),
         description: z.string(),
         keyEmotions: z.array(z.string()),
+        totalAnalyzed: z.number().optional(),
+        positivePct: z.number().optional(),
+        negativePct: z.number().optional(),
+        neutralPct: z.number().optional(),
     }),
     painPoints: z.array(thematicPainPointSchema).min(2),
     trends: z.array(thematicTrendSchema).min(2),
     existingProposals: z.array(thematicExistingProposalSchema),
     mediaNarrative: z.string(),
-    citizenVoices: z.array(z.string()),
+    citizenVoices: z.array(
+        z.union([
+            z.string(),
+            z.object({
+                text: z.string(),
+                source: z.enum(['reddit', 'youtube', 'twitter']),
+                sourceUrl: z.string().optional(),
+                date: z.string().optional(),
+                sentiment: z.enum(['positive', 'negative', 'neutral']).optional(),
+            }),
+        ]),
+    ),
+})
+
+/** Schema for thematic batch classification response from Gemini */
+export const thematicBatchClassificationSchema = z.object({
+    classifications: z.array(
+        z.object({
+            index: z.number(),
+            sentiment: z.enum(['positive', 'negative', 'neutral']),
+            subTopic: z.string(),
+            isPainPoint: z.boolean(),
+        }),
+    ),
 })

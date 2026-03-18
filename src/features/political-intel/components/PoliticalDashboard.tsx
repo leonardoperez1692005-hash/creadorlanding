@@ -6,6 +6,7 @@ import type { ProfileMetrics, PoliticalSnapshotMeta } from '../types'
 import { RankingTable } from './RankingTable'
 import { InsightsPanel } from './InsightsPanel'
 import { ActionsPanel } from './ActionsPanel'
+import { AttackVectorsPanel } from './AttackVectorsPanel'
 import { ChangeTimelinePanel } from './ChangeTimelinePanel'
 import { ExportMenu } from '@/shared/components/ExportMenu'
 import { AnalysisReliability } from './AnalysisReliability'
@@ -89,7 +90,7 @@ export function PoliticalDashboard() {
                         onClick={() => setActiveTab(tab.key)}
                         style={{
                             padding: '0.65rem 1.25rem',
-                            fontSize: '0.82rem',
+                            fontSize: '0.95rem',
                             fontWeight: activeTab === tab.key ? 700 : 500,
                             color: activeTab === tab.key ? '#00c8ff' : '#6B7280',
                             background: 'none',
@@ -128,12 +129,39 @@ export function PoliticalDashboard() {
                     <ChangeTimelinePanel changes={report.changeDetection} />
                 )}
                 {activeTab === 'acciones' && (
-                    <ActionsPanel
-                        actions={report.recommendedActions}
-                        comparativeAnalysis={report.comparativeAnalysis}
-                        executiveSummary={report.executiveSummary}
-                        meta={meta}
-                    />
+                    <>
+                        <ActionsPanel actions={report.recommendedActions} meta={meta} />
+                        {/* Divider — separación visual fuerte entre las dos zonas */}
+                        <div
+                            style={{
+                                margin: '2rem 0 1.25rem',
+                                padding: '0.75rem 1rem',
+                                borderRadius: '8px',
+                                background: 'rgba(248,113,113,0.04)',
+                                border: '1px solid rgba(248,113,113,0.12)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em',
+                                    color: '#F87171',
+                                }}
+                            >
+                                🎯 Contra tus rivales
+                            </span>
+                            <span style={{ color: '#6B7280', fontSize: '0.85rem' }}>
+                                — Vectores de ataque ZMOT generados desde las vulnerabilidades
+                                detectadas
+                            </span>
+                        </div>
+                        <AttackVectorsPanel embedded />
+                    </>
                 )}
             </div>
         </div>
@@ -174,7 +202,7 @@ function ResumenTab({
                         marginBottom: '0.5rem',
                     }}
                 >
-                    <h2 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
+                    <h2 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
                         Resumen Ejecutivo
                     </h2>
                     <ExportMenu
@@ -184,7 +212,7 @@ function ResumenTab({
                         label="Exportar"
                     />
                 </div>
-                <p style={{ color: '#8b9ec7', fontSize: '0.9rem', lineHeight: 1.7, margin: 0 }}>
+                <p style={{ color: '#8b9ec7', fontSize: '1rem', lineHeight: 1.7, margin: 0 }}>
                     {report.executiveSummary}
                 </p>
             </div>
@@ -253,7 +281,7 @@ function ResumenTab({
                 <h3
                     style={{
                         color: '#A78BFA',
-                        fontSize: '0.9rem',
+                        fontSize: '1rem',
                         fontWeight: 700,
                         marginTop: 0,
                         marginBottom: '0.5rem',
@@ -261,13 +289,13 @@ function ResumenTab({
                 >
                     Contexto de Mercado
                 </h3>
-                <p style={{ color: '#8b9ec7', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+                <p style={{ color: '#8b9ec7', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
                     {report.marketContext.currentPoliticalClimate}
                 </p>
                 <p
                     style={{
                         color: '#6B7280',
-                        fontSize: '0.8rem',
+                        fontSize: '0.925rem',
                         marginTop: '0.5rem',
                         marginBottom: 0,
                     }}
@@ -329,7 +357,7 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                 <h3
                     style={{
                         color: '#fff',
-                        fontSize: '0.95rem',
+                        fontSize: '1.05rem',
                         fontWeight: 700,
                         margin: 0,
                         display: 'flex',
@@ -337,9 +365,9 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                         gap: '0.5rem',
                     }}
                 >
-                    <span style={{ fontSize: '1.1rem' }}>🌡️</span> Pulso Político General
+                    <span style={{ fontSize: '1.2rem' }}>🌡️</span> Pulso Político General
                 </h3>
-                <span style={{ color: '#6B7280', fontSize: '0.72rem' }}>
+                <span style={{ color: '#6B7280', fontSize: '0.875rem' }}>
                     {entries.length} perfiles · {totalSources.toLocaleString('es-AR')} opiniones
                     analizadas
                 </span>
@@ -363,7 +391,7 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.72rem',
+                            fontSize: '0.875rem',
                             fontWeight: 700,
                             color: '#fff',
                             transition: 'width 0.5s ease',
@@ -381,7 +409,7 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.72rem',
+                            fontSize: '0.875rem',
                             fontWeight: 700,
                             color: '#D1D5DB',
                             transition: 'width 0.5s ease',
@@ -399,7 +427,7 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.72rem',
+                            fontSize: '0.875rem',
                             fontWeight: 700,
                             color: '#fff',
                             transition: 'width 0.5s ease',
@@ -414,13 +442,13 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
             {/* Legend + dominant */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <span style={{ color: '#34D399', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <span style={{ color: '#34D399', fontSize: '0.925rem', fontWeight: 600 }}>
                         👍 {avgPositive}% positivo
                     </span>
-                    <span style={{ color: '#9CA3AF', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <span style={{ color: '#9CA3AF', fontSize: '0.925rem', fontWeight: 600 }}>
                         😐 {avgNeutral}% neutral
                     </span>
-                    <span style={{ color: '#F87171', fontSize: '0.78rem', fontWeight: 600 }}>
+                    <span style={{ color: '#F87171', fontSize: '0.925rem', fontWeight: 600 }}>
                         👎 {avgNegative}% negativo
                     </span>
                 </div>
@@ -428,7 +456,7 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                     style={{
                         padding: '0.2rem 0.6rem',
                         borderRadius: '6px',
-                        fontSize: '0.72rem',
+                        fontSize: '0.875rem',
                         fontWeight: 700,
                         background: `${dominantColor}15`,
                         border: `1px solid ${dominantColor}30`,
@@ -443,7 +471,7 @@ function PulsoGeneralPanel({ sentimentEntries }: { sentimentEntries: SentimentSn
                 <p
                     style={{
                         color: '#4B5563',
-                        fontSize: '0.65rem',
+                        fontSize: '0.8rem',
                         margin: '0.5rem 0 0',
                         fontStyle: 'italic',
                     }}
@@ -481,12 +509,12 @@ function MiniThermometer({
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}>
                         {politician}
                     </span>
-                    <span style={{ color: '#6B7280', fontSize: '0.75rem' }}>@{cleanHandle}</span>
+                    <span style={{ color: '#6B7280', fontSize: '0.875rem' }}>@{cleanHandle}</span>
                 </div>
-                <span style={{ color: '#4B5563', fontSize: '0.72rem' }}>
+                <span style={{ color: '#4B5563', fontSize: '0.875rem' }}>
                     Sin datos de sentimiento — ejecutá el Termómetro
                 </span>
             </div>
@@ -518,16 +546,16 @@ function MiniThermometer({
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}>
                         {politician}
                     </span>
-                    <span style={{ color: '#00c8ff', fontSize: '0.72rem' }}>@{cleanHandle}</span>
+                    <span style={{ color: '#00c8ff', fontSize: '0.875rem' }}>@{cleanHandle}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <span style={{ color: '#6B7280', fontSize: '0.68rem' }}>
+                    <span style={{ color: '#6B7280', fontSize: '0.825rem' }}>
                         {totalAnalyzed.toLocaleString('es-AR')} opiniones clasificadas
                     </span>
-                    <span style={{ color: '#4B5563', fontSize: '0.62rem' }}>
+                    <span style={{ color: '#4B5563', fontSize: '0.8rem' }}>
                         {formatDateRange(snapshot)}
                     </span>
                 </div>
@@ -580,7 +608,7 @@ function MiniThermometer({
                 style={{
                     display: 'flex',
                     gap: '0.75rem',
-                    fontSize: '0.72rem',
+                    fontSize: '0.875rem',
                     marginBottom: '0.3rem',
                 }}
             >
@@ -596,9 +624,9 @@ function MiniThermometer({
                         <span
                             key={`p${i}`}
                             style={{
-                                padding: '0.1rem 0.35rem',
+                                padding: '0.2rem 0.5rem',
                                 borderRadius: '4px',
-                                fontSize: '0.62rem',
+                                fontSize: '0.8rem',
                                 background: 'rgba(52,211,153,0.1)',
                                 color: '#34D399',
                                 border: '1px solid rgba(52,211,153,0.2)',
@@ -611,9 +639,9 @@ function MiniThermometer({
                         <span
                             key={`n${i}`}
                             style={{
-                                padding: '0.1rem 0.35rem',
+                                padding: '0.2rem 0.5rem',
                                 borderRadius: '4px',
-                                fontSize: '0.62rem',
+                                fontSize: '0.8rem',
                                 background: 'rgba(248,113,113,0.1)',
                                 color: '#F87171',
                                 border: '1px solid rgba(248,113,113,0.2)',
@@ -633,7 +661,7 @@ function buildFallbackMeta(
     report: NonNullable<ReturnType<typeof useIntelligenceStore.getState>['report']>,
 ): PoliticalSnapshotMeta {
     const profileCount = report.comparativeAnalysis?.length ?? 0
-    const serpCount = report.marketContext?.currentPoliticalClimate ? 3 : 0 // estimate: if there's market context, SERP ran
+    const serpCount = report.marketContext?.currentPoliticalClimate ? 3 : 0 // estimate: if there's market context, búsqueda se ejecutó
     return {
         totalMonitors: profileCount,
         successfulScrapes: profileCount,
@@ -659,7 +687,7 @@ function SourcesPanel({ meta, generatedAt }: { meta: PoliticalSnapshotMeta; gene
 
     const sources = [
         { label: 'Twitter/X', icon: '𝕏', count: twitterCount, color: '#1DA1F2' },
-        { label: 'Google SERP', icon: '🔍', count: serpCount, color: '#A78BFA' },
+        { label: 'Búsqueda web', icon: '🔍', count: serpCount, color: '#A78BFA' },
         { label: 'Reddit', icon: '💬', count: redditCount, color: '#FF4500' },
         { label: 'YouTube', icon: '▶', count: youtubeCount, color: '#FF0000' },
     ]
@@ -681,10 +709,10 @@ function SourcesPanel({ meta, generatedAt }: { meta: PoliticalSnapshotMeta; gene
                     marginBottom: '1rem',
                 }}
             >
-                <h3 style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>
+                <h3 style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
                     Fuentes de Inteligencia
                 </h3>
-                <span style={{ color: '#6B7280', fontSize: '0.75rem' }}>
+                <span style={{ color: '#6B7280', fontSize: '0.875rem' }}>
                     {new Date(generatedAt).toLocaleDateString('es-AR', {
                         day: 'numeric',
                         month: 'short',
@@ -734,15 +762,15 @@ function SourcesPanel({ meta, generatedAt }: { meta: PoliticalSnapshotMeta; gene
                             opacity: src.count > 0 ? 1 : 0.4,
                         }}
                     >
-                        <span style={{ fontSize: '1.1rem' }}>{src.icon}</span>
+                        <span style={{ fontSize: '1.2rem' }}>{src.icon}</span>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ color: '#8b9ec7', fontSize: '0.7rem' }}>
+                            <span style={{ color: '#8b9ec7', fontSize: '0.85rem' }}>
                                 {src.label}
                             </span>
                             <span
                                 style={{
                                     color: src.count > 0 ? src.color : '#4B5563',
-                                    fontSize: '0.9rem',
+                                    fontSize: '1rem',
                                     fontWeight: 700,
                                 }}
                             >
@@ -763,10 +791,10 @@ function SourcesPanel({ meta, generatedAt }: { meta: PoliticalSnapshotMeta; gene
                         border: '1px solid rgba(0,200,255,0.15)',
                     }}
                 >
-                    <span style={{ fontSize: '1.1rem' }}>📊</span>
+                    <span style={{ fontSize: '1.2rem' }}>📊</span>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: '#8b9ec7', fontSize: '0.7rem' }}>Total fuentes</span>
-                        <span style={{ color: '#00c8ff', fontSize: '0.9rem', fontWeight: 700 }}>
+                        <span style={{ color: '#8b9ec7', fontSize: '0.85rem' }}>Total fuentes</span>
+                        <span style={{ color: '#00c8ff', fontSize: '1rem', fontWeight: 700 }}>
                             {totalSources}
                         </span>
                     </div>
@@ -783,12 +811,12 @@ function SourcesPanel({ meta, generatedAt }: { meta: PoliticalSnapshotMeta; gene
                             border: '1px solid rgba(251,191,36,0.15)',
                         }}
                     >
-                        <span style={{ fontSize: '1.1rem' }}>⚡</span>
+                        <span style={{ fontSize: '1.2rem' }}>⚡</span>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ color: '#8b9ec7', fontSize: '0.7rem' }}>
+                            <span style={{ color: '#8b9ec7', fontSize: '0.85rem' }}>
                                 Cambios detectados
                             </span>
-                            <span style={{ color: '#FBBF24', fontSize: '0.9rem', fontWeight: 700 }}>
+                            <span style={{ color: '#FBBF24', fontSize: '1rem', fontWeight: 700 }}>
                                 {meta.changesDetected}
                             </span>
                         </div>
@@ -800,7 +828,7 @@ function SourcesPanel({ meta, generatedAt }: { meta: PoliticalSnapshotMeta; gene
             <p
                 style={{
                     color: '#4B5563',
-                    fontSize: '0.7rem',
+                    fontSize: '0.85rem',
                     margin: '0.75rem 0 0',
                     textAlign: 'right',
                 }}
@@ -872,7 +900,7 @@ function PerfilesTab({
                                     <span
                                         style={{
                                             color: '#fff',
-                                            fontSize: '0.95rem',
+                                            fontSize: '1.05rem',
                                             fontWeight: 700,
                                         }}
                                     >
@@ -881,7 +909,7 @@ function PerfilesTab({
                                     <span
                                         style={{
                                             color: '#00c8ff',
-                                            fontSize: '0.8rem',
+                                            fontSize: '0.925rem',
                                             marginLeft: '0.5rem',
                                         }}
                                     >
@@ -891,7 +919,7 @@ function PerfilesTab({
                                 {m && (
                                     <span
                                         style={{
-                                            fontSize: '0.7rem',
+                                            fontSize: '0.85rem',
                                             padding: '0.15rem 0.5rem',
                                             borderRadius: '4px',
                                             background:
@@ -915,7 +943,7 @@ function PerfilesTab({
                             <p
                                 style={{
                                     color: '#8b9ec7',
-                                    fontSize: '0.82rem',
+                                    fontSize: '0.95rem',
                                     lineHeight: 1.5,
                                     margin: 0,
                                 }}
@@ -975,7 +1003,7 @@ function PerfilesTab({
                                                 />
                                             )}
                                         </div>
-                                        <span style={{ color: '#6B7280', fontSize: '0.68rem' }}>
+                                        <span style={{ color: '#6B7280', fontSize: '0.825rem' }}>
                                             Sentimiento: {snap.positivePct}% 👍 · {snap.neutralPct}%
                                             😐 · {snap.negativePct}% 👎 ({snap.totalAnalyzed}{' '}
                                             opiniones)
@@ -983,7 +1011,7 @@ function PerfilesTab({
                                     </div>
                                 )
                             })()}
-                            <p style={{ color: '#6B7280', fontSize: '0.75rem', margin: 0 }}>
+                            <p style={{ color: '#6B7280', fontSize: '0.875rem', margin: 0 }}>
                                 Estilo: {comp.communicationStyle} · Audiencia:{' '}
                                 {comp.audienceProfile}
                             </p>
@@ -1018,7 +1046,7 @@ function RankingMini({ label, items }: { label: string; items: ProfileMetrics[] 
             <h4
                 style={{
                     color: '#A78BFA',
-                    fontSize: '0.8rem',
+                    fontSize: '0.925rem',
                     fontWeight: 600,
                     marginTop: 0,
                     marginBottom: '0.5rem',
@@ -1044,7 +1072,7 @@ function RankingMini({ label, items }: { label: string; items: ProfileMetrics[] 
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.65rem',
+                            fontSize: '0.8rem',
                             fontWeight: 700,
                             background: i === 0 ? 'rgba(0,200,255,0.15)' : 'rgba(255,255,255,0.05)',
                             color: i === 0 ? '#00c8ff' : '#6B7280',
@@ -1052,7 +1080,7 @@ function RankingMini({ label, items }: { label: string; items: ProfileMetrics[] 
                     >
                         {i + 1}
                     </span>
-                    <span style={{ color: '#8b9ec7', fontSize: '0.8rem' }}>
+                    <span style={{ color: '#8b9ec7', fontSize: '0.925rem' }}>
                         {item.displayName}{' '}
                         <span style={{ color: '#6B7280' }}>@{item.handle.replace('@', '')}</span>
                     </span>
@@ -1068,7 +1096,7 @@ function MiniList({ label, items, color }: { label: string; items: string[]; col
             <p
                 style={{
                     color,
-                    fontSize: '0.72rem',
+                    fontSize: '0.875rem',
                     fontWeight: 600,
                     marginTop: 0,
                     marginBottom: '0.3rem',
@@ -1081,7 +1109,7 @@ function MiniList({ label, items, color }: { label: string; items: string[]; col
                     key={i}
                     style={{
                         color: '#8b9ec7',
-                        fontSize: '0.75rem',
+                        fontSize: '0.875rem',
                         margin: '0 0 0.15rem',
                         paddingLeft: '0.5rem',
                     }}

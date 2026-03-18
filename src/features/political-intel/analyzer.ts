@@ -221,6 +221,7 @@ export async function generateAttackVectors(
     comparativeAnalysis:
         | { strengths: string[]; weaknesses: string[]; communicationStyle: string }
         | undefined,
+    sinapsisBlock?: string,
 ): Promise<PoliticalAttackVector[]> {
     // Build the campaign identity block — this is the ANCHOR
     const positionsBlock = campaignProfile.corePositions
@@ -266,7 +267,14 @@ Aliados: ${campaignProfile.coalitionAllies.join(', ') || 'No definidos'}
 ${redLinesBlock}
 
 ## TONO: ${campaignProfile.communicationStyle} — ${getToneDescription(campaignProfile.communicationStyle)}
-
+${
+    sinapsisBlock
+        ? `
+## INTELIGENCIA DEL CEREBRO DE CAMPAÑA
+${sinapsisBlock}
+`
+        : ''
+}
 ## VULNERABILIDAD A EXPLOTAR
 
 Rival: ${vulnerability.politician} (${vulnerability.handle})

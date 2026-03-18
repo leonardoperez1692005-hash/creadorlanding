@@ -142,7 +142,7 @@ export function CampaignProfileForm() {
                     <h2 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
                         Perfil de Campaña
                     </h2>
-                    <p style={{ color: '#8b9ec7', fontSize: '0.8rem', margin: 0 }}>
+                    <p style={{ color: '#8b9ec7', fontSize: '0.925rem', margin: 0 }}>
                         Tu identidad política se integra con tu perfil de marca. Los datos que
                         cargues acá están disponibles en Estrategia, Plan de Ataque y Wizard.
                     </p>
@@ -480,7 +480,7 @@ export function CampaignProfileForm() {
                     <p
                         style={{
                             color: '#F87171',
-                            fontSize: '0.85rem',
+                            fontSize: '0.95rem',
                             margin: 0,
                             padding: '0.6rem 1rem',
                             borderRadius: '8px',
@@ -495,7 +495,7 @@ export function CampaignProfileForm() {
                     <p
                         style={{
                             color: '#34D399',
-                            fontSize: '0.85rem',
+                            fontSize: '0.95rem',
                             margin: 0,
                             padding: '0.6rem 1rem',
                             borderRadius: '8px',
@@ -546,7 +546,7 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
                 style={{
                     display: 'block',
                     color: '#A78BFA',
-                    fontSize: '0.8rem',
+                    fontSize: '0.925rem',
                     fontWeight: 600,
                     marginBottom: '0.35rem',
                 }}
@@ -592,7 +592,7 @@ const inputStyle: React.CSSProperties = {
     border: '1px solid #1e2540',
     background: '#0A0E1A',
     color: '#fff',
-    fontSize: '0.85rem',
+    fontSize: '0.95rem',
     outline: 'none',
     boxSizing: 'border-box',
 }
@@ -608,7 +608,7 @@ const tagStyle: React.CSSProperties = {
     gap: '0.25rem',
     padding: '0.2rem 0.6rem',
     borderRadius: '6px',
-    fontSize: '0.75rem',
+    fontSize: '0.875rem',
     background: 'rgba(0,200,255,0.08)',
     border: '1px solid rgba(0,200,255,0.15)',
     color: '#00c8ff',
@@ -634,7 +634,7 @@ const addBtnStyle: React.CSSProperties = {
     background: 'rgba(0,200,255,0.06)',
     border: '1px solid rgba(0,200,255,0.15)',
     color: '#00c8ff',
-    fontSize: '0.75rem',
+    fontSize: '0.875rem',
     cursor: 'pointer',
     fontWeight: 600,
     width: 'fit-content',
@@ -649,7 +649,7 @@ const primaryBtnStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, #7C3AED, #00c8ff)',
     border: 'none',
     color: '#fff',
-    fontSize: '0.9rem',
+    fontSize: '1rem',
     fontWeight: 700,
     cursor: 'pointer',
 }
@@ -660,6 +660,6 @@ const secondaryBtnStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid #1e2540',
     color: '#8b9ec7',
-    fontSize: '0.9rem',
+    fontSize: '1rem',
     cursor: 'pointer',
 }

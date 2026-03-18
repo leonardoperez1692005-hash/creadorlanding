@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useIntelligenceStore } from '../store/intelligenceStore'
 import { BrainStatusCard } from './BrainStatusCard'
+import { StrategicKnowledgePanel } from './StrategicKnowledgePanel'
 import { loadBrainAction } from '../actions/brain'
 import type { CampaignBrain } from '../brain'
 
@@ -57,7 +58,7 @@ export function CommandCenter() {
         {
             icon: BookOpen,
             label: 'Investigar Tema',
-            desc: 'Reporte temático con SERP + IA',
+            desc: 'Reporte temático con análisis web',
             color: '#10B981',
             view: 'thematic' as const,
         },
@@ -110,7 +111,7 @@ export function CommandCenter() {
                     </h2>
                 </div>
                 {brain.campaign && (
-                    <p style={{ color: '#8b9ec7', fontSize: '0.85rem', margin: 0 }}>
+                    <p style={{ color: '#8b9ec7', fontSize: '0.95rem', margin: 0 }}>
                         {brain.campaign.candidateName} · {brain.campaign.party} ·{' '}
                         {brain.campaign.communicationStyle}
                     </p>
@@ -142,7 +143,7 @@ export function CommandCenter() {
                             <h4
                                 style={{
                                     color: '#8b9ec7',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.925rem',
                                     fontWeight: 600,
                                     margin: '0 0 0.75rem',
                                 }}
@@ -162,7 +163,7 @@ export function CommandCenter() {
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
                                         width: '100%',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.925rem',
                                         color: '#d1d5db',
                                         padding: '0.5rem 0.25rem',
                                         borderBottom: '1px solid #1e2540',
@@ -209,7 +210,7 @@ export function CommandCenter() {
                             <h4
                                 style={{
                                     color: '#8b9ec7',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.925rem',
                                     fontWeight: 600,
                                     margin: '0 0 0.75rem',
                                 }}
@@ -225,7 +226,7 @@ export function CommandCenter() {
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
                                         width: '100%',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.925rem',
                                         padding: '0.5rem 0.25rem',
                                         background: 'transparent',
                                         border: 'none',
@@ -267,7 +268,7 @@ export function CommandCenter() {
                     <h3
                         style={{
                             color: '#8b9ec7',
-                            fontSize: '0.85rem',
+                            fontSize: '0.95rem',
                             fontWeight: 600,
                             margin: '0 0 1rem',
                             display: 'flex',
@@ -322,7 +323,7 @@ export function CommandCenter() {
                                     <span
                                         style={{
                                             color: '#fff',
-                                            fontSize: '0.88rem',
+                                            fontSize: '1rem',
                                             fontWeight: 600,
                                         }}
                                     >
@@ -332,7 +333,7 @@ export function CommandCenter() {
                                 <p
                                     style={{
                                         color: '#8b9ec7',
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.875rem',
                                         margin: 0,
                                     }}
                                 >
@@ -342,6 +343,19 @@ export function CommandCenter() {
                         ))}
                     </div>
                 </div>
+            </div>
+
+            {/* Strategic Knowledge Base — full width below grid */}
+            <div
+                style={{
+                    marginTop: '1.5rem',
+                    background: '#0f1629',
+                    border: '1px solid #1e2540',
+                    borderRadius: '12px',
+                    padding: '1.25rem',
+                }}
+            >
+                <StrategicKnowledgePanel />
             </div>
         </div>
     )

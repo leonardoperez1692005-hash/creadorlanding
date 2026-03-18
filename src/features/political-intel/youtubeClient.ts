@@ -235,11 +235,107 @@ function commentToStatement(
     }
 }
 
+// ─── Video-level relevance filter ────────────────────────
+
+/**
+ * Countries that should NOT appear in video titles when searching for a specific country.
+ * If the campaign is in Argentina and a video title says "narcotráfico en México",
+ * that video is irrelevant and its comments will pollute the analysis.
+ */
+const OTHER_COUNTRY_NAMES: Record<string, string[]> = {
+    AR: [
+        'méxico',
+        'mexico',
+        'colombi',
+        'eeuu',
+        'estados unidos',
+        'brasil',
+        'chile',
+        'perú',
+        'peru',
+        'ecuador',
+        'bolivia',
+        'venezuela',
+        'españa',
+        'dominicana',
+    ],
+    MX: [
+        'argentin',
+        'colombi',
+        'eeuu',
+        'estados unidos',
+        'brasil',
+        'chile',
+        'perú',
+        'peru',
+        'ecuador',
+        'bolivia',
+        'venezuela',
+        'españa',
+    ],
+    CO: [
+        'argentin',
+        'méxico',
+        'mexico',
+        'eeuu',
+        'estados unidos',
+        'brasil',
+        'chile',
+        'perú',
+        'peru',
+        'ecuador',
+        'bolivia',
+        'venezuela',
+    ],
+    CL: [
+        'argentin',
+        'méxico',
+        'mexico',
+        'colombi',
+        'eeuu',
+        'estados unidos',
+        'brasil',
+        'perú',
+        'peru',
+        'ecuador',
+        'bolivia',
+        'venezuela',
+    ],
+    BR: [
+        'argentin',
+        'méxico',
+        'mexico',
+        'colombi',
+        'eeuu',
+        'estados unidos',
+        'chile',
+        'perú',
+        'peru',
+        'ecuador',
+        'bolivia',
+        'venezuela',
+    ],
+}
+
+function isVideoRelevantForCountry(video: YouTubeVideo, regionCode: string): boolean {
+    const otherCountries = OTHER_COUNTRY_NAMES[regionCode]
+    if (!otherCountries) return true // No filter for unknown regions
+
+    // Only check TITLE, not description — descriptions often mention many countries
+    // for context (e.g. "narcotráfico en Latinoamérica: Argentina, México, Colombia...")
+    // but the video might still be focused on the target country.
+    const titleLower = video.title.toLowerCase()
+    return !otherCountries.some((country) => titleLower.includes(country))
+}
+
 // ─── High-level: Scrape Topic from YouTube ───────────────
 
 /**
  * Search YouTube for political videos and extract comments.
  * Returns TopicStatement[] compatible with knowledgeIndexer.
+ *
+ * IMPORTANT: Videos are filtered by geographic relevance —
+ * videos about other countries are excluded before scraping comments.
  *
  * Quota budget per call:
  * - With search: ~506 units (5 searches + stats + comments)
@@ -283,6 +379,27 @@ export async function scrapeYouTubeTopic(
     }
 
     if (videos.length === 0) return { statements: [], videoIds: [] }
+
+    // Step 1.5: Filter videos by geographic relevance
+    // YouTube search with regionCode still returns videos about other countries
+    // (e.g. "narcotráfico México" when searching from AR). Filter them out.
+    // BUT: if filtering removes ALL videos, keep the originals (better some data than none).
+    const preFilterCount = videos.length
+    const filteredVideos = videos.filter((v) => isVideoRelevantForCountry(v, regionCode))
+    if (filteredVideos.length < preFilterCount) {
+        logger.info(
+            'youtube',
+            `Country filter: ${preFilterCount - filteredVideos.length} videos filtered (${preFilterCount} → ${filteredVideos.length})`,
+        )
+    }
+    if (filteredVideos.length > 0) {
+        videos = filteredVideos
+    } else {
+        logger.warn(
+            'youtube',
+            `Country filter removed ALL videos — keeping originals (${preFilterCount}) to avoid empty results`,
+        )
+    }
 
     // Step 2: Get video stats (to enrich titles if using cache)
     const videoIds = videos.map((v) => v.videoId)

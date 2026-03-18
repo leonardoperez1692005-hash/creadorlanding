@@ -6,7 +6,7 @@ import { IntelClient } from '@/features/market-intel/components/IntelClient'
 
 export const metadata: Metadata = {
     title: 'Market Intelligence — BrandVortix',
-    description: 'Analisis competitivo generalizado via Bright Data + Gemini',
+    description: 'Análisis competitivo generalizado con inteligencia artificial',
 }
 
 export default async function MarketIntelPage() {

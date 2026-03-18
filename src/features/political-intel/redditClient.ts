@@ -440,12 +440,55 @@ function buildRedditQueries(topic: string, countryCode: string): string[] {
     return queries
 }
 
+// ─── Post-level relevance check ──────────────────────────
+
+/**
+ * Soft relevance check for Reddit posts.
+ * Returns true if the post is PROBABLY about the topic.
+ *
+ * IMPORTANT: This is intentionally LENIENT. We trust Reddit's search to return
+ * mostly relevant results. This filter only catches the obviously wrong ones
+ * (e.g. dictatorship posts returned for "narcotráfico").
+ * The REAL filtering happens downstream in extractAllItems() + Gemini classification.
+ *
+ * Strategy: check if post title contains any 4+ char substring from the topic.
+ * "narcotráfico" → matches "narco", "narcot", "tráfico", etc.
+ */
+function isPostRelevant(post: RedditPost, topic: string): boolean {
+    const titleLower = post.title.toLowerCase()
+    const bodyLower = (post.selftext ?? '').toLowerCase()
+    const haystack = `${titleLower} ${bodyLower}`
+    const topicLower = topic.toLowerCase()
+
+    // Full topic phrase match
+    if (haystack.includes(topicLower)) return true
+
+    // Any 4+ char word from the topic appears anywhere in title or body
+    const words = topicLower.split(/\s+/).filter((w) => w.length >= 4)
+    for (const word of words) {
+        if (haystack.includes(word)) return true
+        // Also try the first 4 chars as root (narco, tráfi, etc.)
+        if (word.length >= 5 && haystack.includes(word.substring(0, 4))) return true
+    }
+
+    // Single-word topic: try 4-char root of the whole topic
+    if (words.length <= 1 && topicLower.length >= 5) {
+        if (haystack.includes(topicLower.substring(0, 4))) return true
+    }
+
+    return false
+}
+
 // ─── High-level: Scrape Topic from Reddit ────────────────
 
 /**
  * Search Reddit for posts and comments about a political topic.
  * Searches both in country-specific subreddits AND globally with enriched queries.
  * Returns TopicStatement[] compatible with knowledgeIndexer.
+ *
+ * IMPORTANT: Posts are filtered for relevance BEFORE scraping comments.
+ * Reddit search often returns popular but unrelated posts — we only
+ * scrape comments from posts that actually mention the topic.
  */
 export async function scrapeRedditTopic(
     topic: string,
@@ -469,14 +512,21 @@ export async function scrapeRedditTopic(
                     limit: Math.min(maxPosts, 15),
                 })
 
-                logger.info('reddit', `r/${sub} "${query}": ${posts.length} posts`)
+                // Filter posts by relevance — Reddit search returns popular but unrelated posts
+                const relevantPosts = posts.filter((p) => isPostRelevant(p, topic))
+                const skipped = posts.length - relevantPosts.length
 
-                for (const post of posts) {
+                logger.info(
+                    'reddit',
+                    `r/${sub} "${query}": ${posts.length} posts, ${relevantPosts.length} relevant${skipped > 0 ? ` (${skipped} filtered out)` : ''}`,
+                )
+
+                for (const post of relevantPosts) {
                     allStatements.push(postToStatement(post, topic))
                 }
 
-                // Get comments from top 3 posts per subreddit
-                const topPosts = [...posts].sort((a, b) => b.score - a.score).slice(0, 3)
+                // Get comments ONLY from relevant top posts
+                const topPosts = [...relevantPosts].sort((a, b) => b.score - a.score).slice(0, 3)
                 for (const post of topPosts) {
                     try {
                         const comments = await getPostComments(
@@ -513,13 +563,19 @@ export async function scrapeRedditTopic(
             limit: maxPosts,
         })
 
-        logger.info('reddit', `Global "${globalQuery}": ${posts.length} posts`)
+        const relevantPosts = posts.filter((p) => isPostRelevant(p, topic))
+        const skipped = posts.length - relevantPosts.length
 
-        for (const post of posts) {
+        logger.info(
+            'reddit',
+            `Global "${globalQuery}": ${posts.length} posts, ${relevantPosts.length} relevant${skipped > 0 ? ` (${skipped} filtered out)` : ''}`,
+        )
+
+        for (const post of relevantPosts) {
             allStatements.push(postToStatement(post, topic))
         }
 
-        const topPosts = [...posts].sort((a, b) => b.score - a.score).slice(0, 5)
+        const topPosts = [...relevantPosts].sort((a, b) => b.score - a.score).slice(0, 5)
         for (const post of topPosts) {
             try {
                 const comments = await getPostComments(post.id, maxCommentsPerPost, post.subreddit)

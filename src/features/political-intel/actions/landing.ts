@@ -2,14 +2,17 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getUserPermissions, canAccessModule } from '@/lib/permissions'
+import { logger } from '@/shared/lib/logger'
 import {
     mapBrandIdentityToCampaignProfile,
     type ActionResult,
     type PoliticalIntelReport,
     type PoliticalAttackVector,
+    type ThematicReport,
 } from '../types'
 import { generatePoliticalLandingContent } from '../generator'
 import { getAuthUserId } from './auth'
+import { loadCampaignBrain, buildTacticalImpulse, buildTacticalPromptBlock } from '../brain'
 
 // =============================================
 // POLITICAL LANDING DATA (for wizard)
@@ -86,7 +89,100 @@ export async function getPoliticalLandingDataAction(
                   },
               } as unknown as PoliticalIntelReport)
 
-        const result = await generatePoliticalLandingContent(vectors, campaignProfile, report)
+        // Load brain for full campaign context (sinapsis)
+        let sinapsisBlock = ''
+        try {
+            const brain = await loadCampaignBrain(supabase, userId)
+            const tacticalImpulse = buildTacticalImpulse(brain)
+            if (tacticalImpulse) {
+                sinapsisBlock = buildTacticalPromptBlock(tacticalImpulse)
+            }
+        } catch (brainErr) {
+            logger.warn(
+                'political-intel',
+                'Brain load failed for campaign landing — continuing without sinapsis',
+                {
+                    error: (brainErr as Error).message,
+                },
+            )
+        }
+
+        // Load latest thematic reports for granular intelligence (pain points, voices, sentiment)
+        let thematicIntelBlock = ''
+        try {
+            const { data: thematicRows } = await supabase
+                .from('political_intel_reports')
+                .select('content, topic_id')
+                .eq('user_id', userId)
+                .eq('report_type', 'thematic')
+                .order('created_at', { ascending: false })
+                .limit(3)
+
+            if (thematicRows && thematicRows.length > 0) {
+                const blocks: string[] = []
+
+                for (const row of thematicRows) {
+                    const tr = row.content as ThematicReport | null
+                    if (!tr) continue
+
+                    const parts: string[] = []
+                    parts.push(`### Tema: ${tr.topicName}`)
+
+                    if (tr.executiveSummary) {
+                        parts.push(`Resumen: ${tr.executiveSummary.slice(0, 300)}`)
+                    }
+
+                    if (tr.painPoints?.length) {
+                        const pp = tr.painPoints
+                            .slice(0, 5)
+                            .map(
+                                (p) =>
+                                    `- ${p.description} (${p.severity}${p.mentionPct ? `, ${p.mentionPct}% de menciones` : ''})${p.candidateMatchingProposal ? ` → Propuesta: ${p.candidateMatchingProposal}` : ''}`,
+                            )
+                        parts.push(`Pain points:\n${pp.join('\n')}`)
+                    }
+
+                    if (tr.citizenVoices?.length) {
+                        const voices = tr.citizenVoices.slice(0, 4).map((v) => {
+                            if (typeof v === 'string') return `- "${v}"`
+                            return `- "${v.text}" (${v.source}${v.sentiment ? `, ${v.sentiment}` : ''})`
+                        })
+                        parts.push(`Voces ciudadanas reales:\n${voices.join('\n')}`)
+                    }
+
+                    if (tr.publicSentiment?.totalAnalyzed && tr.publicSentiment.totalAnalyzed > 0) {
+                        parts.push(
+                            `Sentimiento (${tr.publicSentiment.totalAnalyzed} opiniones): ${tr.publicSentiment.positivePct ?? 0}% positivo, ${tr.publicSentiment.negativePct ?? 0}% negativo, ${tr.publicSentiment.neutralPct ?? 0}% neutral`,
+                        )
+                    }
+
+                    if (tr.trends?.length) {
+                        const trends = tr.trends
+                            .slice(0, 3)
+                            .map((t) => `- ${t.description} (${t.direction})`)
+                        parts.push(`Tendencias:\n${trends.join('\n')}`)
+                    }
+
+                    blocks.push(parts.join('\n'))
+                }
+
+                if (blocks.length > 0) {
+                    thematicIntelBlock = blocks.join('\n\n')
+                }
+            }
+        } catch (thematicErr) {
+            logger.warn('political-intel', 'Thematic reports load failed for campaign landing', {
+                error: (thematicErr as Error).message,
+            })
+        }
+
+        const result = await generatePoliticalLandingContent(
+            vectors,
+            campaignProfile,
+            report,
+            sinapsisBlock,
+            thematicIntelBlock,
+        )
 
         // Differentiate project name based on selected vectors
         if (vectors.length === 1) {

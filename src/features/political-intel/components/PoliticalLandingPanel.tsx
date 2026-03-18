@@ -22,7 +22,8 @@ import type { PoliticalAttackVector } from '../types'
 
 export function PoliticalLandingPanel() {
     const router = useRouter()
-    const { reportId, campaignProfile, attackVectors, thematicAngles } = useIntelligenceStore()
+    const { reportId, campaignProfile, attackVectors, thematicAngles, report, thematicReport } =
+        useIntelligenceStore()
     const [isGenerating, setIsGenerating] = useState(false)
     const [showAllVectors, setShowAllVectors] = useState(false)
     const [showAllThematic, setShowAllThematic] = useState(false)
@@ -108,7 +109,10 @@ export function PoliticalLandingPanel() {
         {
             id: 'comparison',
             label: 'Contraste',
-            desc: `Basado en ${vectorCount} vectores de ataque`,
+            desc:
+                vectorCount > 0
+                    ? `Basado en ${vectorCount} vectores de ataque`
+                    : 'Basado en inteligencia del cerebro',
         },
         { id: 'stats', label: 'Números', desc: 'Métricas de campaña' },
         { id: 'urgency', label: 'Por qué ahora', desc: 'Ventana electoral' },
@@ -129,11 +133,11 @@ export function PoliticalLandingPanel() {
             >
                 <Layout size={24} color="#7C3AED" />
                 <div>
-                    <h2 style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
+                    <h2 style={{ color: '#fff', fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
                         Landing de Campaña
                     </h2>
-                    <p style={{ color: '#8b9ec7', fontSize: '0.8rem', margin: 0 }}>
-                        Genera una landing page desde tus propuestas y vectores de ataque
+                    <p style={{ color: '#8b9ec7', fontSize: '0.925rem', margin: 0 }}>
+                        Genera una landing page con toda la inteligencia del cerebro de campaña
                     </p>
                 </div>
             </div>
@@ -152,9 +156,119 @@ export function PoliticalLandingPanel() {
                 }}
             >
                 <ShieldCheck size={14} color="#34D399" />
-                <span style={{ color: '#34D399', fontSize: '0.75rem' }}>
+                <span style={{ color: '#34D399', fontSize: '0.875rem' }}>
                     La landing se genera respetando tu identidad de campaña y líneas rojas
                 </span>
+            </div>
+
+            {/* Intelligence sources banner */}
+            <div
+                style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    background: 'rgba(0,200,255,0.04)',
+                    border: '1px solid rgba(0,200,255,0.1)',
+                    marginBottom: '1.25rem',
+                }}
+            >
+                <div
+                    style={{
+                        color: '#00c8ff',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        marginBottom: '0.4rem',
+                    }}
+                >
+                    🧠 Inteligencia que alimenta esta landing
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {campaignProfile && (
+                        <span
+                            style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem',
+                                background: 'rgba(16,185,129,0.1)',
+                                color: '#10B981',
+                                fontWeight: 600,
+                            }}
+                        >
+                            ✓ Perfil de campaña
+                        </span>
+                    )}
+                    {report && (
+                        <span
+                            style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem',
+                                background: 'rgba(0,200,255,0.1)',
+                                color: '#00c8ff',
+                                fontWeight: 600,
+                            }}
+                        >
+                            ✓ Monitoreo de rivales
+                        </span>
+                    )}
+                    {attackVectors.length > 0 && (
+                        <span
+                            style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem',
+                                background: 'rgba(248,113,113,0.1)',
+                                color: '#F87171',
+                                fontWeight: 600,
+                            }}
+                        >
+                            ✓ {attackVectors.length} vectores ZMOT
+                        </span>
+                    )}
+                    {thematicAngles.length > 0 && (
+                        <span
+                            style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem',
+                                background: 'rgba(124,58,237,0.1)',
+                                color: '#A78BFA',
+                                fontWeight: 600,
+                            }}
+                        >
+                            ✓ {thematicAngles.length} ángulos temáticos
+                        </span>
+                    )}
+                    {thematicReport && (
+                        <span
+                            style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem',
+                                background: 'rgba(251,191,36,0.1)',
+                                color: '#FBBF24',
+                                fontWeight: 600,
+                            }}
+                        >
+                            ✓ Reporte temático
+                        </span>
+                    )}
+                    <span
+                        style={{
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem',
+                            background: 'rgba(52,211,153,0.1)',
+                            color: '#34D399',
+                            fontWeight: 600,
+                        }}
+                    >
+                        ✓ Cerebro / Sinapsis
+                    </span>
+                </div>
+                <p style={{ color: '#6B7280', fontSize: '0.8rem', margin: '0.4rem 0 0' }}>
+                    Toda esta inteligencia se inyecta automáticamente en la IA para generar
+                    contenido fundamentado en datos reales.
+                </p>
             </div>
 
             {/* Strategic Briefing */}
@@ -173,7 +287,7 @@ export function PoliticalLandingPanel() {
                     <h3
                         style={{
                             color: '#A78BFA',
-                            fontSize: '0.9rem',
+                            fontSize: '1rem',
                             fontWeight: 700,
                             margin: '0 0 1rem',
                             display: 'flex',
@@ -200,7 +314,7 @@ export function PoliticalLandingPanel() {
                                 <span
                                     style={{
                                         color: '#00c8ff',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.925rem',
                                         fontWeight: 600,
                                     }}
                                 >
@@ -210,7 +324,7 @@ export function PoliticalLandingPanel() {
                             <p
                                 style={{
                                     color: '#c4cfe8',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.925rem',
                                     margin: 0,
                                     lineHeight: 1.5,
                                 }}
@@ -262,7 +376,7 @@ export function PoliticalLandingPanel() {
                                     <span
                                         style={{
                                             color: '#F87171',
-                                            fontSize: '0.78rem',
+                                            fontSize: '0.925rem',
                                             fontWeight: 600,
                                         }}
                                     >
@@ -273,7 +387,7 @@ export function PoliticalLandingPanel() {
                                 <p
                                     style={{
                                         color: '#6B7280',
-                                        fontSize: '0.7rem',
+                                        fontSize: '0.85rem',
                                         margin: '0 0 0.5rem',
                                     }}
                                 >
@@ -350,7 +464,7 @@ export function PoliticalLandingPanel() {
                                                 <div style={{ flex: 1 }}>
                                                     <div
                                                         style={{
-                                                            fontSize: '0.76rem',
+                                                            fontSize: '0.9rem',
                                                             marginBottom: '0.25rem',
                                                         }}
                                                     >
@@ -367,7 +481,7 @@ export function PoliticalLandingPanel() {
                                                     </div>
                                                     <div
                                                         style={{
-                                                            fontSize: '0.74rem',
+                                                            fontSize: '0.875rem',
                                                             display: 'flex',
                                                             gap: '0.5rem',
                                                             flexWrap: 'wrap',
@@ -379,7 +493,7 @@ export function PoliticalLandingPanel() {
                                                     </div>
                                                     <div
                                                         style={{
-                                                            fontSize: '0.72rem',
+                                                            fontSize: '0.875rem',
                                                             color: '#6B7280',
                                                             marginTop: '0.2rem',
                                                         }}
@@ -401,7 +515,7 @@ export function PoliticalLandingPanel() {
                                             background: 'none',
                                             border: 'none',
                                             color: '#A78BFA',
-                                            fontSize: '0.72rem',
+                                            fontSize: '0.875rem',
                                             cursor: 'pointer',
                                             padding: '0.25rem 0',
                                             marginTop: '0.25rem',
@@ -435,7 +549,7 @@ export function PoliticalLandingPanel() {
                                     <span
                                         style={{
                                             color: '#10B981',
-                                            fontSize: '0.78rem',
+                                            fontSize: '0.925rem',
                                             fontWeight: 600,
                                         }}
                                     >
@@ -446,7 +560,7 @@ export function PoliticalLandingPanel() {
                                 <p
                                     style={{
                                         color: '#6B7280',
-                                        fontSize: '0.7rem',
+                                        fontSize: '0.85rem',
                                         margin: '0 0 0.5rem',
                                     }}
                                 >
@@ -523,7 +637,7 @@ export function PoliticalLandingPanel() {
                                                 <div style={{ flex: 1 }}>
                                                     <div
                                                         style={{
-                                                            fontSize: '0.76rem',
+                                                            fontSize: '0.9rem',
                                                             marginBottom: '0.25rem',
                                                         }}
                                                     >
@@ -540,7 +654,7 @@ export function PoliticalLandingPanel() {
                                                     </div>
                                                     <div
                                                         style={{
-                                                            fontSize: '0.74rem',
+                                                            fontSize: '0.875rem',
                                                             display: 'flex',
                                                             gap: '0.5rem',
                                                             flexWrap: 'wrap',
@@ -552,7 +666,7 @@ export function PoliticalLandingPanel() {
                                                     </div>
                                                     <div
                                                         style={{
-                                                            fontSize: '0.72rem',
+                                                            fontSize: '0.875rem',
                                                             color: '#6B7280',
                                                             marginTop: '0.2rem',
                                                         }}
@@ -574,7 +688,7 @@ export function PoliticalLandingPanel() {
                                             background: 'none',
                                             border: 'none',
                                             color: '#10B981',
-                                            fontSize: '0.72rem',
+                                            fontSize: '0.875rem',
                                             cursor: 'pointer',
                                             padding: '0.25rem 0',
                                             marginTop: '0.25rem',
@@ -608,7 +722,7 @@ export function PoliticalLandingPanel() {
                                     <span
                                         style={{
                                             color: '#34D399',
-                                            fontSize: '0.78rem',
+                                            fontSize: '0.925rem',
                                             fontWeight: 600,
                                         }}
                                     >
@@ -626,7 +740,7 @@ export function PoliticalLandingPanel() {
                                         <div
                                             key={i}
                                             style={{
-                                                fontSize: '0.76rem',
+                                                fontSize: '0.9rem',
                                                 paddingLeft: '0.5rem',
                                                 borderLeft: '2px solid rgba(52,211,153,0.2)',
                                             }}
@@ -663,7 +777,7 @@ export function PoliticalLandingPanel() {
                                 <span
                                     style={{
                                         color: '#00c8ff',
-                                        fontSize: '0.78rem',
+                                        fontSize: '0.925rem',
                                         fontWeight: 600,
                                     }}
                                 >
@@ -682,7 +796,7 @@ export function PoliticalLandingPanel() {
                                     style={{
                                         padding: '0.2rem 0.5rem',
                                         borderRadius: '4px',
-                                        fontSize: '0.72rem',
+                                        fontSize: '0.875rem',
                                         fontWeight: 700,
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
@@ -704,7 +818,7 @@ export function PoliticalLandingPanel() {
                                     {campaignProfile.communicationStyle}
                                 </span>
                                 {campaignProfile.targetVoters && (
-                                    <span style={{ color: '#8b9ec7', fontSize: '0.76rem' }}>
+                                    <span style={{ color: '#8b9ec7', fontSize: '0.9rem' }}>
                                         Público: {campaignProfile.targetVoters}
                                     </span>
                                 )}
@@ -713,7 +827,7 @@ export function PoliticalLandingPanel() {
                                 <p
                                     style={{
                                         color: '#6B7280',
-                                        fontSize: '0.72rem',
+                                        fontSize: '0.875rem',
                                         margin: '0.3rem 0 0',
                                         fontStyle: 'italic',
                                     }}
@@ -739,7 +853,7 @@ export function PoliticalLandingPanel() {
                 <h3
                     style={{
                         color: '#A78BFA',
-                        fontSize: '0.85rem',
+                        fontSize: '0.95rem',
                         fontWeight: 600,
                         margin: '0 0 0.75rem',
                     }}
@@ -764,14 +878,14 @@ export function PoliticalLandingPanel() {
                             }}
                         >
                             <span
-                                style={{ color: '#00c8ff', fontSize: '0.78rem', fontWeight: 600 }}
+                                style={{ color: '#00c8ff', fontSize: '0.925rem', fontWeight: 600 }}
                             >
                                 {s.label}
                             </span>
                             <p
                                 style={{
                                     color: '#6B7280',
-                                    fontSize: '0.72rem',
+                                    fontSize: '0.875rem',
                                     margin: '0.15rem 0 0',
                                 }}
                             >
@@ -796,7 +910,7 @@ export function PoliticalLandingPanel() {
                     <h3
                         style={{
                             color: '#8b9ec7',
-                            fontSize: '0.82rem',
+                            fontSize: '0.95rem',
                             fontWeight: 600,
                             margin: '0 0 0.5rem',
                         }}
@@ -808,7 +922,7 @@ export function PoliticalLandingPanel() {
                             display: 'flex',
                             gap: '0.75rem',
                             flexWrap: 'wrap',
-                            fontSize: '0.78rem',
+                            fontSize: '0.925rem',
                         }}
                     >
                         <Badge label="Candidato" value={campaignProfile.candidateName} />
@@ -831,7 +945,7 @@ export function PoliticalLandingPanel() {
                     padding: '0.75rem 1.5rem',
                     borderRadius: '8px',
                     fontWeight: 600,
-                    fontSize: '0.9rem',
+                    fontSize: '1rem',
                     color: '#fff',
                     border: 'none',
                     cursor: isGenerating ? 'wait' : 'pointer',
@@ -845,7 +959,7 @@ export function PoliticalLandingPanel() {
                 {isGenerating ? (
                     <>
                         <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                        Generando landing con Gemini...
+                        Generando landing con IA...
                     </>
                 ) : (
                     <>
@@ -861,7 +975,7 @@ export function PoliticalLandingPanel() {
                 <p
                     style={{
                         color: '#F87171',
-                        fontSize: '0.82rem',
+                        fontSize: '0.95rem',
                         marginTop: '0.75rem',
                         padding: '0.5rem 0.75rem',
                         borderRadius: '6px',
@@ -873,7 +987,7 @@ export function PoliticalLandingPanel() {
                 </p>
             )}
 
-            <p style={{ color: '#4B5563', fontSize: '0.72rem', marginTop: '1rem' }}>
+            <p style={{ color: '#4B5563', fontSize: '0.875rem', marginTop: '1rem' }}>
                 Se abrirá el wizard con las secciones pre-cargadas. Podés editar todo antes de
                 publicar.
             </p>

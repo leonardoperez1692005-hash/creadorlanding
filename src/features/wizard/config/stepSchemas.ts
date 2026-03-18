@@ -119,7 +119,12 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
                 : []),
         ],
     },
-    benefits: { kind: 'list', title: 'Beneficios', itemFields: ['title', 'description'] },
+    benefits: {
+        kind: 'list',
+        title: 'Beneficios',
+        headerFields: ['eyebrow', 'title', 'subtitle', 'cta_text', 'cta_url'],
+        itemFields: ['title', 'description'],
+    },
     urgency: {
         kind: 'generic',
         title: 'Banner de Urgencia',
@@ -266,7 +271,12 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
             { key: 'text', label: 'Contenido', type: 'textarea' },
         ],
     },
-    testimonials: { kind: 'list', title: 'Testimonios', itemFields: ['text', 'author'] },
+    testimonials: {
+        kind: 'list',
+        title: 'Testimonios',
+        headerFields: ['eyebrow', 'title', 'subtitle', 'cta_text', 'cta_url'],
+        itemFields: ['text', 'author'],
+    },
 
     // ── Shared Blocks ──
     html_embed: {
@@ -324,7 +334,7 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
     features: {
         kind: 'list',
         title: 'Características',
-        headerFields: ['title', 'subtitle', 'cta_text', 'cta_url', 'bg_color'],
+        headerFields: ['eyebrow', 'title', 'subtitle', 'cta_text', 'cta_url', 'bg_color'],
         itemFields: ['title', 'description'],
     },
     skills: { kind: 'list', title: 'Habilidades', itemFields: ['title', 'level'] },
@@ -405,7 +415,12 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
         title: 'Portfolio / Trabajos',
         itemFields: ['title', 'description', 'image'],
     },
-    stats: { kind: 'list', title: 'Estadísticas', itemFields: ['value', 'label'] },
+    stats: {
+        kind: 'list',
+        title: 'Estadísticas',
+        headerFields: ['eyebrow', 'title', 'subtitle', 'cta_text', 'cta_url'],
+        itemFields: ['value', 'label'],
+    },
     speakers: { kind: 'list', title: 'Speakers', itemFields: ['name', 'bio', 'photo'] },
     agenda: {
         kind: 'list',
@@ -442,6 +457,61 @@ const STEP_SCHEMAS: Record<string, StepSchema> = {
         title: 'Pestañas / Features',
         headerFields: ['eyebrow', 'headline', 'subheadline'],
         itemFields: ['title', 'subtitle', 'image', 'description', 'cta_text', 'cta_url'],
+    },
+
+    // ── Political Issue Blocks ──
+    problem: {
+        kind: 'generic',
+        title: 'El Problema',
+        fields: [
+            { key: 'title', label: 'Título', type: 'text', placeholder: 'El Problema' },
+            { key: 'text', label: 'Descripción del problema', type: 'textarea' },
+        ],
+    },
+    proposal: {
+        kind: 'generic',
+        title: 'Nuestra Propuesta',
+        fields: [
+            { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestra Propuesta' },
+            { key: 'text', label: 'Descripción de la propuesta', type: 'textarea' },
+        ],
+    },
+    data: {
+        kind: 'list',
+        title: 'Datos y Evidencia',
+        headerFields: ['eyebrow', 'title', 'subtitle', 'cta_text', 'cta_url'],
+        itemFields: ['title', 'description'],
+    },
+
+    // ── Political Campaign Blocks ──
+    proposals: {
+        kind: 'list',
+        title: 'Propuestas Clave',
+        headerFields: ['title', 'subtitle'],
+        itemFields: ['title', 'description'],
+    },
+    biography: {
+        kind: 'generic',
+        title: 'Biografía / Trayectoria',
+        fields: [
+            { key: 'title', label: 'Título', type: 'text', placeholder: 'Trayectoria' },
+            { key: 'text', label: 'Biografía', type: 'textarea' },
+        ],
+    },
+    events: {
+        kind: 'list',
+        title: 'Calendario de Eventos',
+        headerFields: ['title'],
+        itemFields: ['title', 'description', 'time'],
+    },
+    donate: {
+        kind: 'generic',
+        title: 'Donaciones',
+        fields: [
+            { key: 'title', label: 'Título', type: 'text', placeholder: 'Apoyá la Campaña' },
+            { key: 'subtitle', label: 'Subtítulo', type: 'text' },
+            { key: 'cta_text', label: 'Texto del Botón', type: 'text', placeholder: 'DONAR AHORA' },
+        ],
     },
 
     // ── Special steps ──

@@ -25,7 +25,12 @@ import { isRedditAvailable, scrapeRedditTopics } from '../redditClient'
 import { isYouTubeAvailable, scrapeYouTubeTopics } from '../youtubeClient'
 import { isSocialDataAvailable, scrapeViaSocialData, searchTopicTweets } from '../socialDataClient'
 import { indexPoliticianStatements, getOrCreatePoliticalCorpus } from '../knowledgeIndexer'
-import { loadCampaignBrain, buildMonitoringImpulse } from '../brain'
+import {
+    loadCampaignBrain,
+    buildMonitoringImpulse,
+    buildTacticalImpulse,
+    buildTacticalPromptBlock,
+} from '../brain'
 
 // =============================================
 // GENERATE INTELLIGENCE REPORT
@@ -406,7 +411,30 @@ export async function generatePoliticalAttackVectorsAction(
             (c) => c.handle === vulnerability.handle,
         )
 
-        const vectors = await generateAttackVectors(vulnerability, campaignProfile, comparison)
+        // Load brain for tactical context (sinapsis)
+        let sinapsisBlock = ''
+        try {
+            const brain = await loadCampaignBrain(supabase, userId)
+            const tacticalImpulse = buildTacticalImpulse(brain)
+            if (tacticalImpulse) {
+                sinapsisBlock = buildTacticalPromptBlock(tacticalImpulse)
+            }
+        } catch (brainErr) {
+            logger.warn(
+                'political-intel',
+                'Brain load failed for ZMOT — continuing without sinapsis',
+                {
+                    error: (brainErr as Error).message,
+                },
+            )
+        }
+
+        const vectors = await generateAttackVectors(
+            vulnerability,
+            campaignProfile,
+            comparison,
+            sinapsisBlock,
+        )
 
         // Accumulate vectors: read existing from the attack_vectors COLUMN (not content JSON)
         const existingVectors = (reportRow.attack_vectors ?? []) as PoliticalAttackVector[]

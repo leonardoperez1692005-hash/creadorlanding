@@ -131,9 +131,9 @@ export function MonitorConfigPanel() {
     const estimatedCost = (estimatedRequests * BD_COST_PER_REQUEST).toFixed(3)
 
     const phases = [
-        { key: 'scraping', label: 'Scraping perfiles via Bright Data' },
-        { key: 'researching', label: 'Investigando contexto SERP' },
-        { key: 'analyzing', label: 'Analizando con Gemini IA' },
+        { key: 'scraping', label: 'Recopilando perfiles de rivales' },
+        { key: 'researching', label: 'Investigando contexto web' },
+        { key: 'analyzing', label: 'Analizando con IA' },
         { key: 'complete', label: 'Completado' },
     ]
     const currentIdx = phases.findIndex((p) => p.key === phase)
@@ -155,14 +155,14 @@ export function MonitorConfigPanel() {
                         <h2
                             style={{
                                 color: '#fff',
-                                fontSize: '1.1rem',
+                                fontSize: '1.2rem',
                                 fontWeight: 700,
                                 margin: 0,
                             }}
                         >
                             Monitors ({monitors.length})
                         </h2>
-                        <p style={{ color: '#8b9ec7', fontSize: '0.8rem', margin: 0 }}>
+                        <p style={{ color: '#8b9ec7', fontSize: '0.925rem', margin: 0 }}>
                             Rivales y figuras públicas a monitorear
                         </p>
                     </div>
@@ -273,7 +273,7 @@ export function MonitorConfigPanel() {
                     </div>
 
                     {formError && (
-                        <p style={{ color: '#F87171', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>
+                        <p style={{ color: '#F87171', fontSize: '0.925rem', margin: '0.5rem 0 0' }}>
                             {formError}
                         </p>
                     )}
@@ -319,7 +319,7 @@ export function MonitorConfigPanel() {
                     }}
                 >
                     <Search size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
-                    <p style={{ fontSize: '0.9rem', margin: 0 }}>
+                    <p style={{ fontSize: '1rem', margin: 0 }}>
                         No hay monitors configurados. Agregá rivales para comenzar.
                     </p>
                 </div>
@@ -353,7 +353,7 @@ export function MonitorConfigPanel() {
                                     <Square size={16} />
                                 )}
                             </button>
-                            <span style={{ color: '#8b9ec7', fontSize: '0.75rem' }}>
+                            <span style={{ color: '#8b9ec7', fontSize: '0.875rem' }}>
                                 {selectedIds.size > 0
                                     ? `${selectedIds.size} seleccionado${selectedIds.size > 1 ? 's' : ''}`
                                     : 'Seleccionar para análisis'}
@@ -407,7 +407,7 @@ export function MonitorConfigPanel() {
                                             style={{
                                                 padding: '0.15rem 0.5rem',
                                                 borderRadius: '4px',
-                                                fontSize: '0.7rem',
+                                                fontSize: '0.85rem',
                                                 fontWeight: 600,
                                                 background: platformColor(m.platform).bg,
                                                 color: platformColor(m.platform).text,
@@ -419,7 +419,7 @@ export function MonitorConfigPanel() {
                                             <div
                                                 style={{
                                                     color: '#fff',
-                                                    fontSize: '0.9rem',
+                                                    fontSize: '1rem',
                                                     fontWeight: 600,
                                                 }}
                                             >
@@ -437,7 +437,7 @@ export function MonitorConfigPanel() {
                                                     <span
                                                         style={{
                                                             color: '#6B7280',
-                                                            fontSize: '0.7rem',
+                                                            fontSize: '0.85rem',
                                                             marginLeft: '0.5rem',
                                                         }}
                                                     >
@@ -445,7 +445,7 @@ export function MonitorConfigPanel() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <div style={{ color: '#6B7280', fontSize: '0.75rem' }}>
+                                            <div style={{ color: '#6B7280', fontSize: '0.875rem' }}>
                                                 {[
                                                     m.party,
                                                     m.role,
@@ -529,7 +529,7 @@ export function MonitorConfigPanel() {
                         }}
                     >
                         <div>
-                            <p style={{ color: '#8b9ec7', fontSize: '0.8rem', margin: 0 }}>
+                            <p style={{ color: '#8b9ec7', fontSize: '0.925rem', margin: 0 }}>
                                 {selectedIds.size > 0
                                     ? `${selectedIds.size} de ${activeMonitors.length} seleccionado${selectedIds.size > 1 ? 's' : ''}`
                                     : `${activeMonitors.length} monitor${activeMonitors.length > 1 ? 'es' : ''} activo${activeMonitors.length > 1 ? 's' : ''}`}{' '}
@@ -542,7 +542,7 @@ export function MonitorConfigPanel() {
                             style={{
                                 ...primaryBtnStyle,
                                 padding: '0.6rem 1.5rem',
-                                fontSize: '0.9rem',
+                                fontSize: '1rem',
                                 background: isGenerating
                                     ? 'rgba(0,200,255,0.1)'
                                     : 'linear-gradient(135deg, #00c8ff, #7C3AED)',
@@ -583,7 +583,7 @@ export function MonitorConfigPanel() {
                                 <p
                                     style={{
                                         color: '#00c8ff',
-                                        fontSize: '0.8rem',
+                                        fontSize: '0.925rem',
                                         fontWeight: 600,
                                         margin: '0 0 0.3rem',
                                     }}
@@ -601,7 +601,7 @@ export function MonitorConfigPanel() {
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '0.4rem',
-                                            fontSize: '0.78rem',
+                                            fontSize: '0.925rem',
                                             color: isDone
                                                 ? '#34D399'
                                                 : isActive
@@ -622,7 +622,7 @@ export function MonitorConfigPanel() {
                         <p
                             style={{
                                 color: '#F87171',
-                                fontSize: '0.8rem',
+                                fontSize: '0.925rem',
                                 marginTop: '0.5rem',
                                 padding: '0.5rem 0.75rem',
                                 borderRadius: '6px',
@@ -659,7 +659,7 @@ function platformColor(p: MonitorPlatform) {
 const labelStyle: React.CSSProperties = {
     display: 'block',
     color: '#A78BFA',
-    fontSize: '0.75rem',
+    fontSize: '0.875rem',
     fontWeight: 600,
     marginBottom: '0.25rem',
 }
@@ -671,7 +671,7 @@ const inputStyle: React.CSSProperties = {
     border: '1px solid #1e2540',
     background: '#0A0E1A',
     color: '#fff',
-    fontSize: '0.85rem',
+    fontSize: '0.95rem',
     outline: 'none',
     boxSizing: 'border-box',
 }
@@ -685,7 +685,7 @@ const primaryBtnStyle: React.CSSProperties = {
     background: 'linear-gradient(135deg, #00c8ff, #7C3AED)',
     border: 'none',
     color: '#fff',
-    fontSize: '0.8rem',
+    fontSize: '0.925rem',
     fontWeight: 600,
     cursor: 'pointer',
 }
@@ -696,7 +696,7 @@ const cancelBtnStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.05)',
     border: '1px solid #1e2540',
     color: '#8b9ec7',
-    fontSize: '0.8rem',
+    fontSize: '0.925rem',
     cursor: 'pointer',
 }
 
@@ -709,7 +709,7 @@ const addBtnStyle: React.CSSProperties = {
     background: 'rgba(0,200,255,0.08)',
     border: '1px solid rgba(0,200,255,0.2)',
     color: '#00c8ff',
-    fontSize: '0.85rem',
+    fontSize: '0.95rem',
     fontWeight: 600,
     cursor: 'pointer',
 }

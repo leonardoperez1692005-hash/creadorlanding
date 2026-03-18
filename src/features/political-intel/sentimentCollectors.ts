@@ -537,8 +537,20 @@ export function extractAllItems(
 
             if (cleaned.length < 15 || cleaned.length > 500) continue
 
-            // Relevance filter: if terms provided, item must mention at least one
-            if (lowerTerms.length > 0) {
+            // Relevance filter: if terms provided, item must mention at least one.
+            //
+            // PER-PLATFORM STRATEGY:
+            // - Twitter: FILTER — SocialData already searches by keyword, tweets are relevant.
+            //   But some edge cases slip through, so keep the check.
+            // - Reddit: SKIP — Items come from topic-specific subreddit searches
+            //   (r/argentina + "narcotráfico"). Comments under those posts are relevant
+            //   by context even without repeating the keyword.
+            // - YouTube: FILTER — YouTube search returns broadly relevant videos, but
+            //   regionCode doesn't work well. A search for "seguridad" can return comedy
+            //   videos like "EL PEOR GUARDIA DE SEGURIDAD 😨 #storytime". Comments from
+            //   those videos are garbage. The relevance filter catches this.
+            const skipRelevanceFilter = sourceKey === 'reddit'
+            if (!skipRelevanceFilter && lowerTerms.length > 0) {
                 const lowerText = cleaned.toLowerCase()
                 const isRelevant = lowerTerms.some((term) => lowerText.includes(term))
                 if (!isRelevant) {
@@ -554,9 +566,19 @@ export function extractAllItems(
     if (skippedIrrelevant > 0) {
         logger.info(
             'sentiment',
-            `extractAllItems: skipped ${skippedIrrelevant} items not mentioning any relevance term`,
+            `extractAllItems: skipped ${skippedIrrelevant} Twitter items not mentioning any relevance term`,
         )
     }
+
+    // Log per-platform counts for debugging
+    const countBySource = new Map<string, number>()
+    for (const item of items) {
+        countBySource.set(item.source, (countBySource.get(item.source) ?? 0) + 1)
+    }
+    logger.info(
+        'sentiment',
+        `extractAllItems: ${items.length} total — ${[...countBySource.entries()].map(([k, v]) => `${k}:${v}`).join(', ')}`,
+    )
 
     return items
 }

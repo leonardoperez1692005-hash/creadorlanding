@@ -31,7 +31,7 @@ const card: React.CSSProperties = {
 const label: React.CSSProperties = {
     display: 'block',
     color: '#A78BFA',
-    fontSize: '0.75rem',
+    fontSize: '0.875rem',
     fontWeight: 600,
     marginBottom: '0.3rem',
     textTransform: 'uppercase',
@@ -45,7 +45,7 @@ const input: React.CSSProperties = {
     border: '1px solid #1e2540',
     background: '#0A0E1A',
     color: '#fff',
-    fontSize: '0.875rem',
+    fontSize: '1rem',
     outline: 'none',
     boxSizing: 'border-box',
 }
@@ -59,7 +59,7 @@ const primaryBtn: React.CSSProperties = {
     background: 'linear-gradient(135deg, #00c8ff, #7C3AED)',
     border: 'none',
     color: '#fff',
-    fontSize: '0.875rem',
+    fontSize: '1rem',
     fontWeight: 600,
     cursor: 'pointer',
 }
@@ -73,7 +73,7 @@ const secondaryBtn: React.CSSProperties = {
     background: 'rgba(0,200,255,0.08)',
     border: '1px solid rgba(0,200,255,0.2)',
     color: '#00c8ff',
-    fontSize: '0.875rem',
+    fontSize: '1rem',
     fontWeight: 600,
     cursor: 'pointer',
 }
@@ -87,7 +87,7 @@ const debugBtn: React.CSSProperties = {
     background: 'rgba(251,191,36,0.08)',
     border: '1px solid rgba(251,191,36,0.25)',
     color: '#FBB124',
-    fontSize: '0.8rem',
+    fontSize: '0.925rem',
     fontWeight: 600,
     cursor: 'pointer',
 }
@@ -114,7 +114,7 @@ const pre: React.CSSProperties = {
     border: '1px solid #1e2540',
     borderRadius: '6px',
     padding: '0.75rem',
-    fontSize: '0.72rem',
+    fontSize: '0.875rem',
     color: '#8b9ec7',
     overflowX: 'auto',
     whiteSpace: 'pre-wrap',
@@ -266,13 +266,13 @@ export function KnowledgeLabClient() {
                         Knowledge Lab — RAG Político
                     </h1>
                 </div>
-                <p style={{ color: '#8b9ec7', fontSize: '0.875rem', margin: 0 }}>
-                    Indexá declaraciones de un rival en el corpus de Gemini y verificá que la
+                <p style={{ color: '#8b9ec7', fontSize: '1rem', margin: 0 }}>
+                    Indexá declaraciones de un rival en el corpus de conocimiento y verificá que la
                     búsqueda semántica funciona.
                 </p>
             </div>
 
-            {/* ─── DIAGNÓSTICO SERP ─── */}
+            {/* ─── DIAGNÓSTICO DE BÚSQUEDA ─── */}
             <div
                 style={{
                     ...card,
@@ -282,18 +282,18 @@ export function KnowledgeLabClient() {
             >
                 <div style={{ ...sectionTitle, color: '#FBB124' }}>
                     <Bug size={18} color="#FBB124" />
-                    Diagnóstico SERP — ¿qué está encontrando?
+                    Diagnóstico de búsqueda — ¿qué está encontrando?
                 </div>
                 <p
                     style={{
                         color: '#8b9ec7',
-                        fontSize: '0.8rem',
+                        fontSize: '0.925rem',
                         marginTop: '-0.5rem',
                         marginBottom: '1rem',
                     }}
                 >
-                    Probá un solo query para ver qué devuelve SERP y cuánto extrae Gemini. Útil para
-                    debuggear.
+                    Probá un solo query para ver qué devuelve la búsqueda y cuánto extrae la IA.
+                    Útil para debuggear.
                 </p>
 
                 <div style={grid2}>
@@ -376,7 +376,7 @@ export function KnowledgeLabClient() {
                             borderRadius: '8px',
                         }}
                     >
-                        <p style={{ color: '#F87171', fontSize: '0.8rem', margin: 0 }}>
+                        <p style={{ color: '#F87171', fontSize: '0.925rem', margin: 0 }}>
                             <strong>Error:</strong> {debugError}
                         </p>
                     </div>
@@ -404,13 +404,13 @@ export function KnowledgeLabClient() {
                                 <p
                                     style={{
                                         color: '#8b9ec7',
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.8rem',
                                         margin: '0 0 0.15rem',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                     }}
                                 >
-                                    SERP chars
+                                    caracteres web
                                 </p>
                                 <p
                                     style={{
@@ -437,13 +437,13 @@ export function KnowledgeLabClient() {
                                 <p
                                     style={{
                                         color: '#8b9ec7',
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.8rem',
                                         margin: '0 0 0.15rem',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                     }}
                                 >
-                                    Gemini extrajo
+                                    IA extrajo
                                 </p>
                                 <p
                                     style={{
@@ -463,36 +463,36 @@ export function KnowledgeLabClient() {
                         <p
                             style={{
                                 color: '#5d7099',
-                                fontSize: '0.75rem',
+                                fontSize: '0.875rem',
                                 marginBottom: '0.4rem',
                             }}
                         >
-                            Query SERP:{' '}
+                            Consulta web:{' '}
                             <code style={{ color: '#A78BFA' }}>{debugResult.query}</code>
                         </p>
 
-                        {/* SERP snippet */}
+                        {/* Fragmento web */}
                         <p
                             style={{
                                 color: '#8b9ec7',
-                                fontSize: '0.75rem',
+                                fontSize: '0.875rem',
                                 marginBottom: '0.25rem',
                             }}
                         >
-                            Snippet SERP (primeros 800 chars):
+                            Fragmento web (primeros 800 chars):
                         </p>
                         <pre style={pre}>{debugResult.serpSnippet || '— vacío —'}</pre>
 
-                        {/* Gemini raw */}
+                        {/* Respuesta IA */}
                         <p
                             style={{
                                 color: '#8b9ec7',
-                                fontSize: '0.75rem',
+                                fontSize: '0.875rem',
                                 marginBottom: '0.25rem',
                                 marginTop: '0.75rem',
                             }}
                         >
-                            Respuesta Gemini (extracto):
+                            Respuesta IA (extracto):
                         </p>
                         <pre
                             style={{
@@ -518,7 +518,7 @@ export function KnowledgeLabClient() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.7rem',
+                            fontSize: '0.85rem',
                             fontWeight: 700,
                             flexShrink: 0,
                         }}
@@ -569,7 +569,7 @@ export function KnowledgeLabClient() {
                     <span
                         style={{
                             color: '#5d7099',
-                            fontSize: '0.75rem',
+                            fontSize: '0.875rem',
                             marginTop: '0.25rem',
                             display: 'block',
                         }}
@@ -601,9 +601,9 @@ export function KnowledgeLabClient() {
                 </button>
 
                 {indexing && (
-                    <p style={{ color: '#8b9ec7', fontSize: '0.8rem', marginTop: '0.75rem' }}>
+                    <p style={{ color: '#8b9ec7', fontSize: '0.925rem', marginTop: '0.75rem' }}>
                         ⏳ Esto puede tardar 30-60 segundos — buscando en la web + extrayendo citas
-                        con Gemini + indexando en corpus...
+                        con IA + indexando en corpus...
                     </p>
                 )}
 
@@ -629,7 +629,7 @@ export function KnowledgeLabClient() {
                             <p
                                 style={{
                                     color: '#10B981',
-                                    fontSize: '0.875rem',
+                                    fontSize: '1rem',
                                     fontWeight: 600,
                                     margin: '0 0 0.25rem',
                                 }}
@@ -639,7 +639,7 @@ export function KnowledgeLabClient() {
                             <p
                                 style={{
                                     color: '#5d7099',
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.875rem',
                                     margin: 0,
                                     wordBreak: 'break-all',
                                 }}
@@ -668,7 +668,7 @@ export function KnowledgeLabClient() {
                             color="#F87171"
                             style={{ marginTop: '0.1rem', flexShrink: 0 }}
                         />
-                        <p style={{ color: '#F87171', fontSize: '0.875rem', margin: 0 }}>
+                        <p style={{ color: '#F87171', fontSize: '1rem', margin: 0 }}>
                             {indexError}
                         </p>
                     </div>
@@ -687,7 +687,7 @@ export function KnowledgeLabClient() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.7rem',
+                            fontSize: '0.85rem',
                             fontWeight: 700,
                             flexShrink: 0,
                         }}
@@ -741,7 +741,7 @@ export function KnowledgeLabClient() {
                 {queryResults && (
                     <div style={{ marginTop: '1rem' }}>
                         {queryResults.length === 0 ? (
-                            <p style={{ color: '#8b9ec7', fontSize: '0.875rem' }}>
+                            <p style={{ color: '#8b9ec7', fontSize: '1rem' }}>
                                 Sin resultados relevantes para esa query.
                             </p>
                         ) : (
@@ -767,7 +767,7 @@ export function KnowledgeLabClient() {
                                             style={{
                                                 background: 'rgba(0,200,255,0.1)',
                                                 color: '#00c8ff',
-                                                fontSize: '0.7rem',
+                                                fontSize: '0.85rem',
                                                 fontWeight: 700,
                                                 padding: '0.15rem 0.5rem',
                                                 borderRadius: '4px',
@@ -775,14 +775,14 @@ export function KnowledgeLabClient() {
                                         >
                                             {r.topic || 'general'}
                                         </span>
-                                        <span style={{ color: '#5d7099', fontSize: '0.7rem' }}>
+                                        <span style={{ color: '#5d7099', fontSize: '0.85rem' }}>
                                             Score: {(r.score * 100).toFixed(0)}%
                                         </span>
                                     </div>
                                     <p
                                         style={{
                                             color: '#e2e8f0',
-                                            fontSize: '0.875rem',
+                                            fontSize: '1rem',
                                             margin: '0 0 0.4rem',
                                             lineHeight: 1.5,
                                         }}
@@ -791,7 +791,9 @@ export function KnowledgeLabClient() {
                                     </p>
                                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                                         {r.date && (
-                                            <span style={{ color: '#5d7099', fontSize: '0.72rem' }}>
+                                            <span
+                                                style={{ color: '#5d7099', fontSize: '0.875rem' }}
+                                            >
                                                 📅 {r.date}
                                             </span>
                                         )}
@@ -802,7 +804,7 @@ export function KnowledgeLabClient() {
                                                 rel="noopener noreferrer"
                                                 style={{
                                                     color: '#A78BFA',
-                                                    fontSize: '0.72rem',
+                                                    fontSize: '0.875rem',
                                                     textDecoration: 'none',
                                                 }}
                                             >
@@ -817,7 +819,7 @@ export function KnowledgeLabClient() {
                 )}
 
                 {queryError && (
-                    <p style={{ color: '#F87171', fontSize: '0.875rem', marginTop: '0.75rem' }}>
+                    <p style={{ color: '#F87171', fontSize: '1rem', marginTop: '0.75rem' }}>
                         {queryError}
                     </p>
                 )}
@@ -835,7 +837,7 @@ export function KnowledgeLabClient() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.7rem',
+                            fontSize: '0.85rem',
                             fontWeight: 700,
                             flexShrink: 0,
                             color: '#8b9ec7',
@@ -880,7 +882,7 @@ export function KnowledgeLabClient() {
                 {corpusStatus && (
                     <div style={{ marginTop: '1rem' }}>
                         {!corpusStatus.exists ? (
-                            <p style={{ color: '#8b9ec7', fontSize: '0.875rem' }}>
+                            <p style={{ color: '#8b9ec7', fontSize: '1rem' }}>
                                 No hay corpus para ese rival todavía. Indexá primero en el paso 1.
                             </p>
                         ) : (
@@ -917,7 +919,7 @@ export function KnowledgeLabClient() {
                                         <span style={{ ...label, marginBottom: '0.15rem' }}>
                                             Última indexación
                                         </span>
-                                        <span style={{ color: '#e2e8f0', fontSize: '0.8rem' }}>
+                                        <span style={{ color: '#e2e8f0', fontSize: '0.925rem' }}>
                                             {corpusStatus.lastIndexed
                                                 ? new Date(corpusStatus.lastIndexed).toLocaleString(
                                                       'es-AR',
@@ -944,7 +946,7 @@ export function KnowledgeLabClient() {
                                                     style={{
                                                         background: 'rgba(167,139,250,0.1)',
                                                         color: '#A78BFA',
-                                                        fontSize: '0.75rem',
+                                                        fontSize: '0.875rem',
                                                         padding: '0.2rem 0.6rem',
                                                         borderRadius: '20px',
                                                         border: '1px solid rgba(167,139,250,0.2)',
@@ -959,7 +961,7 @@ export function KnowledgeLabClient() {
                                 <p
                                     style={{
                                         color: '#5d7099',
-                                        fontSize: '0.7rem',
+                                        fontSize: '0.85rem',
                                         marginTop: '0.6rem',
                                         marginBottom: 0,
                                         wordBreak: 'break-all',

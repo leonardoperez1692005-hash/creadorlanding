@@ -339,3 +339,196 @@ export async function buildTrendsContextForPrompt(topic: string, geo = 'AR'): Pr
 export function isTrendsAvailable(): boolean {
     return !!process.env.SERPAPI_KEY
 }
+
+// ─── Structured Trends Data (for programmatic reports) ────
+
+export interface StructuredTrendsData {
+    average: number
+    peak: number
+    relatedQueries: string[]
+    isHot: boolean
+    trendLevel: 'hot' | 'warm' | 'cold' | 'none'
+}
+
+/**
+ * Returns structured trends data for programmatic use (not just a prompt string).
+ * Returns null if trends API is unavailable or no data found.
+ *
+ * @param topicContext Optional extra context words to filter related queries for relevance
+ *   (e.g., country name, subtopics). Queries that don't relate to the topic in
+ *   its political/social context are discarded.
+ */
+export async function getStructuredTrendsData(
+    topic: string,
+    geo = 'AR',
+    topicContext?: string[],
+): Promise<StructuredTrendsData | null> {
+    if (!isTrendsAvailable()) return null
+
+    try {
+        const validation = await validateTopicTrending(topic, geo)
+        if (validation.average === 0 && validation.peak === 0) return null
+
+        // Filter related queries: remove generic/educational queries that don't relate
+        // to the political/social context of the topic.
+        const allRelated = [...validation.risingQueries, ...validation.topQueries]
+        const filtered = filterRelevantQueries(allRelated, topic, topicContext)
+
+        return {
+            average: validation.average,
+            peak: validation.peak,
+            relatedQueries: filtered,
+            isHot: validation.isTrending,
+            trendLevel: validation.trendLevel,
+        }
+    } catch (err) {
+        logger.warn('trends', `Structured trends failed for "${topic}": ${(err as Error).message}`)
+        return null
+    }
+}
+
+// ─── Query Relevance Filter ──────────────────────────────
+
+/** Words that signal a generic/educational query, NOT a political/social topic */
+const IRRELEVANT_SIGNALS = [
+    'que es',
+    'qué es',
+    'para que sirve',
+    'para qué sirve',
+    'definicion',
+    'definición',
+    'concepto de',
+    'significado',
+    'tipos de',
+    'clasificacion',
+    'clasificación',
+    'características',
+    'carátula',
+    'caratula',
+    'portada',
+    'dibujo',
+    'resumen',
+    'tecnicatura',
+    'licenciatura',
+    'universidad',
+    'carrera',
+    'materia',
+    'curso',
+    'examen',
+    'parcial',
+    'final',
+    'libro',
+    'pdf',
+    'descargar',
+    'wikipedia',
+    'mapa conceptual',
+    'cuadro sinóptico',
+    'ejemplo',
+]
+
+/** Country names to detect foreign-country queries */
+const OTHER_COUNTRIES = [
+    'méxico',
+    'mexico',
+    'colombia',
+    'chile',
+    'brasil',
+    'perú',
+    'peru',
+    'uruguay',
+    'paraguay',
+    'bolivia',
+    'ecuador',
+    'venezuela',
+    'estados unidos',
+    'españa',
+    'eeuu',
+    'usa',
+    'argentina', // included — will be excluded only when it IS the target country
+]
+
+/**
+ * Keeps only queries that are relevant to the topic in its political/social context.
+ * Discards educational/definitional queries and queries about OTHER countries.
+ */
+function filterRelevantQueries(
+    queries: string[],
+    topic: string,
+    contextWords?: string[],
+): string[] {
+    const topicLower = topic.toLowerCase()
+    const topicWords = topicLower.split(/\s+/).filter((w) => w.length > 3)
+    const contextLower = (contextWords ?? []).map((w) => w.toLowerCase())
+
+    // Detect the target country from context words to avoid filtering it out
+    const targetCountry = contextLower.find((cw) => OTHER_COUNTRIES.includes(cw))
+
+    return (
+        queries
+            .filter((q) => {
+                const qLower = q.toLowerCase()
+
+                // Reject if it matches an irrelevant signal
+                if (IRRELEVANT_SIGNALS.some((signal) => qLower.includes(signal))) return false
+
+                // Reject if it mentions a DIFFERENT country than the target
+                // e.g. "narcotráfico en méxico" when investigating Argentina
+                const mentionedCountry = OTHER_COUNTRIES.find((c) => qLower.includes(c))
+                if (mentionedCountry && mentionedCountry !== targetCountry) return false
+
+                // Keep if it contains a context word (country, subtopic)
+                if (contextLower.some((cw) => qLower.includes(cw))) return true
+
+                // Keep if it contains words related to politics/society/economy-in-context
+                const politicalSignals = [
+                    'crisis',
+                    'gobierno',
+                    'política',
+                    'inflación',
+                    'inflacion',
+                    'precios',
+                    'sueldo',
+                    'salario',
+                    'empleo',
+                    'desempleo',
+                    'pobreza',
+                    'impuestos',
+                    'dólar',
+                    'dolar',
+                    'deuda',
+                    'seguridad',
+                    'inseguridad',
+                    'violencia',
+                    'robo',
+                    'educación',
+                    'salud',
+                    'corrupción',
+                    'elecciones',
+                    'candidato',
+                    'presidente',
+                    'congreso',
+                    'ley',
+                    'protesta',
+                    'marcha',
+                    'paro',
+                    'huelga',
+                    'narco',
+                    'droga',
+                    'justicia',
+                    'reforma',
+                ]
+                if (politicalSignals.some((signal) => qLower.includes(signal))) return true
+
+                // Keep if it's longer than the topic alone (likely more specific)
+                // and contains at least one topic word
+                if (q.split(/\s+/).length > 2 && topicWords.some((tw) => qLower.includes(tw))) {
+                    return true
+                }
+
+                // Reject short queries that are just the topic word rephrased
+                return false
+            })
+            // Dedup
+            .filter((q, i, arr) => arr.indexOf(q) === i)
+    )
+}

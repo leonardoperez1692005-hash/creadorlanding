@@ -2,6 +2,8 @@
 // BrandVortix — Preset Themes
 // =============================================
 
+import type { DesignSystemId } from '../lib/designSystems'
+
 export interface ThemePreset {
     id: string
     name: string
@@ -17,6 +19,8 @@ export interface ThemePreset {
     // Style
     borderRadius: 'sharp' | 'rounded' | 'pill'
     cardStyle: 'flat' | 'glass' | 'bordered' | 'elevated'
+    // Design System (optional — defaults to 'default')
+    designSystem?: DesignSystemId
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
@@ -149,6 +153,77 @@ export const THEME_PRESETS: ThemePreset[] = [
         fontBody: 'Fira Sans',
         borderRadius: 'sharp',
         cardStyle: 'glass',
+    },
+    // ── Design System presets ──
+    {
+        id: 'neo-brutal',
+        name: 'Neo Brutal',
+        description: 'Neobrutalism: sombras duras y colores bold',
+        primary: '#FF6B35',
+        secondary: '#004E89',
+        accent: '#FCBF49',
+        isDark: false,
+        fontHeading: 'Space Grotesk',
+        fontBody: 'Inter',
+        borderRadius: 'sharp',
+        cardStyle: 'flat',
+        designSystem: 'neobrutalism',
+    },
+    {
+        id: 'soft-morphism',
+        name: 'Soft Morphism',
+        description: 'Neumorphism: relieve suave y sombras duales',
+        primary: '#6366F1',
+        secondary: '#8B5CF6',
+        accent: '#A78BFA',
+        isDark: false,
+        fontHeading: 'DM Sans',
+        fontBody: 'Inter',
+        borderRadius: 'rounded',
+        cardStyle: 'flat',
+        designSystem: 'neumorphism',
+    },
+    {
+        id: 'crystal-clear',
+        name: 'Crystal Clear',
+        description: 'Liquid Glass: transparencias y blur intenso',
+        primary: '#06B6D4',
+        secondary: '#8B5CF6',
+        accent: '#F472B6',
+        isDark: true,
+        fontHeading: 'Outfit',
+        fontBody: 'Inter',
+        borderRadius: 'rounded',
+        cardStyle: 'glass',
+        designSystem: 'liquid_glass',
+    },
+    {
+        id: 'aurora-mesh',
+        name: 'Aurora Mesh',
+        description: 'Gradient Mesh: gradientes decorativos orgánicos',
+        primary: '#8B5CF6',
+        secondary: '#EC4899',
+        accent: '#06B6D4',
+        isDark: true,
+        fontHeading: 'Montserrat',
+        fontBody: 'Outfit',
+        borderRadius: 'rounded',
+        cardStyle: 'glass',
+        designSystem: 'gradient_mesh',
+    },
+    {
+        id: 'bento-dashboard',
+        name: 'Bento Dashboard',
+        description: 'Bento Grid: layout asimétrico tipo dashboard',
+        primary: '#10B981',
+        secondary: '#3B82F6',
+        accent: '#F59E0B',
+        isDark: true,
+        fontHeading: 'Space Grotesk',
+        fontBody: 'DM Sans',
+        borderRadius: 'rounded',
+        cardStyle: 'bordered',
+        designSystem: 'bento_grid',
     },
 ]
 

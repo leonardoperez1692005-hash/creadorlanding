@@ -30,7 +30,7 @@ function SourceBadge({ meta }: { meta?: PoliticalSnapshotMeta | null }) {
                 gap: '0.3rem',
                 padding: '0.15rem 0.5rem',
                 borderRadius: '6px',
-                fontSize: '0.68rem',
+                fontSize: '0.825rem',
                 fontWeight: 600,
                 background: 'rgba(0,200,255,0.08)',
                 border: '1px solid rgba(0,200,255,0.15)',
@@ -62,7 +62,7 @@ function SentimentBadge({
                 gap: '0.3rem',
                 padding: '0.15rem 0.5rem',
                 borderRadius: '6px',
-                fontSize: '0.68rem',
+                fontSize: '0.825rem',
                 fontWeight: 600,
                 background:
                     snap.negativePct > snap.positivePct
@@ -128,7 +128,7 @@ export function InsightsPanel({
                                 marginBottom: '0.25rem',
                             }}
                         >
-                            <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+                            <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}>
                                 {v.politician}
                             </span>
                             <SentimentBadge
@@ -139,13 +139,13 @@ export function InsightsPanel({
                         <div
                             style={{
                                 color: '#F87171',
-                                fontSize: '0.8rem',
+                                fontSize: '0.925rem',
                                 marginBottom: '0.25rem',
                             }}
                         >
                             Debilidad: {v.weakness}
                         </div>
-                        <div style={{ color: '#8b9ec7', fontSize: '0.78rem' }}>
+                        <div style={{ color: '#8b9ec7', fontSize: '0.925rem' }}>
                             Angulo: {v.exploitAngle}
                         </div>
                     </div>
@@ -173,7 +173,7 @@ export function InsightsPanel({
                                 marginBottom: '0.25rem',
                             }}
                         >
-                            <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+                            <span style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}>
                                 {o.description}
                             </span>
                             <SentimentBadge
@@ -184,13 +184,13 @@ export function InsightsPanel({
                         <div
                             style={{
                                 color: '#34D399',
-                                fontSize: '0.78rem',
+                                fontSize: '0.925rem',
                                 marginBottom: '0.2rem',
                             }}
                         >
                             Target: {o.targetPolitician}
                         </div>
-                        <div style={{ color: '#8b9ec7', fontSize: '0.78rem' }}>
+                        <div style={{ color: '#8b9ec7', fontSize: '0.925rem' }}>
                             Accion: {o.actionableStep}
                         </div>
                     </div>
@@ -206,7 +206,7 @@ export function InsightsPanel({
                 <div
                     style={{
                         color: '#8b9ec7',
-                        fontSize: '0.85rem',
+                        fontSize: '0.95rem',
                         lineHeight: 1.6,
                         marginBottom: '0.75rem',
                     }}
@@ -214,7 +214,7 @@ export function InsightsPanel({
                     {marketContext.currentPoliticalClimate}
                 </div>
                 <div style={{ marginBottom: '0.5rem' }}>
-                    <span style={{ color: '#FBBF24', fontSize: '0.75rem', fontWeight: 600 }}>
+                    <span style={{ color: '#FBBF24', fontSize: '0.875rem', fontWeight: 600 }}>
                         Temas clave:
                     </span>
                     <div
@@ -231,7 +231,7 @@ export function InsightsPanel({
                                 style={{
                                     padding: '0.2rem 0.5rem',
                                     borderRadius: '6px',
-                                    fontSize: '0.72rem',
+                                    fontSize: '0.875rem',
                                     background: 'rgba(251,191,36,0.08)',
                                     border: '1px solid rgba(251,191,36,0.2)',
                                     color: '#FBBF24',
@@ -242,7 +242,7 @@ export function InsightsPanel({
                         ))}
                     </div>
                 </div>
-                <div style={{ color: '#8b9ec7', fontSize: '0.8rem' }}>
+                <div style={{ color: '#8b9ec7', fontSize: '0.925rem' }}>
                     <span style={{ color: '#FBBF24', fontWeight: 600 }}>Sentimiento publico: </span>
                     {marketContext.publicSentiment}
                 </div>
@@ -284,7 +284,7 @@ function Section({
                 <h3
                     style={{
                         color,
-                        fontSize: '0.95rem',
+                        fontSize: '1.05rem',
                         fontWeight: 700,
                         margin: 0,
                     }}
@@ -303,7 +303,7 @@ function ListItem({ text }: { text: string }) {
         <div
             style={{
                 color: '#8b9ec7',
-                fontSize: '0.83rem',
+                fontSize: '0.95rem',
                 lineHeight: 1.5,
                 padding: '0.3rem 0',
                 paddingLeft: '1rem',

@@ -91,7 +91,10 @@ const registry: Record<string, SectionRenderer> = {
     integrations: integrationsRenderer,
     tabbed_features: tabbedFeaturesRenderer,
 
-    // ── AI-generated section name aliases ──
+    // ── Political blocks ──
+    problem: solutionRenderer,
+    proposal: solutionRenderer,
+    data: featuresRenderer,
     proposals: featuresRenderer,
     biography: aboutRenderer,
     biography_candidate: aboutRenderer,

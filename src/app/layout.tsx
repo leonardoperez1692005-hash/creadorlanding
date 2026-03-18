@@ -12,6 +12,15 @@ export const metadata: Metadata = {
     },
     description:
         'Crea landing pages estáticas ultra-rápidas y desplegalas en WordPress con un clic.',
+    manifest: '/manifest.json',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'black-translucent',
+        title: 'BrandVortix Pol',
+    },
+    other: {
+        'mobile-web-app-capable': 'yes',
+    },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

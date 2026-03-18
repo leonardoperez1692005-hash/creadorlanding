@@ -6,9 +6,13 @@ export const featuresRenderer: SectionRenderer = (c, t, _ctx) => {
     const items = Array.isArray(c.items) ? c.items : []
     if (!items.length) return ''
 
+    const eyebrow = (c.eyebrow as string) || ''
     const hasSubtitle = !!c.subtitle
     const title = c.title ? esc(c.title as string) : 'Características'
     const titleClass = hasSubtitle ? 'sl-section-title has-sub reveal' : 'sl-section-title reveal'
+    const eyebrowHtml = eyebrow
+        ? `<div class="reveal" style="font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:${t.accent};margin-bottom:12px;text-align:center">${esc(eyebrow)}</div>`
+        : ''
     const subtitle = hasSubtitle
         ? `<p class="sl-section-subtitle reveal">${esc(c.subtitle as string)}</p>`
         : ''
@@ -32,6 +36,7 @@ export const featuresRenderer: SectionRenderer = (c, t, _ctx) => {
         .join('')
 
     return `<section class="sl-benefits"${bgStyle}><div class="container">
+  ${eyebrowHtml}
   <h2 class="${titleClass}">${title}</h2>
   ${subtitle}
   <div class="benefit-grid">${cards}</div>

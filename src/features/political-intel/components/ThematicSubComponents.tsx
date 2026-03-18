@@ -16,9 +16,9 @@ export function SentimentBadge({ overall }: { overall: string }) {
     return (
         <span
             style={{
-                padding: '0.1rem 0.4rem',
+                padding: '0.2rem 0.5rem',
                 borderRadius: '4px',
-                fontSize: '0.68rem',
+                fontSize: '0.825rem',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -42,9 +42,9 @@ export function SeverityBadge({ severity }: { severity: string }) {
     return (
         <span
             style={{
-                padding: '0.1rem 0.3rem',
+                padding: '0.2rem 0.45rem',
                 borderRadius: '3px',
-                fontSize: '0.62rem',
+                fontSize: '0.8rem',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -72,7 +72,7 @@ export function OutputBlock({ label, content }: { label: string; content: string
             <span
                 style={{
                     color: '#00c8ff',
-                    fontSize: '0.68rem',
+                    fontSize: '0.825rem',
                     fontWeight: 700,
                     textTransform: 'uppercase',
                 }}
@@ -82,7 +82,7 @@ export function OutputBlock({ label, content }: { label: string; content: string
             <p
                 style={{
                     color: '#8b9ec7',
-                    fontSize: '0.72rem',
+                    fontSize: '0.875rem',
                     margin: '0.2rem 0 0',
                     whiteSpace: 'pre-wrap',
                     lineHeight: 1.4,
@@ -96,18 +96,183 @@ export function OutputBlock({ label, content }: { label: string; content: string
 
 // ─── AngleCard ──────────────────────────────
 
-export function AngleCard({ angle, index }: { angle: PoliticalAttackVector; index: number }) {
+export function AngleCard({
+    angle,
+    index,
+    selected,
+    onToggleSelect,
+}: {
+    angle: PoliticalAttackVector
+    index: number
+    selected?: boolean
+    onToggleSelect?: () => void
+}) {
     const [expanded, setExpanded] = useState(false)
+    const isSelectable = onToggleSelect !== undefined
 
     return (
         <div
             style={{
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid #1e2540',
+                padding: '1rem 1.25rem',
+                borderRadius: '10px',
+                background: selected ? 'rgba(124,58,237,0.06)' : 'rgba(255,255,255,0.02)',
+                border: selected ? '1px solid rgba(124,58,237,0.4)' : '1px solid #1e2540',
+                transition: 'border-color 0.2s, background 0.2s',
             }}
         >
+            {/* Header: number + topic + select checkbox */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem',
+                }}
+            >
+                {isSelectable && (
+                    <button
+                        type="button"
+                        onClick={onToggleSelect}
+                        aria-label={`${selected ? 'Deseleccionar' : 'Seleccionar'} ángulo ${index + 1} para la landing`}
+                        style={{
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '4px',
+                            border: selected ? '2px solid #A78BFA' : '2px solid #4B5563',
+                            background: selected ? 'rgba(124,58,237,0.3)' : 'transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            color: '#A78BFA',
+                            fontSize: '0.875rem',
+                            fontWeight: 700,
+                            padding: 0,
+                        }}
+                    >
+                        {selected ? '✓' : ''}
+                    </button>
+                )}
+                <span
+                    style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(16,185,129,0.15)',
+                        color: '#10B981',
+                        flexShrink: 0,
+                    }}
+                >
+                    {index + 1}
+                </span>
+                <span style={{ color: '#10B981', fontSize: '0.95rem', fontWeight: 600 }}>
+                    {angle.targetPolitician}
+                </span>
+                {angle.targetHandle && (
+                    <span style={{ color: '#4B5563', fontSize: '0.875rem' }}>
+                        {angle.targetHandle}
+                    </span>
+                )}
+            </div>
+
+            {/* ÁNGULO DE COMUNICACIÓN — el protagonista visual */}
+            <div
+                style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    background: 'rgba(0,200,255,0.06)',
+                    border: '1px solid rgba(0,200,255,0.15)',
+                    marginBottom: '0.75rem',
+                }}
+            >
+                <span
+                    style={{
+                        color: '#00c8ff',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                    }}
+                >
+                    Ángulo de comunicación
+                </span>
+                <p
+                    style={{
+                        color: '#e2e8f0',
+                        fontSize: '1.05rem',
+                        fontWeight: 600,
+                        margin: '0.3rem 0 0',
+                        lineHeight: 1.5,
+                    }}
+                >
+                    {angle.attackAngle}
+                </p>
+            </div>
+
+            {/* Dolor vs Propuesta — layout visual claro */}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.75rem',
+                    marginBottom: '0.25rem',
+                }}
+            >
+                <div>
+                    <span
+                        style={{
+                            color: '#F87171',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                        }}
+                    >
+                        Dolor ciudadano
+                    </span>
+                    <p
+                        style={{
+                            color: '#e2e8f0',
+                            fontSize: '0.95rem',
+                            margin: '0.2rem 0 0',
+                            lineHeight: 1.5,
+                        }}
+                    >
+                        {angle.vulnerability}
+                    </p>
+                </div>
+                <div>
+                    <span
+                        style={{
+                            color: '#10B981',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                        }}
+                    >
+                        Nuestra propuesta
+                    </span>
+                    <p
+                        style={{
+                            color: '#e2e8f0',
+                            fontSize: '0.95rem',
+                            margin: '0.2rem 0 0',
+                            lineHeight: 1.5,
+                        }}
+                    >
+                        {angle.clientStrength}
+                    </p>
+                </div>
+            </div>
+
+            {/* Coherence justification — collapsed by default */}
             <div
                 role="button"
                 tabIndex={0}
@@ -118,62 +283,26 @@ export function AngleCard({ angle, index }: { angle: PoliticalAttackVector; inde
                         setExpanded(!expanded)
                     }
                 }}
-                style={{ cursor: 'pointer' }}
+                aria-label={expanded ? 'Ocultar detalles del ángulo' : 'Ver detalles del ángulo'}
+                style={{
+                    cursor: 'pointer',
+                    color: '#6B7280',
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                }}
             >
-                <div
+                <span
                     style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        marginBottom: '0.25rem',
+                        transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s',
                     }}
                 >
-                    <span
-                        style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '50%',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'rgba(16,185,129,0.15)',
-                            color: '#10B981',
-                        }}
-                    >
-                        {index + 1}
-                    </span>
-                    <span style={{ color: '#10B981', fontSize: '0.78rem', fontWeight: 600 }}>
-                        {angle.targetPolitician}
-                    </span>
-                    <span style={{ color: '#4B5563', fontSize: '0.72rem' }}>
-                        {angle.targetHandle}
-                    </span>
-                </div>
-                <p
-                    style={{
-                        color: '#c4cfe8',
-                        fontSize: '0.8rem',
-                        margin: '0.25rem 0',
-                        lineHeight: 1.5,
-                    }}
-                >
-                    <strong style={{ color: '#F87171' }}>Dolor:</strong> {angle.vulnerability}
-                </p>
-                <p
-                    style={{
-                        color: '#c4cfe8',
-                        fontSize: '0.8rem',
-                        margin: '0.15rem 0',
-                        lineHeight: 1.5,
-                    }}
-                >
-                    <strong style={{ color: '#10B981' }}>Propuesta:</strong> {angle.clientStrength}
-                </p>
-                <p style={{ color: '#8b9ec7', fontSize: '0.78rem', margin: '0.15rem 0' }}>
-                    {angle.attackAngle}
-                </p>
+                    ▶
+                </span>
+                {expanded ? 'Ocultar detalles' : 'Ver justificación y contenido generado'}
             </div>
 
             {expanded && (
@@ -184,6 +313,19 @@ export function AngleCard({ angle, index }: { angle: PoliticalAttackVector; inde
                         borderTop: '1px solid #1e2540',
                     }}
                 >
+                    {angle.coherenceJustification && (
+                        <p
+                            style={{
+                                color: '#8b9ec7',
+                                fontSize: '0.925rem',
+                                margin: '0 0 0.75rem',
+                                lineHeight: 1.5,
+                                fontStyle: 'italic',
+                            }}
+                        >
+                            {angle.coherenceJustification}
+                        </p>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                         <OutputBlock
                             label="Ad Copy"

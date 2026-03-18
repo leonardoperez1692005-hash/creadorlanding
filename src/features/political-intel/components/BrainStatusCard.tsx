@@ -43,7 +43,7 @@ export function BrainStatusCard({ brain }: BrainStatusCardProps) {
                 }}
             >
                 <Brain size={20} color="#00c8ff" />
-                <h3 style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>
+                <h3 style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>
                     Cerebro de Campaña
                 </h3>
                 <span
@@ -51,7 +51,7 @@ export function BrainStatusCard({ brain }: BrainStatusCardProps) {
                         marginLeft: 'auto',
                         color: completenessColor,
                         fontWeight: 700,
-                        fontSize: '1.1rem',
+                        fontSize: '1.2rem',
                     }}
                 >
                     {brain.completeness}%
@@ -87,7 +87,7 @@ export function BrainStatusCard({ brain }: BrainStatusCardProps) {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            fontSize: '0.82rem',
+                            fontSize: '0.95rem',
                         }}
                     >
                         {item.ok ? (
@@ -100,7 +100,7 @@ export function BrainStatusCard({ brain }: BrainStatusCardProps) {
                             <span
                                 style={{
                                     color: '#8b9ec7',
-                                    fontSize: '0.75rem',
+                                    fontSize: '0.875rem',
                                     marginLeft: 'auto',
                                 }}
                             >

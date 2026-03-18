@@ -35,26 +35,32 @@ export function ThematicIntelPanel() {
     const [isGeneratingLanding, setIsGeneratingLanding] = useState(false)
     const [landingError, setLandingError] = useState<string | null>(null)
 
-    const handleGenerateLanding = useCallback(async () => {
-        if (!thematicReportId) return
-        setIsGeneratingLanding(true)
-        setLandingError(null)
+    const handleGenerateLanding = useCallback(
+        async (selectedAngleIndices?: number[]) => {
+            if (!thematicReportId) return
+            setIsGeneratingLanding(true)
+            setLandingError(null)
 
-        try {
-            const result = await getThematicLandingDataAction(thematicReportId)
-            if (!result.success) {
-                setLandingError(result.error)
+            try {
+                const result = await getThematicLandingDataAction(
+                    thematicReportId,
+                    selectedAngleIndices,
+                )
+                if (!result.success) {
+                    setLandingError(result.error)
+                    setIsGeneratingLanding(false)
+                    return
+                }
+
+                localStorage.setItem('bv_political_landing', JSON.stringify(result.data))
+                router.push('/wizard?fromPoliticalIntel=1')
+            } catch (e) {
+                setLandingError((e as Error).message)
                 setIsGeneratingLanding(false)
-                return
             }
-
-            localStorage.setItem('bv_political_landing', JSON.stringify(result.data))
-            router.push('/wizard?fromPoliticalIntel=1')
-        } catch (e) {
-            setLandingError((e as Error).message)
-            setIsGeneratingLanding(false)
-        }
-    }, [thematicReportId, router])
+        },
+        [thematicReportId, router],
+    )
 
     const handleTopicAdded = useCallback(
         (topic: PoliticalTopic) => {
@@ -124,14 +130,14 @@ export function ThematicIntelPanel() {
                         <h2
                             style={{
                                 color: '#fff',
-                                fontSize: '1.1rem',
+                                fontSize: '1.2rem',
                                 fontWeight: 700,
                                 margin: 0,
                             }}
                         >
                             Inteligencia Temática
                         </h2>
-                        <p style={{ color: '#8b9ec7', fontSize: '0.8rem', margin: 0 }}>
+                        <p style={{ color: '#8b9ec7', fontSize: '0.925rem', margin: 0 }}>
                             Investigá temas sociales, descubrí dolores ciudadanos y generá ángulos
                             de comunicación
                         </p>
@@ -145,7 +151,7 @@ export function ThematicIntelPanel() {
                         gap: '0.35rem',
                         padding: '0.5rem 1rem',
                         borderRadius: '6px',
-                        fontSize: '0.82rem',
+                        fontSize: '0.95rem',
                         fontWeight: 600,
                         background: 'rgba(16,185,129,0.1)',
                         border: '1px solid rgba(16,185,129,0.2)',
@@ -174,10 +180,10 @@ export function ThematicIntelPanel() {
                     }}
                 >
                     <BookOpen size={36} color="#1e2540" style={{ marginBottom: '0.75rem' }} />
-                    <p style={{ color: '#6B7280', fontSize: '0.9rem', margin: 0 }}>
+                    <p style={{ color: '#6B7280', fontSize: '1rem', margin: 0 }}>
                         Agregá un tema social para investigar
                     </p>
-                    <p style={{ color: '#4B5563', fontSize: '0.78rem', margin: '0.3rem 0 0' }}>
+                    <p style={{ color: '#4B5563', fontSize: '0.925rem', margin: '0.3rem 0 0' }}>
                         Ej: Inseguridad, Inflación, Desempleo, Educación, Salud
                     </p>
                 </div>
@@ -219,22 +225,22 @@ export function ThematicIntelPanel() {
                                     <span
                                         style={{
                                             color: '#10B981',
-                                            fontSize: '0.85rem',
+                                            fontSize: '0.95rem',
                                             fontWeight: 600,
                                         }}
                                     >
                                         {topic.name}
                                     </span>
                                     {topic.description && (
-                                        <span style={{ color: '#6B7280', fontSize: '0.78rem' }}>
+                                        <span style={{ color: '#6B7280', fontSize: '0.925rem' }}>
                                             — {topic.description}
                                         </span>
                                     )}
                                     {topic.contextPrompt ? (
                                         <span
                                             style={{
-                                                fontSize: '0.6rem',
-                                                padding: '0.1rem 0.35rem',
+                                                fontSize: '0.8rem',
+                                                padding: '0.2rem 0.5rem',
                                                 borderRadius: '3px',
                                                 background: 'rgba(16,185,129,0.15)',
                                                 color: '#10B981',
@@ -253,8 +259,8 @@ export function ThematicIntelPanel() {
                                     ) : (
                                         <span
                                             style={{
-                                                fontSize: '0.6rem',
-                                                padding: '0.1rem 0.35rem',
+                                                fontSize: '0.8rem',
+                                                padding: '0.2rem 0.5rem',
                                                 borderRadius: '3px',
                                                 background: 'rgba(107,114,128,0.1)',
                                                 color: '#6B7280',
@@ -306,7 +312,7 @@ export function ThematicIntelPanel() {
                                             gap: '0.3rem',
                                             padding: '0.3rem 0.7rem',
                                             borderRadius: '5px',
-                                            fontSize: '0.75rem',
+                                            fontSize: '0.875rem',
                                             fontWeight: 600,
                                             background: 'rgba(0,200,255,0.08)',
                                             border: '1px solid rgba(0,200,255,0.15)',
@@ -356,7 +362,7 @@ export function ThematicIntelPanel() {
                                         style={{
                                             padding: '0.5rem 0.75rem',
                                             borderRadius: '6px',
-                                            fontSize: '0.8rem',
+                                            fontSize: '0.925rem',
                                             background: 'rgba(255,255,255,0.04)',
                                             border: '1px solid rgba(16,185,129,0.15)',
                                             color: '#c4cfe8',
@@ -373,7 +379,7 @@ export function ThematicIntelPanel() {
                                             justifyContent: 'space-between',
                                         }}
                                     >
-                                        <span style={{ color: '#4B5563', fontSize: '0.68rem' }}>
+                                        <span style={{ color: '#4B5563', fontSize: '0.825rem' }}>
                                             {editContext.length}/10.000
                                         </span>
                                         <div style={{ display: 'flex', gap: '0.35rem' }}>
@@ -385,7 +391,7 @@ export function ThematicIntelPanel() {
                                                     gap: '0.2rem',
                                                     padding: '0.25rem 0.6rem',
                                                     borderRadius: '4px',
-                                                    fontSize: '0.72rem',
+                                                    fontSize: '0.875rem',
                                                     background: 'transparent',
                                                     border: '1px solid #1e2540',
                                                     color: '#6B7280',
@@ -403,7 +409,7 @@ export function ThematicIntelPanel() {
                                                     gap: '0.2rem',
                                                     padding: '0.25rem 0.6rem',
                                                     borderRadius: '4px',
-                                                    fontSize: '0.72rem',
+                                                    fontSize: '0.875rem',
                                                     fontWeight: 600,
                                                     background: '#10B981',
                                                     border: 'none',
@@ -443,10 +449,10 @@ export function ThematicIntelPanel() {
                         color="#00c8ff"
                         style={{ animation: 'spin 1s linear infinite' }}
                     />
-                    <span style={{ color: '#00c8ff', fontSize: '0.82rem' }}>
+                    <span style={{ color: '#00c8ff', fontSize: '0.95rem' }}>
                         {thematicPhase === 'researching' &&
-                            'Investigando tema via Bright Data SERP...'}
-                        {thematicPhase === 'analyzing' && 'Gemini analizando dolores ciudadanos...'}
+                            'Investigando tema en múltiples fuentes...'}
+                        {thematicPhase === 'analyzing' && 'IA analizando dolores ciudadanos...'}
                         {thematicPhase === 'generating-angles' &&
                             'Generando ángulos de comunicación...'}
                     </span>
@@ -464,7 +470,7 @@ export function ThematicIntelPanel() {
                         marginBottom: '1.25rem',
                     }}
                 >
-                    <p style={{ color: '#F87171', fontSize: '0.82rem', margin: 0 }}>
+                    <p style={{ color: '#F87171', fontSize: '0.95rem', margin: 0 }}>
                         {thematicError}
                     </p>
                 </div>

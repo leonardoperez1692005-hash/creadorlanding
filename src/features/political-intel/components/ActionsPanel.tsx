@@ -1,14 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Zap, ArrowRight, Loader2 } from 'lucide-react'
+import { Zap, Brain, Layout } from 'lucide-react'
+import { useIntelligenceStore } from '../store/intelligenceStore'
 import type { PoliticalIntelReport, PoliticalSnapshotMeta } from '../types'
 
 interface ActionsPanelProps {
     actions: PoliticalIntelReport['recommendedActions']
-    comparativeAnalysis: PoliticalIntelReport['comparativeAnalysis']
-    executiveSummary: string
     meta?: PoliticalSnapshotMeta | null
 }
 
@@ -18,112 +15,8 @@ const priorityColors: Record<string, { bg: string; border: string; text: string 
     low: { bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.2)', text: '#34D399' },
 }
 
-export function ActionsPanel({
-    actions,
-    comparativeAnalysis,
-    executiveSummary,
-    meta,
-}: ActionsPanelProps) {
-    const router = useRouter()
-    const [loadingStrategy, setLoadingStrategy] = useState(false)
-    const [loadingLanding, setLoadingLanding] = useState(false)
-
-    function handleCreateStrategy() {
-        setLoadingStrategy(true)
-
-        // Build brief from intelligence data
-        const competitors = comparativeAnalysis
-            .map((c) => `https://x.com/${c.handle.replace('@', '')}`)
-            .join('\n')
-
-        const targetAudience = comparativeAnalysis
-            .map((c) => c.audienceProfile)
-            .filter(Boolean)
-            .join('. ')
-
-        const briefData = {
-            brandName: 'Intelligence Analysis',
-            sector: 'politica',
-            brandValues: 'Analisis estrategico basado en datos de redes sociales',
-            targetAudience: targetAudience || 'Audiencia politica argentina',
-            objectives: executiveSummary.substring(0, 300),
-            competitors,
-            country: 'ar',
-        }
-
-        localStorage.setItem('bv_intel_brief', JSON.stringify(briefData))
-        router.push('/strategy?fromIntelligence=1')
-    }
-
-    async function handleCreateLanding() {
-        setLoadingLanding(true)
-
-        // Build strategy-like data from intelligence for the landing generator
-        const topAction = actions.find((a) => a.priority === 'high') ?? actions[0]
-        const topTarget = comparativeAnalysis[0]
-
-        const strategyForLanding = {
-            competitorAnalysis: comparativeAnalysis.map((c) => ({
-                name: c.politician,
-                strengths: c.strengths,
-                weaknesses: c.weaknesses,
-                mainMessage: c.positioningSummary,
-            })),
-            marketInsights: {
-                trends: [],
-                painPoints: comparativeAnalysis.flatMap((c) => c.weaknesses),
-                opportunities: [topAction?.action ?? ''],
-                keywords: ['politica', 'argentina', 'estrategia'],
-            },
-            salesAngles: [
-                {
-                    name: topAction?.action ?? 'Consultoria Politica',
-                    type: 'authority' as const,
-                    hook: executiveSummary.substring(0, 100),
-                    description: topAction?.rationale ?? '',
-                    adVariants: [],
-                },
-            ],
-            landingBlueprint: {
-                recommendedType: 'VSL',
-                sections: [
-                    {
-                        name: 'Hero',
-                        purpose: 'Captar atencion',
-                        suggestedContent: executiveSummary.substring(0, 200),
-                    },
-                    {
-                        name: 'Beneficios',
-                        purpose: 'Mostrar valor',
-                        suggestedContent: topAction?.action ?? '',
-                    },
-                ],
-            },
-            adsStrategy: { platforms: ['Meta'], hooks: [], imagePrompts: [] },
-            contentPillars: [],
-        }
-
-        const briefData = {
-            brandName: topTarget?.politician ?? 'Intelligence',
-            sector: 'politica',
-        }
-
-        // Use the same bridge pattern as Strategy → Wizard
-        localStorage.setItem('bv_strategy_for_landing', JSON.stringify(strategyForLanding))
-        localStorage.setItem('bv_strategy_brief', JSON.stringify(briefData))
-
-        // Navigate to strategy to use generateLandingContentAction
-        localStorage.setItem(
-            'bv_intel_landing_request',
-            JSON.stringify({
-                strategy: strategyForLanding,
-                templateType: 'vsl',
-                briefData,
-            }),
-        )
-
-        router.push('/strategy?fromIntelligence=1&generateLanding=1')
-    }
+export function ActionsPanel({ actions, meta }: ActionsPanelProps) {
+    const setView = useIntelligenceStore((s) => s.setView)
 
     return (
         <div
@@ -134,6 +27,36 @@ export function ActionsPanel({
                 padding: '1.25rem',
             }}
         >
+            {/* Zone label */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    marginBottom: '0.75rem',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '6px',
+                    background: 'rgba(16,185,129,0.06)',
+                    border: '1px solid rgba(16,185,129,0.15)',
+                    width: 'fit-content',
+                }}
+            >
+                <span
+                    style={{
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        color: '#10B981',
+                    }}
+                >
+                    🛡️ Para tu campaña
+                </span>
+                <span style={{ color: '#6B7280', fontSize: '0.85rem' }}>
+                    — Acciones estratégicas basadas en el análisis de tus rivales
+                </span>
+            </div>
+
             <div
                 style={{
                     display: 'flex',
@@ -147,7 +70,7 @@ export function ActionsPanel({
                 <h3
                     style={{
                         color: '#FF007F',
-                        fontSize: '0.95rem',
+                        fontSize: '1.05rem',
                         fontWeight: 700,
                         display: 'flex',
                         alignItems: 'center',
@@ -157,55 +80,47 @@ export function ActionsPanel({
                     <Zap size={18} /> Acciones Recomendadas
                 </h3>
 
-                {/* Bridge buttons */}
+                {/* Action buttons — navigate within political intel module */}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button
-                        onClick={handleCreateStrategy}
-                        disabled={loadingStrategy}
+                        onClick={() => setView('command-center')}
+                        aria-label="Ir al cerebro estratégico"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.4rem',
                             padding: '0.4rem 0.75rem',
                             borderRadius: '8px',
-                            fontSize: '0.75rem',
+                            fontSize: '0.875rem',
                             fontWeight: 600,
                             background: 'rgba(124,58,237,0.15)',
                             border: '1px solid rgba(124,58,237,0.3)',
                             color: '#A78BFA',
-                            cursor: loadingStrategy ? 'not-allowed' : 'pointer',
+                            cursor: 'pointer',
                         }}
                     >
-                        {loadingStrategy ? (
-                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                            <ArrowRight size={14} />
-                        )}
-                        Crear Estrategia
+                        <Brain size={14} />
+                        Cerebro Estratégico
                     </button>
                     <button
-                        onClick={handleCreateLanding}
-                        disabled={loadingLanding}
+                        onClick={() => setView('landing')}
+                        aria-label="Crear landing de campaña"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.4rem',
                             padding: '0.4rem 0.75rem',
                             borderRadius: '8px',
-                            fontSize: '0.75rem',
+                            fontSize: '0.875rem',
                             fontWeight: 600,
                             background:
                                 'linear-gradient(135deg, rgba(0,200,255,0.15), rgba(124,58,237,0.15))',
                             border: '1px solid rgba(0,200,255,0.3)',
                             color: '#00c8ff',
-                            cursor: loadingLanding ? 'not-allowed' : 'pointer',
+                            cursor: 'pointer',
                         }}
                     >
-                        {loadingLanding ? (
-                            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                            <Zap size={14} />
-                        )}
+                        <Layout size={14} />
                         Crear Landing
                     </button>
                 </div>
@@ -225,8 +140,8 @@ export function ActionsPanel({
                         marginBottom: '0.75rem',
                     }}
                 >
-                    <span style={{ fontSize: '0.85rem' }}>📊</span>
-                    <span style={{ color: '#8b9ec7', fontSize: '0.75rem' }}>
+                    <span style={{ fontSize: '0.95rem' }}>📊</span>
+                    <span style={{ color: '#8b9ec7', fontSize: '0.875rem' }}>
                         Acciones basadas en el análisis de{' '}
                         <strong style={{ color: '#00c8ff' }}>
                             {(meta.totalSources ?? 0).toLocaleString('es-AR')} fuentes
@@ -270,7 +185,7 @@ export function ActionsPanel({
                                     style={{
                                         padding: '0.15rem 0.4rem',
                                         borderRadius: '4px',
-                                        fontSize: '0.65rem',
+                                        fontSize: '0.8rem',
                                         fontWeight: 700,
                                         textTransform: 'uppercase' as const,
                                         background: colors.bg,
@@ -281,7 +196,7 @@ export function ActionsPanel({
                                     {action.priority}
                                 </span>
                                 <span
-                                    style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}
+                                    style={{ color: '#fff', fontSize: '0.95rem', fontWeight: 600 }}
                                 >
                                     {action.action}
                                 </span>
@@ -289,13 +204,13 @@ export function ActionsPanel({
                             <div
                                 style={{
                                     color: '#8b9ec7',
-                                    fontSize: '0.78rem',
+                                    fontSize: '0.925rem',
                                     marginBottom: '0.2rem',
                                 }}
                             >
                                 {action.rationale}
                             </div>
-                            <div style={{ color: '#6B7280', fontSize: '0.72rem' }}>
+                            <div style={{ color: '#6B7280', fontSize: '0.875rem' }}>
                                 Audiencia: {action.targetAudience}
                             </div>
                         </div>

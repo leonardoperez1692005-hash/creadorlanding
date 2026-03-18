@@ -80,18 +80,18 @@ export function ProfileCard({
                     </div>
                 )}
                 <div>
-                    <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
+                    <div style={{ color: '#fff', fontWeight: 700, fontSize: '1.05rem' }}>
                         {profile.displayName}
                     </div>
-                    <div style={{ color: '#00c8ff', fontSize: '0.8rem' }}>{profile.handle}</div>
-                    <div style={{ color: '#6B7280', fontSize: '0.7rem' }}>
+                    <div style={{ color: '#00c8ff', fontSize: '0.925rem' }}>{profile.handle}</div>
+                    <div style={{ color: '#6B7280', fontSize: '0.85rem' }}>
                         {metrics.party} · {metrics.role}
                     </div>
                 </div>
             </div>
 
             {/* Bio */}
-            <div style={{ color: '#8b9ec7', fontSize: '0.8rem', lineHeight: 1.5 }}>
+            <div style={{ color: '#8b9ec7', fontSize: '0.925rem', lineHeight: 1.5 }}>
                 {displayBio}
                 {bioTruncated && (
                     <span
@@ -130,7 +130,7 @@ export function ProfileCard({
 
             {/* Strengths / Weaknesses */}
             {(strengths.length > 0 || weaknesses.length > 0) && (
-                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.875rem' }}>
                     {strengths.length > 0 && (
                         <div style={{ flex: 1 }}>
                             <div
@@ -183,10 +183,10 @@ function MetricBox({ label, value, color }: { label: string; value: string; colo
                 textAlign: 'center',
             }}
         >
-            <div style={{ color: '#6B7280', fontSize: '0.65rem', marginBottom: '0.15rem' }}>
+            <div style={{ color: '#6B7280', fontSize: '0.8rem', marginBottom: '0.15rem' }}>
                 {label}
             </div>
-            <div style={{ color: color ?? '#fff', fontSize: '0.85rem', fontWeight: 700 }}>
+            <div style={{ color: color ?? '#fff', fontSize: '0.95rem', fontWeight: 700 }}>
                 {value}
             </div>
         </div>

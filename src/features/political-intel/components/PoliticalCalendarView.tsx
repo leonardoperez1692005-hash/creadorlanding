@@ -55,7 +55,7 @@ export function PoliticalCalendarView() {
                 <h3
                     style={{
                         color: '#fff',
-                        fontSize: '1.1rem',
+                        fontSize: '1.2rem',
                         fontWeight: 700,
                         margin: '0 0 0.5rem',
                     }}
@@ -65,7 +65,7 @@ export function PoliticalCalendarView() {
                 <p
                     style={{
                         color: '#8b9ec7',
-                        fontSize: '0.85rem',
+                        fontSize: '0.95rem',
                         textAlign: 'center',
                         maxWidth: 480,
                         margin: '0 0 1.5rem',
@@ -87,7 +87,7 @@ export function PoliticalCalendarView() {
                         padding: '0.75rem 1.5rem',
                         borderRadius: '8px',
                         fontWeight: 600,
-                        fontSize: '0.9rem',
+                        fontSize: '1rem',
                         color: '#fff',
                         border: 'none',
                         cursor: 'pointer',
@@ -139,10 +139,10 @@ export function PoliticalCalendarView() {
                         style={{ animation: 'spin 1s linear infinite' }}
                     />
                 </div>
-                <p style={{ color: '#00c8ff', fontSize: '0.9rem', margin: '0 0 0.25rem' }}>
+                <p style={{ color: '#00c8ff', fontSize: '1rem', margin: '0 0 0.25rem' }}>
                     Creando contenido para 4 plataformas × 7 días...
                 </p>
-                <p style={{ color: '#6B7280', fontSize: '0.8rem', margin: 0 }}>
+                <p style={{ color: '#6B7280', fontSize: '0.925rem', margin: 0 }}>
                     Esto puede tomar 20-40 segundos
                 </p>
                 <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
@@ -166,7 +166,7 @@ export function PoliticalCalendarView() {
                 <p
                     style={{
                         color: '#F87171',
-                        fontSize: '0.85rem',
+                        fontSize: '0.95rem',
                         padding: '0.75rem 1rem',
                         borderRadius: '8px',
                         background: 'rgba(248,113,113,0.08)',
@@ -191,7 +191,7 @@ export function PoliticalCalendarView() {
                         background: 'rgba(0,200,255,0.1)',
                         border: '1px solid rgba(0,200,255,0.2)',
                         color: '#00c8ff',
-                        fontSize: '0.82rem',
+                        fontSize: '0.95rem',
                         fontWeight: 600,
                         cursor: 'pointer',
                     }}
@@ -225,7 +225,7 @@ export function PoliticalCalendarView() {
                                 <p
                                     style={{
                                         color: '#10B981',
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.875rem',
                                         fontWeight: 700,
                                         margin: '0 0 0.2rem',
                                         textTransform: 'uppercase',
@@ -239,7 +239,7 @@ export function PoliticalCalendarView() {
                     <h2
                         style={{
                             color: '#fff',
-                            fontSize: '1.1rem',
+                            fontSize: '1.2rem',
                             fontWeight: 700,
                             margin: '0 0 0.25rem',
                         }}
@@ -247,7 +247,7 @@ export function PoliticalCalendarView() {
                         {calendar.weeklyTheme}
                     </h2>
                     {campaignProfile && (
-                        <p style={{ color: '#8b9ec7', fontSize: '0.78rem', margin: 0 }}>
+                        <p style={{ color: '#8b9ec7', fontSize: '0.925rem', margin: 0 }}>
                             {campaignProfile.candidateName} · {campaignProfile.party} · Estilo:{' '}
                             {campaignProfile.communicationStyle}
                         </p>
@@ -266,7 +266,7 @@ export function PoliticalCalendarView() {
                         background: 'rgba(0,200,255,0.08)',
                         border: '1px solid rgba(0,200,255,0.15)',
                         color: '#00c8ff',
-                        fontSize: '0.78rem',
+                        fontSize: '0.925rem',
                         fontWeight: 600,
                         cursor: 'pointer',
                     }}
@@ -290,7 +290,7 @@ export function PoliticalCalendarView() {
                 }}
             >
                 <ShieldCheck size={14} color="#34D399" />
-                <span style={{ color: '#34D399', fontSize: '0.75rem' }}>
+                <span style={{ color: '#34D399', fontSize: '0.875rem' }}>
                     Contenido generado respetando tus líneas rojas y estilo comunicacional
                 </span>
             </div>
@@ -318,7 +318,7 @@ export function PoliticalCalendarView() {
                         }}
                     >
                         <Lightbulb size={14} color="#A78BFA" />
-                        <span style={{ color: '#A78BFA', fontSize: '0.8rem', fontWeight: 600 }}>
+                        <span style={{ color: '#A78BFA', fontSize: '0.925rem', fontWeight: 600 }}>
                             Tips de Campaña
                         </span>
                     </div>
@@ -327,7 +327,7 @@ export function PoliticalCalendarView() {
                             key={i}
                             style={{
                                 color: '#8b9ec7',
-                                fontSize: '0.8rem',
+                                fontSize: '0.925rem',
                                 margin: '0.25rem 0',
                                 lineHeight: 1.5,
                             }}

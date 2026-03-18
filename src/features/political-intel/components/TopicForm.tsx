@@ -55,33 +55,51 @@ export function TopicForm({ onTopicAdded, onCancel }: TopicFormProps) {
             }}
         >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                <input
-                    value={topicName}
-                    onChange={(e) => setTopicName(e.target.value)}
-                    placeholder="Nombre del tema (ej: Inseguridad, Inflación, Educación)"
-                    style={{
-                        padding: '0.5rem 0.75rem',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid #1e2540',
-                        color: '#fff',
-                        outline: 'none',
-                    }}
-                />
+                <div>
+                    <input
+                        value={topicName}
+                        onChange={(e) => setTopicName(e.target.value)}
+                        placeholder="Tema a investigar (ej: Libre circulación de armas, Inflación en alimentos)"
+                        style={{
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '6px',
+                            fontSize: '0.95rem',
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid #1e2540',
+                            color: '#fff',
+                            outline: 'none',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                        }}
+                        aria-label="Nombre del tema a investigar"
+                    />
+                    <p
+                        style={{
+                            color: '#4B5563',
+                            fontSize: '0.825rem',
+                            margin: '0.25rem 0 0',
+                            lineHeight: 1.4,
+                        }}
+                    >
+                        Tip: Se usa como b&uacute;squeda en redes y Google. Cuanto m&aacute;s
+                        espec&iacute;fico, mejores resultados. Ej: {'"'}inseguridad en zona sur{'"'}{' '}
+                        en vez de solo {'"'}inseguridad{'"'}.
+                    </p>
+                </div>
                 <input
                     value={topicDesc}
                     onChange={(e) => setTopicDesc(e.target.value)}
-                    placeholder="Descripción corta (ej: Foco en robos y narcotráfico en zona sur)"
+                    placeholder="Descripci&oacute;n corta (ej: Foco en robos y narcotráfico en zona sur)"
                     style={{
                         padding: '0.5rem 0.75rem',
                         borderRadius: '6px',
-                        fontSize: '0.82rem',
+                        fontSize: '0.95rem',
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid #1e2540',
                         color: '#c4cfe8',
                         outline: 'none',
                     }}
+                    aria-label="Descripci&oacute;n corta del tema"
                 />
                 <textarea
                     value={topicContext}
@@ -92,7 +110,7 @@ export function TopicForm({ onTopicAdded, onCancel }: TopicFormProps) {
                     style={{
                         padding: '0.5rem 0.75rem',
                         borderRadius: '6px',
-                        fontSize: '0.82rem',
+                        fontSize: '0.95rem',
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid #1e2540',
                         color: '#c4cfe8',
@@ -102,7 +120,7 @@ export function TopicForm({ onTopicAdded, onCancel }: TopicFormProps) {
                         fontFamily: 'inherit',
                     }}
                 />
-                <p style={{ color: '#4B5563', fontSize: '0.7rem', margin: 0 }}>
+                <p style={{ color: '#4B5563', fontSize: '0.85rem', margin: 0 }}>
                     {topicContext.length}/10.000 caracteres — cuanto más detallado, mejor el
                     análisis
                 </p>
@@ -113,7 +131,7 @@ export function TopicForm({ onTopicAdded, onCancel }: TopicFormProps) {
                         style={{
                             padding: '0.4rem 1rem',
                             borderRadius: '6px',
-                            fontSize: '0.82rem',
+                            fontSize: '0.95rem',
                             fontWeight: 600,
                             background: '#10B981',
                             border: 'none',
@@ -132,7 +150,7 @@ export function TopicForm({ onTopicAdded, onCancel }: TopicFormProps) {
                         style={{
                             padding: '0.4rem 1rem',
                             borderRadius: '6px',
-                            fontSize: '0.82rem',
+                            fontSize: '0.95rem',
                             background: 'transparent',
                             border: '1px solid #1e2540',
                             color: '#6B7280',
@@ -143,7 +161,7 @@ export function TopicForm({ onTopicAdded, onCancel }: TopicFormProps) {
                     </button>
                 </div>
                 {addError && (
-                    <p style={{ color: '#F87171', fontSize: '0.78rem', margin: 0 }}>{addError}</p>
+                    <p style={{ color: '#F87171', fontSize: '0.925rem', margin: 0 }}>{addError}</p>
                 )}
             </div>
         </div>

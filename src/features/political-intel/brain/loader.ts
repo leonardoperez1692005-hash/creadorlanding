@@ -53,7 +53,7 @@ export async function loadCampaignBrain(
             // 5. Last 5 reports (any type)
             supabase
                 .from('political_intel_reports')
-                .select('id, report_type, content, created_at, topic_id')
+                .select('id, report_type, content, attack_vectors, created_at, topic_id')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(5),
@@ -110,6 +110,7 @@ export async function loadCampaignBrain(
             executiveSummary: content?.executiveSummary
                 ? String(content.executiveSummary)
                 : ((content?.executive_summary as string) ?? ''),
+            attackVectors: (r.attack_vectors as Array<Record<string, unknown>>) ?? [],
             createdAt: r.created_at as string,
         }
     })

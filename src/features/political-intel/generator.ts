@@ -7,7 +7,13 @@ import { callGemini, parseAndValidate } from '@/lib/gemini'
 import { logger } from '@/shared/lib/logger'
 import { socialMediaCalendarSchema } from '@/features/attack-plan/schemas'
 import type { SocialMediaCalendar } from '@/features/attack-plan/types'
-import type { PoliticalAttackVector, PoliticalCampaignProfile, PoliticalIntelReport } from './types'
+import type {
+    PoliticalAttackVector,
+    PoliticalCampaignProfile,
+    PoliticalIntelReport,
+    ThematicReport,
+    ThematicCitizenVoice,
+} from './types'
 import { GEMINI_MAX_TOKENS, GEMINI_TEMPERATURE, COUNTRIES } from './config'
 
 // ─── Political Social Calendar ─────────────────────────────
@@ -340,6 +346,8 @@ export async function generatePoliticalLandingContent(
     vectors: PoliticalAttackVector[],
     profile: PoliticalCampaignProfile,
     report: PoliticalIntelReport,
+    sinapsisBlock?: string,
+    thematicIntelBlock?: string,
 ): Promise<PoliticalLandingResult> {
     const countryName = COUNTRIES[profile.country]?.name ?? profile.country
 
@@ -414,15 +422,34 @@ ${profile.toneGuidelines || 'Sin directrices específicas'}
 
 ## CONTEXTO POLÍTICO
 ${report.marketContext?.currentPoliticalClimate || 'Sin contexto disponible'}
+${
+    sinapsisBlock
+        ? `
+## INTELIGENCIA DEL CEREBRO DE CAMPAÑA (Sinapsis)
+Información consolidada de monitoreo, sentimiento público, reportes temáticos y debilidades de rivales:
+${sinapsisBlock}
+`
+        : ''
+}${
+        thematicIntelBlock
+            ? `
+## INTELIGENCIA TEMÁTICA (datos reales de investigación ciudadana)
+Los siguientes datos vienen de reportes temáticos con scraping multi-fuente (Twitter, Reddit, YouTube, SERP).
+USÁ las voces ciudadanas como base para testimoniales. Los pain points con mayor % de mención = más urgentes.
+Si el sentimiento es mayoritariamente negativo, enfatizá urgencia. Si es positivo, reforzá alineación.
 
+${thematicIntelBlock}
+`
+            : ''
+    }
 ## BLOQUES DISPONIBLES PARA LANDING
 Elige los que mejor representen la campaña (7-10 bloques):
 - "hero": Hero principal — headline que refleje el ÁNGULO DE ATAQUE principal, subheadline con propuesta de valor, cta_text ("Sumate", "Conocé las propuestas"), eyebrow (texto corto arriba). USAR el copy pre-generado del vector como base.
 - "benefits": Propuestas clave — items: [{title, description}]. Basadas en propuestas reales del candidato.
 - "about": Sobre el candidato — title, text. Quién es, su trayectoria, por qué se postula. Posicionarlo como la ALTERNATIVA al rival.
 - "comparison": Contraste directo — without_title (referir al rival/status quo), with_title (nuestra propuesta), items: [{without, with}]. CADA item debe reflejar una debilidad del rival vs una fortaleza nuestra según los vectores de ataque.
-- "stats": Números de campaña — items: [{value, label}]. Apoyo, adhesiones, propuestas, etc.
-- "testimonials": Apoyos — items: [{text, author}]. Respaldos de referentes, ciudadanos.
+- "stats": Números de campaña — eyebrow, title, subtitle, items: [{value, label}]. Apoyo, adhesiones, propuestas. Si hay datos de sentimiento en la inteligencia temática, usalos.
+- "testimonials": Voces ciudadanas y apoyos — eyebrow, title, subtitle, items: [{text, author}]. Si hay VOCES CIUDADANAS REALES en la inteligencia temática, USALAS como base (parafraseando si es necesario). Si no, generá testimonios verosímiles.
 - "urgency": Por qué ahora — text. Usar el texto de urgencia de los vectores como base. Vincular con la ventana electoral.
 - "story": La historia — text. Narrativa emocional del candidato como agente de cambio FRENTE al rival.
 - "faq": Preguntas frecuentes — items: [{question, answer}]. Incluir preguntas sobre por qué el rival no es la opción y por qué nosotros sí.
@@ -447,16 +474,20 @@ Elige los que mejor representen la campaña (7-10 bloques):
 6. Respetar líneas rojas en todo el contenido
 7. Si faltan datos → marcar con "[COMPLETAR: descripción]"
 8. Copy profesional, convincente, orientado a generar adhesión Y contraste con el rival
+9. Si hay INTELIGENCIA TEMÁTICA con pain points, los "comparison" DEBEN reflejar los dolores con mayor % de mención
+10. Si hay VOCES CIUDADANAS en la inteligencia temática, los "testimonials" DEBEN basarse en esas citas reales
+11. Si hay SENTIMIENTO PÚBLICO, adaptar el tono: mayoritariamente negativo hacia el rival = reforzar el contraste
 
 Genera un JSON con esta estructura EXACTA:
 {
   "landingSections": ["hero", "benefits", "about", "comparison", "stats", "urgency", "faq", "lead_capture"],
   "landingContent": {
     "hero": { "headline": "...", "subheadline": "...", "cta_text": "...", "eyebrow": "..." },
-    "benefits": { "items": [{"title": "...", "description": "..."}, ...] },
+    "benefits": { "eyebrow": "...", "title": "...", "subtitle": "...", "items": [{"title": "...", "description": "..."}, ...] },
     "about": { "title": "...", "text": "..." },
     "comparison": { "without_title": "...", "with_title": "...", "items": [{"without": "Debilidad real del rival...", "with": "Nuestra fortaleza concreta..."}, ...] },
-    "stats": { "items": [{"value": "...", "label": "..."}, ...] },
+    "stats": { "eyebrow": "...", "title": "...", "subtitle": "...", "items": [{"value": "...", "label": "..."}, ...] },
+    "testimonials": { "eyebrow": "...", "title": "...", "subtitle": "...", "items": [{"text": "...", "author": "..."}, ...] },
     "urgency": { "text": "..." },
     "faq": { "items": [{"question": "...", "answer": "..."}, ...] },
     "lead_capture": { "headline": "...", "subheadline": "...", "cta_text": "..." }
@@ -511,6 +542,8 @@ export async function generateThematicLandingContent(
     contextPrompt: string,
     vectors: PoliticalAttackVector[],
     profile: PoliticalCampaignProfile,
+    report?: ThematicReport,
+    sinapsisBlock?: string,
 ): Promise<PoliticalLandingResult> {
     const countryName = COUNTRIES[profile.country]?.name ?? profile.country
 
@@ -521,6 +554,52 @@ export async function generateThematicLandingContent(
     const positionsBlock = profile.corePositions
         .map((p) => `- ${p.issue}: ${p.position}`)
         .join('\n')
+
+    // ─── Build intelligence blocks from report ───
+    const painPointsBlock = report?.painPoints?.length
+        ? report.painPoints
+              .slice(0, 8)
+              .map(
+                  (pp) =>
+                      `- ${pp.description} (severidad: ${pp.severity}, grupo: ${pp.affectedGroup}${pp.mentionPct ? `, mencionado por ${pp.mentionPct}% de fuentes` : ''})${pp.candidateMatchingProposal ? ` → Propuesta del candidato: ${pp.candidateMatchingProposal}` : ''}`,
+              )
+              .join('\n')
+        : ''
+
+    const citizenVoicesBlock = report?.citizenVoices?.length
+        ? report.citizenVoices
+              .slice(0, 6)
+              .map((v) => {
+                  if (typeof v === 'string') return `- "${v}"`
+                  const voice = v as ThematicCitizenVoice
+                  return `- "${voice.text}" (${voice.source}${voice.sentiment ? `, ${voice.sentiment}` : ''})`
+              })
+              .join('\n')
+        : ''
+
+    const sentimentBlock =
+        report?.publicSentiment?.totalAnalyzed && report.publicSentiment.totalAnalyzed > 0
+            ? `Opiniones analizadas: ${report.publicSentiment.totalAnalyzed}
+Positivo: ${report.publicSentiment.positivePct ?? 0}% | Negativo: ${report.publicSentiment.negativePct ?? 0}% | Neutral: ${report.publicSentiment.neutralPct ?? 0}%
+Emociones clave: ${report.publicSentiment.keyEmotions.join(', ')}
+Resumen: ${report.publicSentiment.description}`
+            : report?.publicSentiment?.description
+              ? `Sentimiento general: ${report.publicSentiment.overall} — ${report.publicSentiment.description}`
+              : ''
+
+    const trendsBlock = report?.trends?.length
+        ? report.trends
+              .slice(0, 5)
+              .map(
+                  (t) =>
+                      `- ${t.description} (${t.direction}, relevancia: ${t.relevance}${t.googleTrendsAverage ? `, interés Google: ${t.googleTrendsAverage}/100` : ''})`,
+              )
+              .join('\n')
+        : ''
+
+    const executiveSummaryBlock = report?.executiveSummary
+        ? report.executiveSummary.slice(0, 500)
+        : ''
 
     const anglesBlock = vectors
         .map((v, i) => {
@@ -585,7 +664,52 @@ INSTRUCCIÓN CRÍTICA: El candidato escribió esto específicamente sobre ${topi
 }
 ## ÁNGULOS DE COMUNICACIÓN SOBRE ${topicName.toUpperCase()} (base para el contenido)
 ${anglesBlock}
-
+${
+    executiveSummaryBlock
+        ? `
+## RESUMEN EJECUTIVO DEL ANÁLISIS TEMÁTICO
+${executiveSummaryBlock}
+`
+        : ''
+}${
+        painPointsBlock
+            ? `
+## PAIN POINTS DETECTADOS EN LA CIUDADANÍA (datos reales del análisis)
+Los pain points con mayor % de mención son los MÁS urgentes — dale más peso en la landing.
+${painPointsBlock}
+`
+            : ''
+    }${
+        citizenVoicesBlock
+            ? `
+## VOCES CIUDADANAS REALES (testimonios auténticos — USAR en sección "testimonials")
+Estos son comentarios reales de ciudadanos. Usá las citas TEXTUALES como base para testimonios.
+${citizenVoicesBlock}
+`
+            : ''
+    }${
+        sentimentBlock
+            ? `
+## SENTIMIENTO PÚBLICO SOBRE ${topicName.toUpperCase()} (datos programáticos)
+${sentimentBlock}
+INSTRUCCIÓN: Si el sentimiento es mayoritariamente negativo, enfatizá la urgencia. Si es positivo, enfatizá que el candidato está alineado con la opinión pública.
+`
+            : ''
+    }${
+        trendsBlock
+            ? `
+## TENDENCIAS DETECTADAS
+${trendsBlock}
+`
+            : ''
+    }${
+        sinapsisBlock
+            ? `
+## INTELIGENCIA DEL CEREBRO DE CAMPAÑA (Sinapsis)
+${sinapsisBlock}
+`
+            : ''
+    }
 ## LÍNEAS ROJAS
 ${redLinesBlock}
 
@@ -598,8 +722,8 @@ Elige los que mejor representen la propuesta sobre ${topicName} (7-10 bloques):
 - "benefits": Propuestas del candidato para ${topicName} — items: [{title, description}]. BASADAS en el contexto específico del candidato.
 - "about": El candidato frente a ${topicName} — title, text. Por qué es la persona indicada para resolver este problema.
 - "comparison": Sin ${topicName} vs Con las propuestas del candidato — without_title (el problema actual), with_title (la solución del candidato), items: [{without, with}]. "without" = el dolor ciudadano actual, "with" = la propuesta concreta.
-- "stats": Datos sobre ${topicName} — items: [{value, label}]. Estadísticas del problema y/o de la propuesta.
-- "testimonials": Voces ciudadanas — items: [{text, author}]. Testimonios sobre cómo sufren ${topicName}.
+- "stats": Datos sobre ${topicName} — eyebrow (texto corto sobre el título, ej: "LOS NÚMEROS"), title (ej: "La realidad en cifras"), subtitle (breve contexto), items: [{value, label}], cta_text y cta_url opcionales.
+- "testimonials": Voces ciudadanas — eyebrow (ej: "VOCES CIUDADANAS"), title (ej: "Lo que vive la gente"), subtitle (contexto), items: [{text, author}], cta_text y cta_url opcionales. Si hay VOCES CIUDADANAS REALES arriba, USALAS como base textual (parafraseando si es necesario). Si no, generá testimonios verosímiles sobre ${topicName}.
 - "urgency": Por qué actuar YA sobre ${topicName} — text. Vincular la urgencia del problema con la necesidad de la propuesta.
 - "story": Narrativa — text. Historia emocional del candidato y su compromiso con ${topicName}.
 - "faq": Preguntas sobre ${topicName} — items: [{question, answer}]. Preguntas frecuentes sobre el tema y las propuestas.
@@ -624,16 +748,20 @@ Elige los que mejor representen la propuesta sobre ${topicName} (7-10 bloques):
 7. Si faltan datos → marcar con "[COMPLETAR: descripción]"
 8. Copy profesional, emotivo, orientado a generar adhesión al candidato como SOLUCIÓN al problema
 9. TODO el contenido habla de "${topicName}" — si una sección no es relevante, no la incluyas
+10. Si hay PAIN POINTS con datos reales arriba, el bloque "comparison" DEBE reflejar los dolores con mayor % de mención
+11. Si hay VOCES CIUDADANAS arriba, los "testimonials" DEBEN basarse en esas citas reales
+12. Si hay SENTIMIENTO PÚBLICO, adaptar el tono: mayoritariamente negativo = más urgencia, positivo = reforzar alineación
 
 Genera un JSON con esta estructura EXACTA:
 {
   "landingSections": ["hero", "benefits", "about", "comparison", "stats", "urgency", "faq", "lead_capture"],
   "landingContent": {
     "hero": { "headline": "...", "subheadline": "...", "cta_text": "...", "eyebrow": "..." },
-    "benefits": { "items": [{"title": "...", "description": "..."}, ...] },
+    "benefits": { "eyebrow": "...", "title": "...", "subtitle": "...", "items": [{"title": "...", "description": "..."}, ...] },
     "about": { "title": "...", "text": "..." },
     "comparison": { "without_title": "El problema actual de ${topicName}", "with_title": "Con las propuestas de ${profile.candidateName}", "items": [{"without": "Dolor actual...", "with": "Propuesta concreta..."}, ...] },
-    "stats": { "items": [{"value": "...", "label": "..."}, ...] },
+    "stats": { "eyebrow": "LOS NÚMEROS", "title": "La realidad de ${topicName} en cifras", "subtitle": "...", "items": [{"value": "...", "label": "..."}, ...] },
+    "testimonials": { "eyebrow": "VOCES CIUDADANAS", "title": "Lo que vive la gente", "subtitle": "...", "items": [{"text": "...", "author": "..."}, ...] },
     "urgency": { "text": "..." },
     "faq": { "items": [{"question": "...", "answer": "..."}, ...] },
     "lead_capture": { "headline": "...", "subheadline": "...", "cta_text": "..." }

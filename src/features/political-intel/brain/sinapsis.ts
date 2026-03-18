@@ -292,7 +292,16 @@ export function buildTacticalImpulse(brain: CampaignBrain): TacticalImpulse | nu
 
     return {
         ...base,
-        rivalWeaknesses: [], // Se populará desde los últimos reportes de intel
+        rivalWeaknesses: brain.recentReports
+            .flatMap((r) =>
+                r.attackVectors
+                    .filter((v) => v.targetPolitician && v.vulnerability)
+                    .map((v) => ({
+                        rival: String(v.targetPolitician),
+                        weakness: String(v.vulnerability),
+                    })),
+            )
+            .slice(0, 10),
         ourStrengths: base.consciousness.keyProposals.map((p) => `${p.title}: ${p.description}`),
         publicMood: brain.sentiment.map(
             (s) =>

@@ -52,10 +52,10 @@ export function ChangeTimelinePanel({ changes }: ChangeTimelinePanelProps) {
                 }}
             >
                 <Activity size={40} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
-                <p style={{ fontSize: '0.9rem', margin: 0 }}>
+                <p style={{ fontSize: '1rem', margin: 0 }}>
                     No se detectaron cambios entre el análisis actual y el anterior.
                 </p>
-                <p style={{ fontSize: '0.8rem', margin: '0.25rem 0 0', color: '#4B5563' }}>
+                <p style={{ fontSize: '0.925rem', margin: '0.25rem 0 0', color: '#4B5563' }}>
                     Los cambios aparecen cuando se comparan snapshots consecutivos.
                 </p>
             </div>
@@ -73,7 +73,7 @@ export function ChangeTimelinePanel({ changes }: ChangeTimelinePanelProps) {
                         style={{
                             padding: '0.35rem 0.75rem',
                             borderRadius: '6px',
-                            fontSize: '0.78rem',
+                            fontSize: '0.925rem',
                             fontWeight: filterSeverity === sev ? 600 : 400,
                             background:
                                 filterSeverity === sev
@@ -138,12 +138,12 @@ export function ChangeTimelinePanel({ changes }: ChangeTimelinePanelProps) {
                                         style={{
                                             color: '#fff',
                                             fontWeight: 700,
-                                            fontSize: '0.9rem',
+                                            fontSize: '1rem',
                                         }}
                                     >
                                         {detection.displayName}
                                     </span>
-                                    <span style={{ color: '#00c8ff', fontSize: '0.8rem' }}>
+                                    <span style={{ color: '#00c8ff', fontSize: '0.925rem' }}>
                                         @{detection.handle.replace('@', '')}
                                     </span>
                                 </div>
@@ -151,7 +151,7 @@ export function ChangeTimelinePanel({ changes }: ChangeTimelinePanelProps) {
                                     style={{
                                         padding: '0.15rem 0.5rem',
                                         borderRadius: '4px',
-                                        fontSize: '0.7rem',
+                                        fontSize: '0.85rem',
                                         fontWeight: 600,
                                         background: config.bg,
                                         color: config.color,
@@ -175,7 +175,7 @@ export function ChangeTimelinePanel({ changes }: ChangeTimelinePanelProps) {
                             <p
                                 style={{
                                     color: '#4B5563',
-                                    fontSize: '0.7rem',
+                                    fontSize: '0.85rem',
                                     margin: '0.5rem 0 0',
                                 }}
                             >
@@ -209,7 +209,7 @@ function ChangeRow({ change }: { change: ProfileChange }) {
                 padding: '0.4rem 0.6rem',
                 borderRadius: '6px',
                 background: 'rgba(255,255,255,0.03)',
-                fontSize: '0.82rem',
+                fontSize: '0.95rem',
             }}
         >
             <span
@@ -217,7 +217,7 @@ function ChangeRow({ change }: { change: ProfileChange }) {
                     color: significanceColor,
                     fontWeight: 600,
                     minWidth: 90,
-                    fontSize: '0.78rem',
+                    fontSize: '0.925rem',
                 }}
             >
                 {fieldLabel(change.field)}
@@ -236,7 +236,7 @@ function ChangeRow({ change }: { change: ProfileChange }) {
                         <span
                             style={{
                                 color: isIncrease ? '#34D399' : '#F87171',
-                                fontSize: '0.75rem',
+                                fontSize: '0.875rem',
                             }}
                         >
                             ({change.changePercent > 0 ? '+' : ''}

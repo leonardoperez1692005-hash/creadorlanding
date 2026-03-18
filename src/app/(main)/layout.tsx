@@ -4,6 +4,8 @@ import Sidebar from '@/shared/components/layout/Sidebar'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { getUserPermissions } from '@/lib/permissions'
 import { StrategicChat } from '@/features/political-intel/components/StrategicChat'
+import { NotificationBell } from '@/features/notifications/components/NotificationBell'
+import { PushNotificationPrompt } from '@/features/notifications/components/PushNotificationPrompt'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,9 +43,13 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             </a>
             <Sidebar user={user} profile={profile} allowedModules={allowedModules} />
             <main id="main-content" className="flex-1 overflow-auto">
+                <div className="flex justify-end px-4 pt-2">
+                    <NotificationBell />
+                </div>
                 <ErrorBoundary>{children}</ErrorBoundary>
             </main>
             <StrategicChat />
+            <PushNotificationPrompt />
         </div>
     )
 }

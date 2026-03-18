@@ -32,6 +32,7 @@ export interface BrainRecentReport {
     reportType: string
     topicName: string | null
     executiveSummary: string
+    attackVectors: Array<Record<string, unknown>>
     createdAt: string
 }
 
