@@ -138,9 +138,9 @@ ESLint flat config with React hooks support and React Refresh for HMR.
 ### .env (API Keys)
 
 ```
-VITE_GEMINI_API_KEY=REDACTED_GEMINI_KEY_1
-VITE_FIRECRAWL_API_KEY=REDACTED_FIRECRAWL_KEY
-VITE_PERPLEXITY_API_KEY=REDACTED_PERPLEXITY_KEY
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+VITE_FIRECRAWL_API_KEY=your_firecrawl_api_key_here
+VITE_PERPLEXITY_API_KEY=your_perplexity_api_key_here
 ```
 
 **Note:** The `VITE_` prefix is required for Vite to expose environment variables to the client-side code.
